@@ -13,10 +13,18 @@ use {Encodable, Decodable};
 pub use self::connect::ConnectPacket;
 pub use self::connack::ConnackPacket;
 pub use self::publish::PublishPacket;
+pub use self::puback::PubackPacket;
+pub use self::pubrec::PubrecPacket;
+pub use self::pubrel::PubrelPacket;
+pub use self::pubcomp::PubcompPacket;
 
 pub mod connect;
 pub mod connack;
 pub mod publish;
+pub mod puback;
+pub mod pubrec;
+pub mod pubrel;
+pub mod pubcomp;
 
 pub trait Packet<'a> {
     type Payload: Encodable<'a> + Decodable<'a> + 'a;
@@ -259,6 +267,10 @@ impl_variable_packet! {
     ConnackPacket & ConnackPacketError => ConnectAcknowledgement,
 
     PublishPacket & PublishPacketError => Publish,
+    PubackPacket  & PubackPacketError  => PublishAcknowledgement,
+    PubrecPacket  & PubrecPacketError  => PublishReceived,
+    PubrelPacket  & PubrelPacketError  => PublishRelease,
+    PubcompPacket & PubcompPacketError => PublishComplete,
 }
 
 impl VariablePacket {

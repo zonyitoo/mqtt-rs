@@ -48,6 +48,8 @@ impl ConnectPacket {
     pub fn set_user_name(&mut self, name: Option<String>) {
         if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
             flags.user_name = name.is_some();
+        } else {
+            panic!("Could not find connect flags variable header");
         }
         self.payload.user_name = name;
         self.fixed_header.remaining_length = self.calculate_remaining_length();
@@ -56,6 +58,8 @@ impl ConnectPacket {
     pub fn set_will(&mut self, topic_message: Option<(String, String)>) {
         if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
             flags.will_flag = topic_message.is_some();
+        } else {
+            panic!("Could not find connect flags variable header");
         }
 
         match topic_message {
@@ -75,6 +79,8 @@ impl ConnectPacket {
     pub fn set_password(&mut self, password: Option<String>) {
         if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
             flags.password = password.is_some();
+        } else {
+            panic!("Could not find connect flags variable header");
         }
         self.payload.password = password;
         self.fixed_header.remaining_length = self.calculate_remaining_length();
@@ -88,6 +94,8 @@ impl ConnectPacket {
     pub fn set_will_retain(&mut self, will_retain: bool) {
         if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
             flags.will_retain = will_retain;
+        } else {
+            panic!("Could not find connect flags variable header");
         }
     }
 
@@ -95,6 +103,16 @@ impl ConnectPacket {
         assert!(will_qos <= 2);
         if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
             flags.will_qos = will_qos;
+        } else {
+            panic!("Could not find connect flags variable header");
+        }
+    }
+
+    pub fn set_clean_session(&mut self, clean_session: bool) {
+        if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
+            flags.clean_session = clean_session;
+        } else {
+            panic!("Could not find connect flags variable header");
         }
     }
 
@@ -130,6 +148,14 @@ impl ConnectPacket {
 
     pub fn client_identifier(&self) -> &str {
         &self.payload.client_identifier[..]
+    }
+
+    pub fn clean_session(&self) -> bool {
+        if let &VariableHeader::ConnectFlags(ref flags) = &self.variable_headers[2] {
+            flags.clean_session
+        } else {
+            panic!("Could not find connect flags variable header");
+        }
     }
 }
 

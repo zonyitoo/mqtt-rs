@@ -40,6 +40,18 @@ impl<'a> Encodable<'a> for &'a str {
     }
 }
 
+impl<'a> Encodable<'a> for &'a [u8] {
+    type Err = io::Error;
+
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        writer.write_all(self)
+    }
+
+    fn encoded_length(&self) -> u32 {
+        self.len() as u32
+    }
+}
+
 impl<'a> Encodable<'a> for String {
     type Err = StringEncodeError;
 
@@ -66,6 +78,38 @@ impl<'a> Decodable<'a> for String {
         }
 
         String::from_utf8(buf).map_err(StringEncodeError::FromUtf8Error)
+    }
+}
+
+impl<'a> Encodable<'a> for Vec<u8> {
+    type Err = io::Error;
+
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        (&self[..]).encode(writer)
+    }
+
+    fn encoded_length(&self) -> u32 {
+        (&self[..]).encoded_length()
+    }
+}
+
+impl<'a> Decodable<'a> for Vec<u8> {
+    type Err = io::Error;
+    type Cond = u32;
+
+    fn decode_with<R: Read>(reader: &mut R, length: Option<u32>) -> Result<Vec<u8>, io::Error> {
+        match length {
+            Some(length) => {
+                let mut buf = Vec::with_capacity(length as usize);
+                try!(reader.take(length as u64).read_to_end(&mut buf));
+                Ok(buf)
+            },
+            None => {
+                let mut buf = Vec::new();
+                try!(reader.read_to_end(&mut buf));
+                Ok(buf)
+            }
+        }
     }
 }
 

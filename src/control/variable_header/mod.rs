@@ -16,6 +16,7 @@ pub use self::connect_flags::ConnectFlags;
 pub use self::keep_alive::KeepAlive;
 pub use self::connect_ack_flags::ConnackFlags;
 pub use self::connect_ret_code::ConnectReturnCode;
+pub use self::topic_name::TopicName;
 
 pub mod packet_identifier;
 pub mod protocol_name;
@@ -24,6 +25,7 @@ pub mod connect_flags;
 pub mod keep_alive;
 pub mod connect_ack_flags;
 pub mod connect_ret_code;
+pub mod topic_name;
 
 macro_rules! impl_variable_headers {
     ($($name:ident => $repr:ty,)*) => {
@@ -31,7 +33,7 @@ macro_rules! impl_variable_headers {
         /// It resides between the fixed header and the payload. The content of the
         /// variable header varies depending on the Packet type. The Packet Identifier
         /// field of variable header is common in several packet types.
-        #[derive(Debug, Eq, PartialEq, Clone)]
+        #[derive(Eq, PartialEq, Clone)]
         pub enum VariableHeader {
             $(
                 $name($repr),
@@ -74,6 +76,16 @@ macro_rules! impl_variable_headers {
                 }
             }
         }
+
+        impl fmt::Debug for VariableHeader {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                match self {
+                    $(
+                        &VariableHeader::$name(ref repr) => repr.fmt(f),
+                    )+
+                }
+            }
+        }
     }
 }
 
@@ -85,6 +97,7 @@ impl_variable_headers! {
     KeepAlive           => KeepAlive,
     ConnackFlags        => ConnackFlags,
     ConnectReturnCode   => ConnectReturnCode,
+    TopicName           => TopicName,
 }
 
 #[derive(Debug)]

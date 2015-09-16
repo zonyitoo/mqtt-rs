@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::error::Error;
 use std::fmt;
 use std::convert::From;
@@ -11,9 +11,11 @@ use {Encodable, Decodable};
 
 pub use self::connect::ConnectPacket;
 pub use self::connack::ConnackPacket;
+pub use self::publish::PublishPacket;
 
 pub mod connect;
 pub mod connack;
+pub mod publish;
 
 pub trait Packet<'a> {
     type Payload: Encodable<'a> + Decodable<'a> + 'a;
@@ -66,6 +68,7 @@ pub enum PacketError<'a, T: Packet<'a>> {
     FixedHeaderError(FixedHeaderError),
     VariableHeaderError(VariableHeaderError),
     PayloadError(<<T as Packet<'a>>::Payload as Encodable<'a>>::Err),
+    IoError(io::Error),
 }
 
 impl<'a, T: Packet<'a>> fmt::Display for PacketError<'a, T> {
@@ -74,6 +77,7 @@ impl<'a, T: Packet<'a>> fmt::Display for PacketError<'a, T> {
             &PacketError::FixedHeaderError(ref err) => err.fmt(f),
             &PacketError::VariableHeaderError(ref err) => err.fmt(f),
             &PacketError::PayloadError(ref err) => err.fmt(f),
+            &PacketError::IoError(ref err) => err.fmt(f),
         }
     }
 }
@@ -84,14 +88,16 @@ impl<'a, T: Packet<'a> + fmt::Debug> Error for PacketError<'a, T> {
             &PacketError::FixedHeaderError(ref err) => err.description(),
             &PacketError::VariableHeaderError(ref err) => err.description(),
             &PacketError::PayloadError(ref err) => err.description(),
+            &PacketError::IoError(ref err) => err.description(),
         }
     }
 
     fn cause(&self) -> Option<&Error> {
         match self {
-            &PacketError::FixedHeaderError(ref err) => err.cause(),
-            &PacketError::VariableHeaderError(ref err) => err.cause(),
-            &PacketError::PayloadError(ref err) => err.cause(),
+            &PacketError::FixedHeaderError(ref err) => Some(err),
+            &PacketError::VariableHeaderError(ref err) => Some(err),
+            &PacketError::PayloadError(ref err) => Some(err),
+            &PacketError::IoError(ref err) => Some(err),
         }
     }
 }
@@ -105,6 +111,12 @@ impl<'a, T: Packet<'a>> From<FixedHeaderError> for PacketError<'a, T> {
 impl<'a, T: Packet<'a>> From<VariableHeaderError> for PacketError<'a, T> {
     fn from(err: VariableHeaderError) -> PacketError<'a, T> {
         PacketError::VariableHeaderError(err)
+    }
+}
+
+impl<'a, T: Packet<'a>> From<io::Error> for PacketError<'a, T> {
+    fn from(err: io::Error) -> PacketError<'a, T> {
+        PacketError::IoError(err)
     }
 }
 
@@ -156,7 +168,7 @@ macro_rules! impl_variable_packet {
                     None => try!(FixedHeader::decode(reader)),
                 };
 
-                match fixed_header.packet_type.control_type() {
+                match fixed_header.packet_type.control_type {
                     $(
                         ControlType::$hdr => {
                             let pk = try!(<$name as Packet<'a>>::decode_packet(reader, fixed_header));
@@ -231,6 +243,8 @@ macro_rules! impl_variable_packet {
 impl_variable_packet! {
     ConnectPacket & ConnectPacketError => Connect,
     ConnackPacket & ConnackPacketError => ConnectAcknowledgement,
+
+    PublishPacket & PublishPacketError => Publish,
 }
 
 impl VariablePacket {

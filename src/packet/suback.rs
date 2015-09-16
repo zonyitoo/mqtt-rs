@@ -130,7 +130,7 @@ impl<'a> Decodable<'a> for SubackPacketPayload {
                 0x01 => SubscribeReturnCode::MaximumQoSLevel1,
                 0x02 => SubscribeReturnCode::MaximumQoSLevel2,
                 0x80 => SubscribeReturnCode::Failure,
-                _ => return Err(SubackPacketPayloadError::InvalidSubscribeReturnCode),
+                code => return Err(SubackPacketPayloadError::InvalidSubscribeReturnCode(code)),
             };
 
             subs.push(retcode);
@@ -143,14 +143,15 @@ impl<'a> Decodable<'a> for SubackPacketPayload {
 #[derive(Debug)]
 pub enum SubackPacketPayloadError {
     IoError(io::Error),
-    InvalidSubscribeReturnCode,
+    InvalidSubscribeReturnCode(u8),
 }
 
 impl fmt::Display for SubackPacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &SubackPacketPayloadError::IoError(ref err) => err.fmt(f),
-            &SubackPacketPayloadError::InvalidSubscribeReturnCode => write!(f, "Invalid quality of service"),
+            &SubackPacketPayloadError::InvalidSubscribeReturnCode(code) =>
+                write!(f, "Invalid subscribe return code {}", code),
         }
     }
 }
@@ -159,14 +160,14 @@ impl Error for SubackPacketPayloadError {
     fn description(&self) -> &str {
         match self {
             &SubackPacketPayloadError::IoError(ref err) => err.description(),
-            &SubackPacketPayloadError::InvalidSubscribeReturnCode => "Invalid quality of service",
+            &SubackPacketPayloadError::InvalidSubscribeReturnCode(..) => "Invalid subscribe return code",
         }
     }
 
     fn cause(&self) -> Option<&Error> {
         match self {
             &SubackPacketPayloadError::IoError(ref err) => Some(err),
-            &SubackPacketPayloadError::InvalidSubscribeReturnCode => None,
+            &SubackPacketPayloadError::InvalidSubscribeReturnCode(..) => None,
         }
     }
 }

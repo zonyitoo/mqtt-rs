@@ -205,6 +205,7 @@ macro_rules! impl_variable_packet {
                     Some(fh) => fh,
                     None => try!(FixedHeader::decode(reader)),
                 };
+                let reader = &mut reader.take(fixed_header.remaining_length as u64);
 
                 match fixed_header.packet_type.control_type {
                     $(

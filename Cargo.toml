@@ -1,0 +1,11 @@
+[package]
+name = "mqtt"
+version = "0.1.0"
+authors = ["Y. T. Chung <zonyitoo@gmail.com>"]
+
+[lib]
+name = "mqtt"
+
+[dependencies]
+byteorder = "^0.3.13"
+log = "^0.3.2"

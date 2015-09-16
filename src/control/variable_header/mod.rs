@@ -14,12 +14,16 @@ pub use self::protocol_name::ProtocolName;
 pub use self::protocol_level::ProtocolLevel;
 pub use self::connect_flags::ConnectFlags;
 pub use self::keep_alive::KeepAlive;
+pub use self::connect_ack_flags::ConnackFlags;
+pub use self::connect_ret_code::ConnectReturnCode;
 
 pub mod packet_identifier;
 pub mod protocol_name;
 pub mod protocol_level;
 pub mod connect_flags;
 pub mod keep_alive;
+pub mod connect_ack_flags;
+pub mod connect_ret_code;
 
 macro_rules! impl_variable_headers {
     ($($name:ident => $repr:ty,)*) => {
@@ -79,6 +83,8 @@ impl_variable_headers! {
     ProtocolLevel       => ProtocolLevel,
     ConnectFlags        => ConnectFlags,
     KeepAlive           => KeepAlive,
+    ConnackFlags        => ConnackFlags,
+    ConnectReturnCode   => ConnectReturnCode,
 }
 
 #[derive(Debug)]

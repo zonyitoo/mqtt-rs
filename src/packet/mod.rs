@@ -10,8 +10,10 @@ use control::packet_type::PacketType;
 use {Encodable, Decodable};
 
 pub use self::connect::ConnectPacket;
+pub use self::connack::ConnackPacket;
 
 pub mod connect;
+pub mod connack;
 
 pub trait Packet<'a> {
     type Payload: Encodable<'a> + Decodable<'a> + 'a;
@@ -228,6 +230,7 @@ macro_rules! impl_variable_packet {
 
 impl_variable_packet! {
     ConnectPacket & ConnectPacketError => Connect,
+    ConnackPacket & ConnackPacketError => ConnectAcknowledgement,
 }
 
 impl VariablePacket {

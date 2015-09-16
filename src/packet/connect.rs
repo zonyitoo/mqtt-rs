@@ -85,6 +85,19 @@ impl ConnectPacket {
         self.fixed_header.remaining_length = self.calculate_remaining_length();
     }
 
+    pub fn set_will_retain(&mut self, will_retain: bool) {
+        if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
+            flags.will_retain = will_retain;
+        }
+    }
+
+    pub fn set_will_qos(&mut self, will_qos: u8) {
+        assert!(will_qos <= 2);
+        if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
+            flags.will_qos = will_qos;
+        }
+    }
+
     pub fn user_name(&self) -> Option<&str> {
         self.payload.user_name.as_ref().map(|x| &x[..])
     }
@@ -97,6 +110,22 @@ impl ConnectPacket {
         self.payload.will_topic.as_ref().map(|x| &x[..])
             .and_then(|topic| self.payload.will_message.as_ref().map(|x| &x[..])
                              .map(|msg| (topic, msg)))
+    }
+
+    pub fn will_retain(&self) -> bool {
+        if let &VariableHeader::ConnectFlags(ref flags) = &self.variable_headers[2] {
+            flags.will_retain
+        } else {
+            panic!("Could not find connect flags variable header");
+        }
+    }
+
+    pub fn will_qos(&self) -> u8 {
+        if let &VariableHeader::ConnectFlags(ref flags) = &self.variable_headers[2] {
+            flags.will_qos
+        } else {
+            panic!("Could not find connect flags variable header");
+        }
     }
 
     pub fn client_identifier(&self) -> &str {

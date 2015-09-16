@@ -69,6 +69,42 @@ impl<'a> Decodable<'a> for String {
     }
 }
 
+impl<'a> Encodable<'a> for () {
+    type Err = NoError;
+
+    fn encode<W: Write>(&self, _: &mut W) -> Result<(), NoError> {
+        Ok(())
+    }
+
+    fn encoded_length(&self) -> u32 {
+        0
+    }
+}
+
+impl<'a> Decodable<'a> for () {
+    type Err = NoError;
+    type Cond = ();
+
+    fn decode_with<R: Read>(_: &mut R, _: Option<()>) -> Result<(), NoError> {
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct NoError;
+
+impl fmt::Display for NoError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "No error")
+    }
+}
+
+impl Error for NoError {
+    fn description(&self) -> &str {
+        "No error"
+    }
+}
+
 #[derive(Debug)]
 pub enum StringEncodeError {
     IoError(io::Error),

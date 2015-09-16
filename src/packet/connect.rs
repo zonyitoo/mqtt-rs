@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt;
 
 
-use control::{FixedHeader, VariableHeader, PacketType};
+use control::{FixedHeader, VariableHeader, PacketType, ControlType};
 use control::variable_header::{ProtocolName, ProtocolLevel, ConnectFlags, KeepAlive};
 use control::variable_header::protocol_level::SPEC_3_1_1;
 use packet::{Packet, PacketError};
@@ -24,7 +24,7 @@ impl ConnectPacket {
 
     pub fn with_level(client_identifier: String, level: u8) -> ConnectPacket {
         let mut pk = ConnectPacket {
-            fixed_header: FixedHeader::new(PacketType::Connect(false, false, false, false), 0),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Connect), 0),
             variable_headers: vec![
                 VariableHeader::new(ProtocolName("MQTT".to_owned())),
                 VariableHeader::new(ProtocolLevel(level)),

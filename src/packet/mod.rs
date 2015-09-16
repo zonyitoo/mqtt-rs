@@ -6,7 +6,7 @@ use std::convert::From;
 use control::{FixedHeader, VariableHeader};
 use control::fixed_header::FixedHeaderError;
 use control::variable_header::VariableHeaderError;
-use control::packet_type::PacketType;
+use control::ControlType;
 use {Encodable, Decodable};
 
 pub use self::connect::ConnectPacket;
@@ -156,9 +156,9 @@ macro_rules! impl_variable_packet {
                     None => try!(FixedHeader::decode(reader)),
                 };
 
-                match fixed_header.packet_type {
+                match fixed_header.packet_type.control_type() {
                     $(
-                        PacketType::$hdr(_, _, _, _) => {
+                        ControlType::$hdr => {
                             let pk = try!(<$name as Packet<'a>>::decode_packet(reader, fixed_header));
                             Ok(VariablePacket::$name(pk))
                         }

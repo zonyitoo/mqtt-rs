@@ -169,12 +169,12 @@ mod test {
     use super::*;
 
     use std::io::Cursor;
-    use control::packet_type::PacketType;
+    use control::packet_type::{PacketType, ControlType};
     use {Encodable, Decodable};
 
     #[test]
     fn test_encode_fixed_header() {
-        let header = FixedHeader::new(PacketType::Connect(false, false, false, false), 321);
+        let header = FixedHeader::new(PacketType::with_default(ControlType::Connect), 321);
         let mut buf = Vec::new();
         header.encode(&mut buf).unwrap();
 
@@ -187,7 +187,7 @@ mod test {
         let stream = b"\x10\xc1\x02";
         let mut cursor = Cursor::new(&stream[..]);
         let header = FixedHeader::decode(&mut cursor).unwrap();
-        assert_eq!(header.packet_type, PacketType::Connect(false, false, false, false));
+        assert_eq!(header.packet_type, PacketType::with_default(ControlType::Connect));
         assert_eq!(header.remaining_length, 321);
     }
 

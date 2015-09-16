@@ -1,7 +1,7 @@
 use std::io::Read;
 
 
-use control::{FixedHeader, VariableHeader, PacketType};
+use control::{FixedHeader, VariableHeader, PacketType, ControlType};
 use control::variable_header::{ConnackFlags, ConnectReturnCode};
 use packet::{Packet, PacketError};
 use Decodable;
@@ -16,7 +16,7 @@ pub struct ConnackPacket {
 impl ConnackPacket {
     pub fn new(session_present: bool, ret_code: u8) -> ConnackPacket {
         ConnackPacket {
-            fixed_header: FixedHeader::new(PacketType::ConnectAcknowledgement(false, false, false, false), 2),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
             variable_headers: vec![
                 VariableHeader::new(ConnackFlags { session_present: session_present }),
                 VariableHeader::new(ConnectReturnCode(ret_code)),

@@ -2,82 +2,107 @@ use std::error::Error;
 use std::fmt;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum PacketType {
+pub struct PacketType {
+    control_type: ControlType,
+    flags: (bool, bool, bool, bool),
+}
+
+#[repr(u8)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub enum ControlType {
     /// Client request to connect to Server
-    Connect(bool, bool, bool, bool),
+    Connect                         = value::CONNECT,
 
     /// Connect acknowledgment
-    ConnectAcknowledgement(bool, bool, bool, bool),
+    ConnectAcknowledgement          = value::CONNACK,
 
     /// Publish message
-    Publish(bool, bool, bool, bool),
+    Publish                         = value::PUBLISH,
 
     /// Publish acknowledgment
-    PublishAcknowledgement(bool, bool, bool, bool),
+    PublishAcknowledgement          = value::PUBACK,
 
     /// Publish received (assured delivery part 1)
-    PublishReceived(bool, bool, bool, bool),
+    PublishReceived                 = value::PUBREC,
 
     /// Publish release (assured delivery part 2)
-    PublishRelease(bool, bool, bool, bool),
+    PublishRelease                  = value::PUBREL,
 
     /// Publish complete (assured delivery part 3)
-    PublishComplete(bool, bool, bool, bool),
+    PublishComplete                 = value::PUBCOMP,
 
     /// Client subscribe request
-    Subscribe(bool, bool, bool, bool),
+    Subscribe                       = value::SUBSCRIBE,
 
     /// Subscribe acknowledgment
-    SubscribeAcknowledgement(bool, bool, bool, bool),
+    SubscribeAcknowledgement        = value::SUBACK,
 
     /// Unsubscribe request
-    Unsubscribe(bool, bool, bool, bool),
+    Unsubscribe                     = value::UNSUBSCRIBE,
 
     /// Unsubscribe acknowledgment
-    UnsubscribeAcknowledgement(bool, bool, bool, bool),
+    UnsubscribeAcknowledgement      = value::UNSUBACK,
 
     /// PING request
-    PingRequest(bool, bool, bool, bool),
+    PingRequest                     = value::PINGREQ,
 
     /// PING response
-    PingResponse(bool, bool, bool, bool),
+    PingResponse                    = value::PINGRESP,
 
     /// Client is disconnecting
-    Disconnect(bool, bool, bool, bool),
+    Disconnect                      = value::DISCONNECT,
 }
 
 impl PacketType {
+    #[inline]
+    pub fn new(t: ControlType, f1: bool, f2: bool, f3: bool, f4: bool) -> PacketType {
+        PacketType {
+            control_type: t,
+            flags: (f1, f2, f3, f4),
+        }
+    }
+
+    #[inline]
+    pub fn with_default(t: ControlType) -> PacketType {
+        match t {
+            ControlType::Connect => PacketType::new(t, false, false, false, false),
+            ControlType::ConnectAcknowledgement => PacketType::new(t, false, false, false, false),
+
+            ControlType::Publish => PacketType::new(t, false, false, false, false),
+            ControlType::PublishAcknowledgement => PacketType::new(t, false, false, false, false),
+            ControlType::PublishReceived => PacketType::new(t, false, false, false, false),
+            ControlType::PublishRelease => PacketType::new(t, false, false, true, false),
+            ControlType::PublishComplete => PacketType::new(t, false, false, false, false),
+
+            ControlType::Subscribe => PacketType::new(t, false, false, true, false),
+            ControlType::SubscribeAcknowledgement => PacketType::new(t, false, false, false, false),
+
+            ControlType::Unsubscribe => PacketType::new(t, false, false, true, false),
+            ControlType::UnsubscribeAcknowledgement => PacketType::new(t, false, false, false, false),
+
+            ControlType::PingRequest => PacketType::new(t, false, false, false, false),
+            ControlType::PingResponse => PacketType::new(t, false, false, false, false),
+
+            ControlType::Disconnect => PacketType::new(t, false, false, false, false),
+        }
+    }
+
+    #[inline]
+    pub fn flags(&self) -> (bool, bool, bool, bool) {
+        self.flags
+    }
+
+    #[inline]
+    pub fn control_type(&self) -> ControlType {
+        self.control_type
+    }
+
     pub fn to_u8(&self) -> u8 {
-        macro_rules! make_type {
-            ($typeval:expr, $flag1:expr, $flag2:expr, $flag3:expr, $flag4:expr)
-                => (($typeval << 4)
-                        | (($flag1 as u8) << 3)
-                        | (($flag2 as u8) << 2)
-                        | (($flag3 as u8) << 1)
-                        | ($flag4 as u8))
-        }
-
-        match *self {
-            PacketType::Connect(f1, f2, f3, f4) => make_type!(value::CONNECT, f1, f2, f3, f4),
-            PacketType::ConnectAcknowledgement(f1, f2, f3, f4) => make_type!(value::CONNACK, f1, f2, f3, f4),
-
-            PacketType::Publish(f1, f2, f3, f4) => make_type!(value::PUBLISH, f1, f2, f3, f4),
-            PacketType::PublishAcknowledgement(f1, f2, f3, f4) => make_type!(value::PUBACK, f1, f2, f3, f4),
-            PacketType::PublishReceived(f1, f2, f3, f4) => make_type!(value::PUBREC, f1, f2, f3, f4),
-            PacketType::PublishRelease(f1, f2, f3, f4) => make_type!(value::PUBREL, f1, f2, f3, f4),
-            PacketType::PublishComplete(f1, f2, f3, f4) => make_type!(value::PUBCOMP, f1, f2, f3, f4),
-
-            PacketType::Subscribe(f1, f2, f3, f4) => make_type!(value::SUBSCRIBE, f1, f2, f3, f4),
-            PacketType::SubscribeAcknowledgement(f1, f2, f3, f4) => make_type!(value::SUBACK, f1, f2, f3, f4),
-
-            PacketType::Unsubscribe(f1, f2, f3, f4) => make_type!(value::UNSUBSCRIBE, f1, f2, f3, f4),
-            PacketType::UnsubscribeAcknowledgement(f1, f2, f3, f4) => make_type!(value::UNSUBACK, f1, f2, f3, f4),
-
-            PacketType::PingRequest(f1, f2, f3, f4) => make_type!(value::PINGREQ, f1, f2, f3, f4),
-            PacketType::PingResponse(f1, f2, f3, f4) => make_type!(value::PINGRESP, f1, f2, f3, f4),
-
-            PacketType::Disconnect(f1, f2, f3, f4) => make_type!(value::DISCONNECT, f1, f2, f3, f4),
-        }
+        (self.control_type as u8) << 4
+            | (self.flags.0 as u8) << 3
+            | (self.flags.1 as u8) << 2
+            | (self.flags.2 as u8) << 1
+            | (self.flags.3 as u8)
     }
 
     pub fn from_u8(val: u8) -> Result<PacketType, PacketTypeError> {
@@ -96,8 +121,10 @@ impl PacketType {
         }
 
         match type_val {
-            value::CONNECT      => vconst!(0x00, PacketType::Connect(false, false, false, false)),
-            value::CONNACK      => vconst!(0x00, PacketType::ConnectAcknowledgement(false, false, false, false)),
+            value::CONNECT      => vconst!(0x00, PacketType::new(ControlType::Connect,
+                                           false, false, false, false)),
+            value::CONNACK      => vconst!(0x00, PacketType::new(ControlType::ConnectAcknowledgement,
+                                           false, false, false, false)),
 
             value::PUBLISH      => {
                 let (f1, f2, f3, f4) = (
@@ -106,23 +133,30 @@ impl PacketType {
                     flag & 0x02 != 0,
                     flag & 0x01 != 0
                 );
-                Ok(PacketType::Publish(f1, f2, f3, f4))
+                Ok(PacketType::new(ControlType::Publish, f1, f2, f3, f4))
             },
-            value::PUBACK       => vconst!(0x00, PacketType::PublishAcknowledgement(false, false, false, false)),
-            value::PUBREC       => vconst!(0x00, PacketType::PublishReceived(false, false, false, false)),
-            value::PUBREL       => vconst!(0x02, PacketType::PublishRelease(false, false, true, false)),
-            value::PUBCOMP      => vconst!(0x00, PacketType::PublishComplete(false, false, false, false)),
+            value::PUBACK       => vconst!(0x00, PacketType::new(ControlType::PublishAcknowledgement,
+                                                                 false, false, false, false)),
+            value::PUBREC       => vconst!(0x00, PacketType::new(ControlType::PublishReceived,
+                                                                 false, false, false, false)),
+            value::PUBREL       => vconst!(0x02, PacketType::new(ControlType::PublishRelease,
+                                                                 false, false, true, false)),
+            value::PUBCOMP      => vconst!(0x00, PacketType::new(ControlType::PublishComplete,
+                                                                 false, false, false, false)),
 
-            value::SUBSCRIBE    => vconst!(0x02, PacketType::Subscribe(false, false, true, false)),
-            value::SUBACK       => vconst!(0x00, PacketType::SubscribeAcknowledgement(false, false, false, false)),
+            value::SUBSCRIBE    => vconst!(0x02, PacketType::new(ControlType::Subscribe, false, false, true, false)),
+            value::SUBACK       => vconst!(0x00, PacketType::new(ControlType::SubscribeAcknowledgement,
+                                                                 false, false, false, false)),
 
-            value::UNSUBSCRIBE  => vconst!(0x02, PacketType::Unsubscribe(false, false, true, false)),
-            value::UNSUBACK     => vconst!(0x00, PacketType::UnsubscribeAcknowledgement(false, false, false, false)),
+            value::UNSUBSCRIBE  => vconst!(0x02, PacketType::new(ControlType::Unsubscribe, false, false, true, false)),
+            value::UNSUBACK     => vconst!(0x00, PacketType::new(ControlType::UnsubscribeAcknowledgement,
+                                                                 false, false, false, false)),
 
-            value::PINGREQ      => vconst!(0x00, PacketType::PingRequest(false, false, false, false)),
-            value::PINGRESP     => vconst!(0x00, PacketType::PingResponse(false, false, false, false)),
+            value::PINGREQ      => vconst!(0x00, PacketType::new(ControlType::PingRequest, false, false, false, false)),
+            value::PINGRESP     => vconst!(0x00, PacketType::new(ControlType::PingResponse,
+                                                                 false, false, false, false)),
 
-            value::DISCONNECT   => vconst!(0x00, PacketType::Disconnect(false, false, false, false)),
+            value::DISCONNECT   => vconst!(0x00, PacketType::new(ControlType::Disconnect, false, false, false, false)),
 
             0 | 15              => Err(PacketTypeError::ReservedType(type_val)),
             _                   => Err(PacketTypeError::UndefinedType(type_val)),

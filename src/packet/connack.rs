@@ -1,15 +1,16 @@
-use std::io::Read;
+use std::io::{Read, Write};
 
 
-use control::{FixedHeader, VariableHeader, PacketType, ControlType};
+use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::{ConnackFlags, ConnectReturnCode};
 use packet::{Packet, PacketError};
-use Decodable;
+use {Encodable, Decodable};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct ConnackPacket {
     fixed_header: FixedHeader,
-    variable_headers: Vec<VariableHeader>,
+    flags: ConnackFlags,
+    ret_code: ConnectReturnCode,
     payload: (),
 }
 
@@ -17,40 +18,18 @@ impl ConnackPacket {
     pub fn new(session_present: bool, ret_code: ConnectReturnCode) -> ConnackPacket {
         ConnackPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
-            variable_headers: vec![
-                VariableHeader::new(ConnackFlags { session_present: session_present }),
-                VariableHeader::new(ret_code),
-            ],
+            flags: ConnackFlags { session_present: session_present },
+            ret_code: ret_code,
             payload: (),
         }
     }
 
-    pub fn session_present(&self) -> bool {
-        match self.variable_headers[0] {
-            VariableHeader::ConnackFlags(flags) => flags.session_present,
-            _ => panic!("Could not find Connack Flags in variable header"),
-        }
+    pub fn connack_flags(&self) -> ConnackFlags {
+        self.flags
     }
 
-    pub fn return_code(&self) -> ConnectReturnCode {
-        match self.variable_headers[0] {
-            VariableHeader::ConnectReturnCode(code) => code,
-            _ => panic!("Could not find Connack Flags in variable header"),
-        }
-    }
-
-    pub fn set_session_present(&mut self, session_present: bool) {
-        match &mut self.variable_headers[0] {
-            &mut VariableHeader::ConnackFlags(ref mut flags) => flags.session_present = session_present,
-            _ => panic!("Could not find Connack Flags in variable header"),
-        }
-    }
-
-    pub fn set_return_code(&mut self, code: ConnectReturnCode) {
-        match &mut self.variable_headers[0] {
-            &mut VariableHeader::ConnectReturnCode(ref mut c) => *c = code,
-            _ => panic!("Could not find Connack Flags in variable header"),
-        }
+    pub fn connect_return_code(&self) -> ConnectReturnCode {
+        self.ret_code
     }
 }
 
@@ -61,12 +40,18 @@ impl<'a> Packet<'a> for ConnackPacket {
         &self.fixed_header
     }
 
-    fn variable_headers(&self) -> &[VariableHeader] {
-        &self.variable_headers[..]
-    }
-
     fn payload(&self) -> &Self::Payload {
         &self.payload
+    }
+
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
+        try!(self.flags.encode(writer));
+        try!(self.ret_code.encode(writer));
+        Ok(())
+    }
+
+    fn encoded_variable_headers_length(&self) -> u32 {
+        self.flags.encoded_length() + self.ret_code.encoded_length()
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
@@ -75,10 +60,8 @@ impl<'a> Packet<'a> for ConnackPacket {
 
         Ok(ConnackPacket {
             fixed_header: fixed_header,
-            variable_headers: vec![
-                VariableHeader::new(flags),
-                VariableHeader::new(code),
-            ],
+            flags: flags,
+            ret_code: code,
             payload: (),
         })
     }

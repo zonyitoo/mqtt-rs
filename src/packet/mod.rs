@@ -3,10 +3,11 @@ use std::error::Error;
 use std::fmt;
 use std::convert::From;
 
-use control::{FixedHeader, VariableHeader};
+use control::FixedHeader;
 use control::fixed_header::FixedHeaderError;
 use control::variable_header::VariableHeaderError;
 use control::ControlType;
+use encodable::StringEncodeError;
 use {Encodable, Decodable};
 
 pub use self::connect::ConnectPacket;
@@ -21,9 +22,10 @@ pub trait Packet<'a> {
     type Payload: Encodable<'a> + Decodable<'a> + 'a;
 
     fn fixed_header(&self) -> &FixedHeader;
-    fn variable_headers(&self) -> &[VariableHeader];
     fn payload(&self) -> &Self::Payload;
 
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>>;
+    fn encoded_variable_headers_length(&self) -> u32;
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>>;
 }
 
@@ -32,16 +34,14 @@ impl<'a, T: Packet<'a> + fmt::Debug + 'a> Encodable<'a> for T {
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, T>> {
         try!(self.fixed_header().encode(writer));
-        for varheader in self.variable_headers() {
-            try!(varheader.encode(writer));
-        }
+        try!(self.encode_variable_headers(writer));
 
         self.payload().encode(writer).map_err(PacketError::PayloadError)
     }
 
     fn encoded_length(&self) -> u32 {
         self.fixed_header().encoded_length()
-            + self.variable_headers().iter().fold(0, |b, a| b + a.encoded_length())
+            + self.encoded_variable_headers_length()
             + self.payload().encoded_length()
     }
 }
@@ -68,6 +68,8 @@ pub enum PacketError<'a, T: Packet<'a>> {
     FixedHeaderError(FixedHeaderError),
     VariableHeaderError(VariableHeaderError),
     PayloadError(<<T as Packet<'a>>::Payload as Encodable<'a>>::Err),
+    MalformedPacket(String),
+    StringEncodeError(StringEncodeError),
     IoError(io::Error),
 }
 
@@ -77,6 +79,8 @@ impl<'a, T: Packet<'a>> fmt::Display for PacketError<'a, T> {
             &PacketError::FixedHeaderError(ref err) => err.fmt(f),
             &PacketError::VariableHeaderError(ref err) => err.fmt(f),
             &PacketError::PayloadError(ref err) => err.fmt(f),
+            &PacketError::MalformedPacket(ref err) => err.fmt(f),
+            &PacketError::StringEncodeError(ref err) => err.fmt(f),
             &PacketError::IoError(ref err) => err.fmt(f),
         }
     }
@@ -88,6 +92,8 @@ impl<'a, T: Packet<'a> + fmt::Debug> Error for PacketError<'a, T> {
             &PacketError::FixedHeaderError(ref err) => err.description(),
             &PacketError::VariableHeaderError(ref err) => err.description(),
             &PacketError::PayloadError(ref err) => err.description(),
+            &PacketError::MalformedPacket(ref err) => &err[..],
+            &PacketError::StringEncodeError(ref err) => err.description(),
             &PacketError::IoError(ref err) => err.description(),
         }
     }
@@ -97,6 +103,8 @@ impl<'a, T: Packet<'a> + fmt::Debug> Error for PacketError<'a, T> {
             &PacketError::FixedHeaderError(ref err) => Some(err),
             &PacketError::VariableHeaderError(ref err) => Some(err),
             &PacketError::PayloadError(ref err) => Some(err),
+            &PacketError::MalformedPacket(..) => None,
+            &PacketError::StringEncodeError(ref err) => Some(err),
             &PacketError::IoError(ref err) => Some(err),
         }
     }
@@ -117,6 +125,12 @@ impl<'a, T: Packet<'a>> From<VariableHeaderError> for PacketError<'a, T> {
 impl<'a, T: Packet<'a>> From<io::Error> for PacketError<'a, T> {
     fn from(err: io::Error) -> PacketError<'a, T> {
         PacketError::IoError(err)
+    }
+}
+
+impl<'a, T: Packet<'a>> From<StringEncodeError> for PacketError<'a, T> {
+    fn from(err: StringEncodeError) -> PacketError<'a, T> {
+        PacketError::StringEncodeError(err)
     }
 }
 

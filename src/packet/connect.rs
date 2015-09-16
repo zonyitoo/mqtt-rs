@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt;
 
 
-use control::{FixedHeader, VariableHeader, PacketType, ControlType};
+use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::{ProtocolName, ProtocolLevel, ConnectFlags, KeepAlive};
 use control::variable_header::protocol_level::SPEC_3_1_1;
 use packet::{Packet, PacketError};
@@ -13,7 +13,11 @@ use encodable::StringEncodeError;
 #[derive(Debug, Eq, PartialEq)]
 pub struct ConnectPacket {
     fixed_header: FixedHeader,
-    variable_headers: Vec<VariableHeader>,
+
+    protocol_level: ProtocolLevel,
+    flags: ConnectFlags,
+    keep_alive: KeepAlive,
+
     payload: ConnectPacketPayload,
 }
 
@@ -25,12 +29,9 @@ impl ConnectPacket {
     pub fn with_level(client_identifier: String, level: u8) -> ConnectPacket {
         let mut pk = ConnectPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Connect), 0),
-            variable_headers: vec![
-                VariableHeader::new(ProtocolName("MQTT".to_owned())),
-                VariableHeader::new(ProtocolLevel(level)),
-                VariableHeader::new(ConnectFlags::empty()),
-                VariableHeader::new(KeepAlive(0)),
-            ],
+            protocol_level: ProtocolLevel(level),
+            flags: ConnectFlags::empty(),
+            keep_alive: KeepAlive(0),
             payload: ConnectPacketPayload::new(client_identifier),
         };
 
@@ -41,26 +42,18 @@ impl ConnectPacket {
 
     #[inline]
     fn calculate_remaining_length(&self) -> u32 {
-        self.variable_headers().iter().fold(0, |b, a| b + a.encoded_length()) +
+        self.encoded_variable_headers_length() +
             self.payload().encoded_length()
     }
 
     pub fn set_user_name(&mut self, name: Option<String>) {
-        if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
-            flags.user_name = name.is_some();
-        } else {
-            panic!("Could not find connect flags variable header");
-        }
+        self.flags.user_name = name.is_some();
         self.payload.user_name = name;
         self.fixed_header.remaining_length = self.calculate_remaining_length();
     }
 
     pub fn set_will(&mut self, topic_message: Option<(String, String)>) {
-        if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
-            flags.will_flag = topic_message.is_some();
-        } else {
-            panic!("Could not find connect flags variable header");
-        }
+        self.flags.will_flag = topic_message.is_some();
 
         match topic_message {
             Some((topic, msg)) => {
@@ -77,11 +70,7 @@ impl ConnectPacket {
     }
 
     pub fn set_password(&mut self, password: Option<String>) {
-        if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
-            flags.password = password.is_some();
-        } else {
-            panic!("Could not find connect flags variable header");
-        }
+        self.flags.password = password.is_some();
         self.payload.password = password;
         self.fixed_header.remaining_length = self.calculate_remaining_length();
     }
@@ -92,28 +81,16 @@ impl ConnectPacket {
     }
 
     pub fn set_will_retain(&mut self, will_retain: bool) {
-        if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
-            flags.will_retain = will_retain;
-        } else {
-            panic!("Could not find connect flags variable header");
-        }
+        self.flags.will_retain = will_retain;
     }
 
     pub fn set_will_qos(&mut self, will_qos: u8) {
         assert!(will_qos <= 2);
-        if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
-            flags.will_qos = will_qos;
-        } else {
-            panic!("Could not find connect flags variable header");
-        }
+        self.flags.will_qos = will_qos;
     }
 
     pub fn set_clean_session(&mut self, clean_session: bool) {
-        if let &mut VariableHeader::ConnectFlags(ref mut flags) = &mut self.variable_headers[2] {
-            flags.clean_session = clean_session;
-        } else {
-            panic!("Could not find connect flags variable header");
-        }
+        self.flags.clean_session = clean_session;
     }
 
     pub fn user_name(&self) -> Option<&str> {
@@ -131,19 +108,11 @@ impl ConnectPacket {
     }
 
     pub fn will_retain(&self) -> bool {
-        if let &VariableHeader::ConnectFlags(ref flags) = &self.variable_headers[2] {
-            flags.will_retain
-        } else {
-            panic!("Could not find connect flags variable header");
-        }
+        self.flags.will_retain
     }
 
     pub fn will_qos(&self) -> u8 {
-        if let &VariableHeader::ConnectFlags(ref flags) = &self.variable_headers[2] {
-            flags.will_qos
-        } else {
-            panic!("Could not find connect flags variable header");
-        }
+        self.flags.will_qos
     }
 
     pub fn client_identifier(&self) -> &str {
@@ -151,11 +120,7 @@ impl ConnectPacket {
     }
 
     pub fn clean_session(&self) -> bool {
-        if let &VariableHeader::ConnectFlags(ref flags) = &self.variable_headers[2] {
-            flags.clean_session
-        } else {
-            panic!("Could not find connect flags variable header");
-        }
+        self.flags.clean_session
     }
 }
 
@@ -166,28 +131,44 @@ impl<'a> Packet<'a> for ConnectPacket {
         &self.fixed_header
     }
 
-    fn variable_headers(&self) -> &[VariableHeader] {
-        &self.variable_headers[..]
-    }
-
     fn payload(&self) -> &ConnectPacketPayload {
         &self.payload
     }
 
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
+        try!("MQTT".encode(writer));
+        try!(self.protocol_level.encode(writer));
+        try!(self.flags.encode(writer));
+        try!(self.keep_alive.encode(writer));
+
+        Ok(())
+    }
+
+    fn encoded_variable_headers_length(&self) -> u32 {
+        "MQTT".encoded_length()
+            + self.protocol_level.encoded_length()
+            + self.flags.encoded_length()
+            + self.keep_alive.encoded_length()
+    }
+
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
-        let vheaders: Vec<VariableHeader> = vec![
-            VariableHeader::ProtocolName(try!(Decodable::decode(reader))),
-            VariableHeader::ProtocolLevel(try!(Decodable::decode(reader))),
-            VariableHeader::ConnectFlags(try!(Decodable::decode(reader))),
-            VariableHeader::KeepAlive(try!(Decodable::decode(reader))),
-        ];
+        let protoname: ProtocolName = try!(Decodable::decode(reader));
+        if protoname.0 != "MQTT" {
+            return Err(PacketError::MalformedPacket("Expecting protocol name \"MQTT\"".to_owned()));
+        }
+
+        let protocol_level: ProtocolLevel = try!(Decodable::decode(reader));
+        let flags: ConnectFlags = try!(Decodable::decode(reader));
+        let keep_alive: KeepAlive = try!(Decodable::decode(reader));
         let payload: ConnectPacketPayload =
-            try!(Decodable::decode_with(reader, Some(&vheaders[..]))
+            try!(Decodable::decode_with(reader, Some(&flags))
                     .map_err(PacketError::PayloadError));
 
         Ok(ConnectPacket {
             fixed_header: fixed_header,
-            variable_headers: vheaders,
+            protocol_level: protocol_level,
+            flags: flags,
+            keep_alive: keep_alive,
             payload: payload,
         })
     }
@@ -250,9 +231,9 @@ impl<'a> Encodable<'a> for ConnectPacketPayload {
 
 impl<'a> Decodable<'a> for ConnectPacketPayload {
     type Err = ConnectPacketPayloadError;
-    type Cond = &'a [VariableHeader];
+    type Cond = &'a ConnectFlags;
 
-    fn decode_with<R: Read>(reader: &mut R, rest: Option<&[VariableHeader]>)
+    fn decode_with<R: Read>(reader: &mut R, rest: Option<&'a ConnectFlags>)
             -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
         let mut need_will_topic = false;
         let mut need_will_message = false;
@@ -260,17 +241,10 @@ impl<'a> Decodable<'a> for ConnectPacketPayload {
         let mut need_password = false;
 
         if let Some(r) = rest {
-            for re in r.iter() {
-                match re {
-                    &VariableHeader::ConnectFlags(flags) => {
-                        need_will_topic = flags.will_flag;
-                        need_will_message = flags.will_flag;
-                        need_user_name = flags.user_name;
-                        need_password = flags.password;
-                    },
-                    _ => {}
-                }
-            }
+            need_will_topic = r.will_flag;
+            need_will_message = r.will_flag;
+            need_user_name = r.user_name;
+            need_password = r.password;
         }
 
         let ident: String = try!(Decodable::decode(reader));

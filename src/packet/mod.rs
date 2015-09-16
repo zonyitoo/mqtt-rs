@@ -17,6 +17,13 @@ pub use self::puback::PubackPacket;
 pub use self::pubrec::PubrecPacket;
 pub use self::pubrel::PubrelPacket;
 pub use self::pubcomp::PubcompPacket;
+pub use self::pingreq::PingreqPacket;
+pub use self::pingresp::PingrespPacket;
+pub use self::disconnect::DisconnectPacket;
+pub use self::subscribe::SubscribePacket;
+pub use self::suback::SubackPacket;
+pub use self::unsuback::UnsubackPacket;
+pub use self::unsubscribe::UnsubscribePacket;
 
 pub mod connect;
 pub mod connack;
@@ -25,6 +32,13 @@ pub mod puback;
 pub mod pubrec;
 pub mod pubrel;
 pub mod pubcomp;
+pub mod pingreq;
+pub mod pingresp;
+pub mod disconnect;
+pub mod subscribe;
+pub mod suback;
+pub mod unsuback;
+pub mod unsubscribe;
 
 pub trait Packet<'a> {
     type Payload: Encodable<'a> + Decodable<'a> + 'a;
@@ -263,14 +277,23 @@ macro_rules! impl_variable_packet {
 }
 
 impl_variable_packet! {
-    ConnectPacket & ConnectPacketError => Connect,
-    ConnackPacket & ConnackPacketError => ConnectAcknowledgement,
+    ConnectPacket       & ConnectPacketError        => Connect,
+    ConnackPacket       & ConnackPacketError        => ConnectAcknowledgement,
 
-    PublishPacket & PublishPacketError => Publish,
-    PubackPacket  & PubackPacketError  => PublishAcknowledgement,
-    PubrecPacket  & PubrecPacketError  => PublishReceived,
-    PubrelPacket  & PubrelPacketError  => PublishRelease,
-    PubcompPacket & PubcompPacketError => PublishComplete,
+    PublishPacket       & PublishPacketError        => Publish,
+    PubackPacket        & PubackPacketError         => PublishAcknowledgement,
+    PubrecPacket        & PubrecPacketError         => PublishReceived,
+    PubrelPacket        & PubrelPacketError         => PublishRelease,
+    PubcompPacket       & PubcompPacketError        => PublishComplete,
+
+    PingreqPacket       & PingreqPacketError        => PingRequest,
+    PingrespPacket      & PingrespPacketError       => PingResponse,
+
+    SubscribePacket     & SubscribePacketError      => Subscribe,
+    SubackPacket        & SubackPacketError         => SubscribeAcknowledgement,
+
+    UnsubscribePacket   & UnsubscribePacketError    => Unsubscribe,
+    UnsubackPacket      & UnsubackPacketError       => UnsubscribeAcknowledgement,
 }
 
 impl VariablePacket {

@@ -6,22 +6,36 @@ use control::variable_header::{TopicName, PacketIdentifier};
 use packet::{Packet, PacketError};
 use {Encodable, Decodable};
 
+#[derive(Debug)]
+pub enum QoSWithPacketIdentifier {
+    Level0,
+    Level1(u16),
+    Level2(u16),
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct PublishPacket {
     fixed_header: FixedHeader,
     topic_name: TopicName,
-    packet_identifier: PacketIdentifier,
+    packet_identifier: Option<PacketIdentifier>,
     payload: Vec<u8>,
 }
 
 impl PublishPacket {
-    pub fn new(topic_name: String, pkid: u16, payload: Vec<u8>) -> PublishPacket {
+    pub fn new(topic_name: String, qos: QoSWithPacketIdentifier, payload: Vec<u8>) -> PublishPacket {
+        let (qos, pkid) = match qos {
+            QoSWithPacketIdentifier::Level0 => (0, None),
+            QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
+            QoSWithPacketIdentifier::Level2(pkid) => (2, Some(PacketIdentifier(pkid))),
+        };
+
         let mut pk = PublishPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Publish), 0),
             topic_name: TopicName(topic_name),
-            packet_identifier: PacketIdentifier(pkid),
+            packet_identifier: pkid,
             payload: payload,
         };
+        pk.fixed_header.packet_type.flags |= qos << 1;
         pk.fixed_header.remaining_length = pk.calculate_remaining_length();
         pk
     }
@@ -40,13 +54,28 @@ impl PublishPacket {
         self.fixed_header.packet_type.flags & 0x80 != 0
     }
 
-    pub fn set_qos(&mut self, qos: u8) {
-        assert!(qos <= 2);
+    pub fn set_qos(&mut self, qos: QoSWithPacketIdentifier) {
+        let (qos, pkid) = match qos {
+            QoSWithPacketIdentifier::Level0 => (0, None),
+            QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
+            QoSWithPacketIdentifier::Level2(pkid) => (2, Some(PacketIdentifier(pkid))),
+        };
         self.fixed_header.packet_type.flags |= qos << 1;
+        self.packet_identifier = pkid;
     }
 
-    pub fn qos(&self) -> u8 {
-        (self.fixed_header.packet_type.flags & 0x06) >> 1
+    pub fn qos(&self) -> QoSWithPacketIdentifier {
+        match self.packet_identifier {
+            None => QoSWithPacketIdentifier::Level0,
+            Some(pkid) => {
+                let qos_val = (self.fixed_header.packet_type.flags & 0x06) >> 1;
+                match qos_val {
+                    1 => QoSWithPacketIdentifier::Level1(pkid.0),
+                    2 => QoSWithPacketIdentifier::Level2(pkid.0),
+                    _ => unreachable!(),
+                }
+            }
+        }
     }
 
     pub fn set_retain(&mut self, ret: bool) {
@@ -65,14 +94,6 @@ impl PublishPacket {
     pub fn topic_name(&self) -> &str {
         &self.topic_name.0[..]
     }
-
-    pub fn packet_identifier(&self) -> u16 {
-        self.packet_identifier.0
-    }
-
-    pub fn set_packet_identifier(&mut self, pkid: u16) {
-        self.packet_identifier.0 = pkid;
-    }
 }
 
 impl<'a> Packet<'a> for PublishPacket {
@@ -88,21 +109,30 @@ impl<'a> Packet<'a> for PublishPacket {
 
     fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
         try!(self.topic_name.encode(writer));
-        try!(self.packet_identifier.encode(writer));
+
+        if let Some(pkid) = self.packet_identifier.as_ref() {
+            try!(pkid.encode(writer));
+        }
 
         Ok(())
     }
 
     fn encoded_variable_headers_length(&self) -> u32 {
         self.topic_name.encoded_length()
-            + self.packet_identifier.encoded_length()
+            + self.packet_identifier.as_ref().map(|x| x.encoded_length()).unwrap_or(0)
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         let topic_name: TopicName = try!(TopicName::decode(reader));
-        let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
 
-        let vhead_len = topic_name.encoded_length() + packet_identifier.encoded_length();
+        let packet_identifier = if fixed_header.packet_type.flags & 0x06 != 0 {
+            Some(try!(PacketIdentifier::decode(reader)))
+        } else {
+            None
+        };
+
+        let vhead_len = topic_name.encoded_length()
+            + packet_identifier.as_ref().map(|x| x.encoded_length()).unwrap_or(0);
         let payload_len = fixed_header.remaining_length - vhead_len;
 
         let payload: Vec<u8> = try!(Decodable::decode_with(reader, Some(payload_len)));
@@ -126,7 +156,7 @@ mod test {
 
     #[test]
     fn test_publish_packet_basic() {
-        let packet = PublishPacket::new("a/b".to_owned(), 10, b"Hello world!".to_vec());
+        let packet = PublishPacket::new("a/b".to_owned(), QoSWithPacketIdentifier::Level2(10), b"Hello world!".to_vec());
 
         let mut buf = Vec::new();
         packet.encode(&mut buf).unwrap();

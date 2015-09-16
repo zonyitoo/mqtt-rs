@@ -14,12 +14,12 @@ pub struct ConnackPacket {
 }
 
 impl ConnackPacket {
-    pub fn new(session_present: bool, ret_code: u8) -> ConnackPacket {
+    pub fn new(session_present: bool, ret_code: ConnectReturnCode) -> ConnackPacket {
         ConnackPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
             variable_headers: vec![
                 VariableHeader::new(ConnackFlags { session_present: session_present }),
-                VariableHeader::new(ConnectReturnCode(ret_code)),
+                VariableHeader::new(ret_code),
             ],
             payload: (),
         }
@@ -32,9 +32,9 @@ impl ConnackPacket {
         }
     }
 
-    pub fn return_code(&self) -> u8 {
+    pub fn return_code(&self) -> ConnectReturnCode {
         match self.variable_headers[0] {
-            VariableHeader::ConnectReturnCode(code) => code.0,
+            VariableHeader::ConnectReturnCode(code) => code,
             _ => panic!("Could not find Connack Flags in variable header"),
         }
     }
@@ -46,9 +46,9 @@ impl ConnackPacket {
         }
     }
 
-    pub fn set_return_code(&mut self, code: u8) {
+    pub fn set_return_code(&mut self, code: ConnectReturnCode) {
         match &mut self.variable_headers[0] {
-            &mut VariableHeader::ConnectReturnCode(ref mut c) => c.0 = code,
+            &mut VariableHeader::ConnectReturnCode(ref mut c) => *c = code,
             _ => panic!("Could not find Connack Flags in variable header"),
         }
     }
@@ -90,11 +90,12 @@ mod test {
 
     use std::io::Cursor;
 
+    use control::variable_header::ConnectReturnCode;
     use {Encodable, Decodable};
 
     #[test]
     pub fn test_connack_packet_basic() {
-        let packet = ConnackPacket::new(false, 1);
+        let packet = ConnackPacket::new(false, ConnectReturnCode::IdentifierRejected);
 
         let mut buf = Vec::new();
         packet.encode(&mut buf).unwrap();

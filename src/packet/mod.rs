@@ -25,6 +25,8 @@ pub use self::suback::SubackPacket;
 pub use self::unsuback::UnsubackPacket;
 pub use self::unsubscribe::UnsubscribePacket;
 
+pub use self::publish::QoSWithPacketIdentifier;
+
 pub mod connect;
 pub mod connack;
 pub mod publish;

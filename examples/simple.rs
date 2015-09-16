@@ -1,18 +1,3 @@
-# MQTT-rs
-
-[![Build Status](https://img.shields.io/travis/zonyitoo/mqtt-rs.svg)](https://travis-ci.org/zonyitoo/mqtt-rs)
-[![License](https://img.shields.io/github/license/zonyitoo/mqtt-rs.svg)](https://github.com/zonyitoo/mqtt-rs)
-
-MQTT protocol library for Rust
-
-```rust
-[dependencies.mqtt]
-git = "https://github.com/zonyitoo/mqtt-rs.git"
-```
-
-## Usage
-
-```rust
 extern crate mqtt;
 
 use std::io::Cursor;
@@ -43,8 +28,3 @@ fn main() {
     println!("Variable packet decode: {:?}", auto_decode);
     assert_eq!(VariablePacket::PublishPacket(packet), auto_decode);
 }
-```
-
-## Note
-
-* Based on [MQTT 3.1.1](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html)

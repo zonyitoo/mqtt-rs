@@ -22,7 +22,8 @@ fn main() {
 
     const CLIENT_ID: &'static str = "zonyitoo_0001";
     println!("Client identifier {:?}", CLIENT_ID);
-    let conn = ConnectPacket::new(CLIENT_ID.to_owned());
+    let mut conn = ConnectPacket::new(CLIENT_ID.to_owned());
+    conn.set_clean_session(true);
     let mut buf = Vec::new();
     conn.encode(&mut buf).unwrap();
     stream.write_all(&buf[..]).unwrap();
@@ -34,14 +35,35 @@ fn main() {
         panic!("Failed to connect to server, return code {:?}", connack.connect_return_code());
     }
 
-    println!("Subscribing all channels ...");
-    let sub = SubscribePacket::new(0, vec![("#".to_owned(), QualityOfService::Level0)]);
+    const CHANNEL_FILTER: &'static str = "typing-speed-test.aoeu.eu";
+    println!("Subscribing {:?} channel ...", CHANNEL_FILTER);
+    let sub = SubscribePacket::new(10, vec![(CHANNEL_FILTER.to_owned(), QualityOfService::Level2)]);
     let mut buf = Vec::new();
     sub.encode(&mut buf).unwrap();
     stream.write_all(&buf[..]).unwrap();
 
-    // let suback = SubackPacket::decode(&mut stream).unwrap();
-    // trace!("SUBACK {:?}", suback);
+    loop {
+        let packet = match VariablePacket::decode(&mut stream) {
+            Ok(pk) => pk,
+            Err(err) => {
+            error!("Error in receiving packet {:?}", err);
+                continue;
+            }
+        };
+        trace!("PACKET {:?}", packet);
+
+        match &packet {
+            &VariablePacket::SubackPacket(ref ack) => {
+                if ack.packet_identifier() != 10 {
+                    panic!("SUBACK packet identifier not match");
+                }
+
+                println!("Subscribed!");
+                break;
+            },
+            _ => {}
+        }
+    }
 
     loop {
         let packet = match VariablePacket::decode(&mut stream) {

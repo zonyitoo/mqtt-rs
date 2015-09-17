@@ -11,4 +11,6 @@ byteorder = "^0.3.13"
 log = "^0.3.2"
 
 [dev-dependencies]
-env_logger = "*"
+env_logger = "^0.3.1"
+clap = "^1.4.0"
+uuid = "^0.1.17"

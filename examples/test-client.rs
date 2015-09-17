@@ -2,27 +2,58 @@ extern crate mqtt;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+extern crate clap;
+extern crate uuid;
 
 use std::net::TcpStream;
 use std::io::Write;
 use std::str;
 
+use clap::{App, Arg};
+
+use uuid::Uuid;
+
 use mqtt::{Encodable, Decodable, QualityOfService};
 use mqtt::packet::*;
 use mqtt::control::variable_header::ConnectReturnCode;
 
+fn generate_client_id() -> String {
+    format!("/MQTT/rust/{}", Uuid::new_v4().to_simple_string())
+}
+
 fn main() {
     env_logger::init().unwrap();
 
-    const SERVER_ADDR: &'static str = "test.mosquitto.org:1883";
+    let matches = App::new("sub-client")
+                    .author("Y. T. Chung <zonyitoo@gmail.com>")
+                    .arg(Arg::with_name("HOST").short("h").long("host").takes_value(true).required(true)
+                            .help("MQTT host"))
+                    .arg(Arg::with_name("SUBSCRIBE").short("s").long("subscribe").takes_value(true)
+                            .multiple(true).required(true).help("Channel filter to subscribe"))
+                    .arg(Arg::with_name("USER_NAME").short("u").long("username").takes_value(true)
+                            .help("Login user name"))
+                    .arg(Arg::with_name("PASSWORD").short("p").long("password").takes_value(true)
+                            .help("Password"))
+                    .arg(Arg::with_name("CLIENT_ID").short("i").long("client-identifier").takes_value(true)
+                            .help("Client identifier"))
+                    .get_matches();
 
-    print!("Connecting to {:?} ... ", SERVER_ADDR);
-    let mut stream = TcpStream::connect(SERVER_ADDR).unwrap();
+    let server_addr = matches.value_of("HOST").unwrap();
+    let client_id = matches.value_of("CLIENT_ID")
+        .map(|x| x.to_owned())
+        .unwrap_or_else(generate_client_id);
+    let channel_filters: Vec<(String, QualityOfService)>
+        = matches.values_of("SUBSCRIBE").unwrap()
+                 .iter()
+                 .map(|c| (c.to_string(), QualityOfService::Level0))
+                 .collect();
+
+    print!("Connecting to {:?} ... ", server_addr);
+    let mut stream = TcpStream::connect(server_addr).unwrap();
     println!("Connected!");
 
-    const CLIENT_ID: &'static str = "zonyitoo_0001";
-    println!("Client identifier {:?}", CLIENT_ID);
-    let mut conn = ConnectPacket::new(CLIENT_ID.to_owned());
+    println!("Client identifier {:?}", client_id);
+    let mut conn = ConnectPacket::new(client_id.to_owned());
     conn.set_clean_session(true);
     let mut buf = Vec::new();
     conn.encode(&mut buf).unwrap();
@@ -35,9 +66,9 @@ fn main() {
         panic!("Failed to connect to server, return code {:?}", connack.connect_return_code());
     }
 
-    const CHANNEL_FILTER: &'static str = "typing-speed-test.aoeu.eu";
-    println!("Subscribing {:?} channel ...", CHANNEL_FILTER);
-    let sub = SubscribePacket::new(10, vec![(CHANNEL_FILTER.to_owned(), QualityOfService::Level2)]);
+    // const CHANNEL_FILTER: &'static str = "typing-speed-test.aoeu.eu";
+    println!("Applying channel filters {:?} ...", channel_filters);
+    let sub = SubscribePacket::new(10, channel_filters);
     let mut buf = Vec::new();
     sub.encode(&mut buf).unwrap();
     stream.write_all(&buf[..]).unwrap();

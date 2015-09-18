@@ -87,12 +87,12 @@ fn main() {
         let mut line = String::new();
         stdin.read_line(&mut line).unwrap();
 
-        match line.trim() {
+        match line.trim_right() {
             "" => continue,
             _ => {},
         }
 
-        let message = format!("{}: {}", user_name, line.trim());
+        let message = format!("{}: {}", user_name, line.trim_right());
 
         for chan in channels.iter() {
             let publish_packet = PublishPacket::new(chan.clone(), QoSWithPacketIdentifier::Level0,

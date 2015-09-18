@@ -81,7 +81,7 @@ fn main() {
 
     let mut stdin = io::stdin();
     loop {
-        print!(">> ");
+        print!("{}: ", user_name);
         io::stdout().flush().unwrap();
 
         let mut line = String::new();

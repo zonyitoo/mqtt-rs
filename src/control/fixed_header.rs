@@ -108,10 +108,10 @@ impl<'a> Decodable<'a> for FixedHeader {
 
         match PacketType::from_u8(type_val) {
             Ok(packet_type) => Ok(FixedHeader::new(packet_type, remaining_len)),
-            Err(PacketTypeError::UndefinedType(..))
-                => Err(FixedHeaderError::Unrecognized(type_val, remaining_len)),
-            Err(PacketTypeError::ReservedType(..))
-                => Err(FixedHeaderError::ReservedType(type_val, remaining_len)),
+            Err(PacketTypeError::UndefinedType(ty, _))
+                => Err(FixedHeaderError::Unrecognized(ty, remaining_len)),
+            Err(PacketTypeError::ReservedType(ty, _))
+                => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
             Err(err) => Err(From::from(err)),
         }
     }

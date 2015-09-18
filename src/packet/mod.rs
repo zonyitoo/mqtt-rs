@@ -272,8 +272,8 @@ macro_rules! impl_variable_packet {
                     &VariablePacketError::FixedHeaderError(ref err) => err.fmt(f),
                     &VariablePacketError::UnrecognizedPacket(ref code, ref v) =>
                         write!(f, "Unrecognized type ({}), [u8, ..{}]", code, v.len()),
-                        &VariablePacketError::ReservedPacket(ref code, ref v) =>
-                            write!(f, "Unrecognized type ({}), [u8, ..{}]", code, v.len()),
+                    &VariablePacketError::ReservedPacket(ref code, ref v) =>
+                        write!(f, "Reserved type ({}), [u8, ..{}]", code, v.len()),
                     &VariablePacketError::IoError(ref err) => err.fmt(f),
                     $(
                         &VariablePacketError::$errname(ref err) => err.fmt(f),

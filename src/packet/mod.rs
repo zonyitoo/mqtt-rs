@@ -203,7 +203,24 @@ macro_rules! impl_variable_packet {
                     -> Result<VariablePacket, Self::Err> {
                 let fixed_header = match fixed_header {
                     Some(fh) => fh,
-                    None => try!(FixedHeader::decode(reader)),
+                    None => {
+                        match FixedHeader::decode(reader) {
+                            Ok(header) => header,
+                            Err(FixedHeaderError::Unrecognized(code, length)) => {
+                                let reader = &mut reader.take(length as u64);
+                                let mut buf = Vec::with_capacity(length as usize);
+                                try!(reader.read_to_end(&mut buf));
+                                return Err(VariablePacketError::UnrecognizedPacket(code, buf));
+                            },
+                            Err(FixedHeaderError::ReservedType(code, length)) => {
+                                let reader = &mut reader.take(length as u64);
+                                let mut buf = Vec::with_capacity(length as usize);
+                                try!(reader.read_to_end(&mut buf));
+                                return Err(VariablePacketError::ReservedPacket(code, buf));
+                            },
+                            Err(err) => return Err(From::from(err))
+                        }
+                    }
                 };
                 let reader = &mut reader.take(fixed_header.remaining_length as u64);
 
@@ -221,6 +238,9 @@ macro_rules! impl_variable_packet {
         #[derive(Debug)]
         pub enum VariablePacketError<'a> {
             FixedHeaderError(FixedHeaderError),
+            UnrecognizedPacket(u8, Vec<u8>),
+            ReservedPacket(u8, Vec<u8>),
+            IoError(io::Error),
             $(
                 $errname(PacketError<'a, $name>),
             )+
@@ -229,6 +249,12 @@ macro_rules! impl_variable_packet {
         impl<'a> From<FixedHeaderError> for VariablePacketError<'a> {
             fn from(err: FixedHeaderError) -> VariablePacketError<'a> {
                 VariablePacketError::FixedHeaderError(err)
+            }
+        }
+
+        impl<'a> From<io::Error> for VariablePacketError<'a> {
+            fn from(err: io::Error) -> VariablePacketError<'a> {
+                VariablePacketError::IoError(err)
             }
         }
 
@@ -244,6 +270,11 @@ macro_rules! impl_variable_packet {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 match self {
                     &VariablePacketError::FixedHeaderError(ref err) => err.fmt(f),
+                    &VariablePacketError::UnrecognizedPacket(ref code, ref v) =>
+                        write!(f, "Unrecognized type ({}), [u8, ..{}]", code, v.len()),
+                        &VariablePacketError::ReservedPacket(ref code, ref v) =>
+                            write!(f, "Unrecognized type ({}), [u8, ..{}]", code, v.len()),
+                    &VariablePacketError::IoError(ref err) => err.fmt(f),
                     $(
                         &VariablePacketError::$errname(ref err) => err.fmt(f),
                     )+
@@ -255,6 +286,9 @@ macro_rules! impl_variable_packet {
             fn description(&self) -> &str {
                 match self {
                     &VariablePacketError::FixedHeaderError(ref err) => err.description(),
+                    &VariablePacketError::UnrecognizedPacket(..) => "Unrecognized packet",
+                    &VariablePacketError::ReservedPacket(..) => "Reserved packet",
+                    &VariablePacketError::IoError(ref err) => err.description(),
                     $(
                         &VariablePacketError::$errname(ref err) => err.description(),
                     )+
@@ -264,6 +298,9 @@ macro_rules! impl_variable_packet {
             fn cause(&self) -> Option<&Error> {
                 match self {
                     &VariablePacketError::FixedHeaderError(ref err) => Some(err),
+                    &VariablePacketError::UnrecognizedPacket(..) => None,
+                    &VariablePacketError::ReservedPacket(..) => None,
+                    &VariablePacketError::IoError(ref err) => Some(err),
                     $(
                         &VariablePacketError::$errname(ref err) => Some(err),
                     )+

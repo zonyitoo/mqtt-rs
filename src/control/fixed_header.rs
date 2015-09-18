@@ -88,7 +88,6 @@ impl<'a> Decodable<'a> for FixedHeader {
 
     fn decode_with<R: Read>(rdr: &mut R, _rest: Option<()>) -> Result<FixedHeader, FixedHeaderError> {
         let type_val = try!(rdr.read_u8());
-        let packet_type = try!(PacketType::from_u8(type_val));
         let remaining_len = {
             let mut cur = 0u32;
             for i in 0.. {
@@ -107,13 +106,22 @@ impl<'a> Decodable<'a> for FixedHeader {
             cur
         };
 
-        Ok(FixedHeader::new(packet_type, remaining_len))
+        match PacketType::from_u8(type_val) {
+            Ok(packet_type) => Ok(FixedHeader::new(packet_type, remaining_len)),
+            Err(PacketTypeError::UndefinedType(..))
+                => Err(FixedHeaderError::Unrecognized(type_val, remaining_len)),
+            Err(PacketTypeError::ReservedType(..))
+                => Err(FixedHeaderError::ReservedType(type_val, remaining_len)),
+            Err(err) => Err(From::from(err)),
+        }
     }
 }
 
 #[derive(Debug)]
 pub enum FixedHeaderError {
     MalformedRemainingLength,
+    Unrecognized(u8, u32),
+    ReservedType(u8, u32),
     PacketTypeError(PacketTypeError),
     IoError(io::Error),
 }
@@ -140,6 +148,8 @@ impl fmt::Display for FixedHeaderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &FixedHeaderError::MalformedRemainingLength => write!(f, "Malformed remaining length"),
+            &FixedHeaderError::Unrecognized(code, length) => write!(f, "Unrecognized header ({}, {})", code, length),
+            &FixedHeaderError::ReservedType(code, length) => write!(f, "Reserved header ({}, {})", code, length),
             &FixedHeaderError::PacketTypeError(ref err) => write!(f, "{}", err),
             &FixedHeaderError::IoError(ref err) => write!(f, "{}", err),
         }
@@ -150,6 +160,8 @@ impl Error for FixedHeaderError {
     fn description(&self) -> &str {
         match self {
             &FixedHeaderError::MalformedRemainingLength => "Malformed remaining length",
+            &FixedHeaderError::Unrecognized(..) => "Unrecognized header",
+            &FixedHeaderError::ReservedType(..) => "Unrecognized header",
             &FixedHeaderError::PacketTypeError(ref err) => err.description(),
             &FixedHeaderError::IoError(ref err) => err.description(),
         }
@@ -158,6 +170,8 @@ impl Error for FixedHeaderError {
     fn cause(&self) -> Option<&Error> {
         match self {
             &FixedHeaderError::MalformedRemainingLength => None,
+            &FixedHeaderError::Unrecognized(..) => None,
+            &FixedHeaderError::ReservedType(..) => None,
             &FixedHeaderError::PacketTypeError(ref err) => Some(err),
             &FixedHeaderError::IoError(ref err) => Some(err),
         }

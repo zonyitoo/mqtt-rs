@@ -214,8 +214,6 @@ macro_rules! impl_variable_packet {
                             Ok(VariablePacket::$name(pk))
                         }
                     )+
-
-                    _ => return Err(VariablePacketError::UnrecognizedFixedHeader(fixed_header)),
                 }
             }
         }
@@ -223,7 +221,6 @@ macro_rules! impl_variable_packet {
         #[derive(Debug)]
         pub enum VariablePacketError<'a> {
             FixedHeaderError(FixedHeaderError),
-            UnrecognizedFixedHeader(FixedHeader),
             $(
                 $errname(PacketError<'a, $name>),
             )+
@@ -247,7 +244,6 @@ macro_rules! impl_variable_packet {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 match self {
                     &VariablePacketError::FixedHeaderError(ref err) => err.fmt(f),
-                    &VariablePacketError::UnrecognizedFixedHeader(..) => write!(f, "Unrecognized fixed header"),
                     $(
                         &VariablePacketError::$errname(ref err) => err.fmt(f),
                     )+
@@ -259,7 +255,6 @@ macro_rules! impl_variable_packet {
             fn description(&self) -> &str {
                 match self {
                     &VariablePacketError::FixedHeaderError(ref err) => err.description(),
-                    &VariablePacketError::UnrecognizedFixedHeader(..) => "Unrecognized fixed header",
                     $(
                         &VariablePacketError::$errname(ref err) => err.description(),
                     )+
@@ -269,7 +264,6 @@ macro_rules! impl_variable_packet {
             fn cause(&self) -> Option<&Error> {
                 match self {
                     &VariablePacketError::FixedHeaderError(ref err) => Some(err),
-                    &VariablePacketError::UnrecognizedFixedHeader(..) => None,
                     $(
                         &VariablePacketError::$errname(ref err) => Some(err),
                     )+
@@ -297,6 +291,8 @@ impl_variable_packet! {
 
     UnsubscribePacket   & UnsubscribePacketError    => Unsubscribe,
     UnsubackPacket      & UnsubackPacketError       => UnsubscribeAcknowledgement,
+
+    DisconnectPacket    & DisconnectPacketError     => Disconnect,
 }
 
 impl VariablePacket {

@@ -7,6 +7,7 @@ extern crate uuid;
 
 use std::net::TcpStream;
 use std::io::{self, Write};
+use std::thread;
 
 use clap::{App, Arg};
 
@@ -78,6 +79,34 @@ fn main() {
                                           .collect();
 
     let user_name = matches.value_of("USER_NAME").unwrap_or("<anonym>");
+
+    let mut cloned_stream = stream.try_clone().unwrap();
+    thread::spawn(move|| {
+        loop {
+            let packet = match VariablePacket::decode(&mut cloned_stream) {
+                Ok(pk) => pk,
+                Err(err) => {
+                    error!("Error in receiving packet {:?}", err);
+                    continue;
+                }
+            };
+            trace!("PACKET {:?}", packet);
+
+            match &packet {
+                &VariablePacket::PingreqPacket(..) => {
+                    let pingresp = PingrespPacket::new();
+                    info!("Sending Ping response {:?}", pingresp);
+                    pingresp.encode(&mut cloned_stream).unwrap();
+                },
+                &VariablePacket::DisconnectPacket(..) => {
+                    break;
+                },
+                _ => {
+                    // Ignore other packets in pub client
+                }
+            }
+        }
+    });
 
     let mut stdin = io::stdin();
     loop {

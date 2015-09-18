@@ -108,7 +108,7 @@ fn main() {
         }
     });
 
-    let mut stdin = io::stdin();
+    let stdin = io::stdin();
     loop {
         print!("{}: ", user_name);
         io::stdout().flush().unwrap();

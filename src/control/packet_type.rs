@@ -98,65 +98,56 @@ impl PacketType {
         let flag = val & 0x0F;
 
         macro_rules! vconst {
-            ($flag:expr, $ret:expr) => (
+            ($flag:expr, $ret:path) => (
                 if flag != $flag {
-                    Err(PacketTypeError::InvalidFlag)
+                    Err(PacketTypeError::InvalidFlag($ret, flag))
                 } else {
-                    Ok($ret)
+                    Ok(PacketType::new($ret, flag))
                 }
             )
         }
 
         match type_val {
-            value::CONNECT      => vconst!(0x00, PacketType::new(ControlType::Connect,
-                                           0)),
-            value::CONNACK      => vconst!(0x00, PacketType::new(ControlType::ConnectAcknowledgement,
-                                           0)),
+            value::CONNECT      => vconst!(0x00, ControlType::Connect),
+            value::CONNACK      => vconst!(0x00, ControlType::ConnectAcknowledgement),
 
             value::PUBLISH      =>
-                Ok(PacketType::new(ControlType::Publish, flag & 0x0F)),
-            value::PUBACK       => vconst!(0x00, PacketType::new(ControlType::PublishAcknowledgement,
-                                                                 0)),
-            value::PUBREC       => vconst!(0x00, PacketType::new(ControlType::PublishReceived,
-                                                                 0)),
-            value::PUBREL       => vconst!(0x02, PacketType::new(ControlType::PublishRelease,
-                                                                 0x02)),
-            value::PUBCOMP      => vconst!(0x00, PacketType::new(ControlType::PublishComplete,
-                                                                 0)),
+                Ok(PacketType::new(ControlType::Publish, flag)),
+            value::PUBACK       => vconst!(0x00, ControlType::PublishAcknowledgement),
+            value::PUBREC       => vconst!(0x00, ControlType::PublishReceived),
+            value::PUBREL       => vconst!(0x02, ControlType::PublishRelease),
+            value::PUBCOMP      => vconst!(0x00, ControlType::PublishComplete),
 
-            value::SUBSCRIBE    => vconst!(0x02, PacketType::new(ControlType::Subscribe, 0x02)),
-            value::SUBACK       => vconst!(0x00, PacketType::new(ControlType::SubscribeAcknowledgement,
-                                                                 0)),
+            value::SUBSCRIBE    => vconst!(0x02, ControlType::Subscribe),
+            value::SUBACK       => vconst!(0x00, ControlType::SubscribeAcknowledgement),
 
-            value::UNSUBSCRIBE  => vconst!(0x02, PacketType::new(ControlType::Unsubscribe, 0x02)),
-            value::UNSUBACK     => vconst!(0x00, PacketType::new(ControlType::UnsubscribeAcknowledgement,
-                                                                 0)),
+            value::UNSUBSCRIBE  => vconst!(0x02, ControlType::Unsubscribe),
+            value::UNSUBACK     => vconst!(0x00, ControlType::UnsubscribeAcknowledgement),
 
-            value::PINGREQ      => vconst!(0x00, PacketType::new(ControlType::PingRequest, 0)),
-            value::PINGRESP     => vconst!(0x00, PacketType::new(ControlType::PingResponse,
-                                                                 0)),
+            value::PINGREQ      => vconst!(0x00, ControlType::PingRequest),
+            value::PINGRESP     => vconst!(0x00, ControlType::PingResponse),
 
-            value::DISCONNECT   => vconst!(0x00, PacketType::new(ControlType::Disconnect, 0)),
+            value::DISCONNECT   => vconst!(0x00, ControlType::Disconnect),
 
-            0 | 15              => Err(PacketTypeError::ReservedType(type_val)),
-            _                   => Err(PacketTypeError::UndefinedType(type_val)),
+            0 | 15              => Err(PacketTypeError::ReservedType(type_val, flag)),
+            _                   => Err(PacketTypeError::UndefinedType(type_val, flag)),
         }
     }
 }
 
 #[derive(Debug)]
 pub enum PacketTypeError {
-    ReservedType(u8),
-    UndefinedType(u8),
-    InvalidFlag,
+    ReservedType(u8, u8),
+    UndefinedType(u8, u8),
+    InvalidFlag(ControlType, u8),
 }
 
 impl fmt::Display for PacketTypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &PacketTypeError::ReservedType(t) => write!(f, "Reserved type ({})", t),
-            &PacketTypeError::UndefinedType(t) => write!(f, "Undefined type ({})", t),
-            &PacketTypeError::InvalidFlag => write!(f, "Invalid flag"),
+            &PacketTypeError::ReservedType(t, flag) => write!(f, "Reserved type {:?} ({:#X})", t, flag),
+            &PacketTypeError::InvalidFlag(t, flag) => write!(f, "Invalid flag for {:?} ({:#X})", t, flag),
+            &PacketTypeError::UndefinedType(t, flag) => write!(f, "Undefined type {:?} ({:#X})", t, flag),
         }
     }
 }
@@ -166,7 +157,7 @@ impl Error for PacketTypeError {
         match self {
             &PacketTypeError::ReservedType(..) => "Reserved type",
             &PacketTypeError::UndefinedType(..) => "Undefined type",
-            &PacketTypeError::InvalidFlag => "Invalid flag",
+            &PacketTypeError::InvalidFlag(..) => "Invalid flag",
         }
     }
 }

@@ -7,7 +7,7 @@ use regex::Regex;
 use control::variable_header::VariableHeaderError;
 use {Encodable, Decodable};
 
-const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^(\$?[:alnum:]+)?(/[:alnum:]+)*$";
+const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^(\$?[^/\$]+)?(/[^/\$]+)*$";
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TopicName(String);
@@ -75,6 +75,9 @@ mod test {
     #[test]
     fn test_topic_name_basic() {
         let topic_name = "$SYS".to_owned();
+        TopicName::new(topic_name).unwrap();
+
+        let topic_name = "$SYS/broker/connection/test.cosm-energy/state".to_owned();
         TopicName::new(topic_name).unwrap();
     }
 }

@@ -10,7 +10,7 @@ use regex::Regex;
 use {Encodable, Decodable};
 use encodable::StringEncodeError;
 
-const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(#|\+|\$?[:alnum:]+)?(/(\+|[:alnum:]+))*?(/(\+|#|[:alnum:]+))?$";
+const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(#|\+|\$?[^/\$]+)?(/(\+[^/\$]+))*?(/(\+|#|[^/\$]+))?$";
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TopicFilter(String);
@@ -165,6 +165,9 @@ mod test {
         TopicFilter::new_checked(topic).unwrap();
 
         let topic = "$SYS/#".to_owned();
+        TopicFilter::new_checked(topic).unwrap();
+
+        let topic = "$SYS".to_owned();
         TopicFilter::new_checked(topic).unwrap();
     }
 }

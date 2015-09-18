@@ -77,6 +77,8 @@ fn main() {
                                           .iter().map(|c| TopicName::new(c.to_string()).unwrap())
                                           .collect();
 
+    let user_name = matches.value_of("USER_NAME").unwrap_or("<anonym>");
+
     let mut stdin = io::stdin();
     loop {
         print!(">> ");
@@ -85,9 +87,16 @@ fn main() {
         let mut line = String::new();
         stdin.read_line(&mut line).unwrap();
 
+        match line.trim() {
+            "" => continue,
+            _ => {},
+        }
+
+        let message = format!("{}: {}", user_name, line.trim());
+
         for chan in channels.iter() {
             let publish_packet = PublishPacket::new(chan.clone(), QoSWithPacketIdentifier::Level0,
-                                                    line.trim().as_bytes().to_vec());
+                                                    message.as_bytes().to_vec());
             let mut buf = Vec::new();
             publish_packet.encode(&mut buf).unwrap();
             stream.write_all(&buf[..]).unwrap();

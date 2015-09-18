@@ -42,7 +42,7 @@ pub mod suback;
 pub mod unsuback;
 pub mod unsubscribe;
 
-pub trait Packet<'a> {
+pub trait Packet<'a>: Sized {
     type Payload: Encodable<'a> + Decodable<'a> + 'a;
 
     fn fixed_header(&self) -> &FixedHeader;

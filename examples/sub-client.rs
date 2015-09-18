@@ -101,7 +101,7 @@ fn main() {
         let packet = match VariablePacket::decode(&mut stream) {
             Ok(pk) => pk,
             Err(err) => {
-                error!("Error in receiving packet {:?}", err);
+                error!("Error in receiving packet {}", err);
                 continue;
             }
         };

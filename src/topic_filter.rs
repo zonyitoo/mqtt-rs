@@ -10,7 +10,8 @@ use regex::Regex;
 use {Encodable, Decodable};
 use encodable::StringEncodeError;
 
-const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(#|\+|\$?[^/\$]+)?(/(\+[^/\$]+))*?(/(\+|#|[^/\$]+))?$";
+const VALIDATE_TOPIC_FILTER_REGEX: &'static str =
+    r"^(#|((\+|\$?[^/\$\+#]+)?(/(\+|[^/\$\+#]+))*?(/(\+|#|[^/\$\+#]+))?))$";
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TopicFilter(String);
@@ -20,7 +21,7 @@ impl TopicFilter {
         let topic = topic.into();
         let re = Regex::new(VALIDATE_TOPIC_FILTER_REGEX).unwrap();
         if topic.is_empty() || topic.as_bytes().len() > 65535 || !re.is_match(&topic[..]) {
-            Err(TopicFilterError::InvalidTopicFilter)
+            Err(TopicFilterError::InvalidTopicFilter(topic))
         } else {
             Ok(TopicFilter(topic))
         }
@@ -69,7 +70,7 @@ impl TopicFilterRef {
         let re = Regex::new(VALIDATE_TOPIC_FILTER_REGEX).unwrap();
         let topic = topic.as_ref();
         if topic.is_empty() || topic.as_bytes().len() > 65535 || !re.is_match(&topic[..]) {
-            Err(TopicFilterError::InvalidTopicFilter)
+            Err(TopicFilterError::InvalidTopicFilter(topic.to_owned()))
         } else {
             Ok(unsafe { mem::transmute(topic) })
         }
@@ -91,14 +92,14 @@ impl Deref for TopicFilterRef {
 #[derive(Debug)]
 pub enum TopicFilterError {
     StringEncodeError(StringEncodeError),
-    InvalidTopicFilter,
+    InvalidTopicFilter(String),
 }
 
 impl fmt::Display for TopicFilterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &TopicFilterError::StringEncodeError(ref err) => err.fmt(f),
-            &TopicFilterError::InvalidTopicFilter => write!(f, "Invalid topic filter"),
+            &TopicFilterError::InvalidTopicFilter(ref topic) => write!(f, "Invalid topic filter ({})", topic),
         }
     }
 }
@@ -107,14 +108,14 @@ impl Error for TopicFilterError {
     fn description(&self) -> &str {
         match self {
             &TopicFilterError::StringEncodeError(ref err) => err.description(),
-            &TopicFilterError::InvalidTopicFilter => "Invalid topic filter",
+            &TopicFilterError::InvalidTopicFilter(..) => "Invalid topic filter",
         }
     }
 
     fn cause(&self) -> Option<&Error> {
         match self {
             &TopicFilterError::StringEncodeError(ref err) => Some(err),
-            &TopicFilterError::InvalidTopicFilter => None,
+            &TopicFilterError::InvalidTopicFilter(..) => None,
         }
     }
 }

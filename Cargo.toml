@@ -9,6 +9,7 @@ name = "mqtt"
 [dependencies]
 byteorder = "^0.3.13"
 log = "^0.3.2"
+regex = "^0.1.41"
 
 [dev-dependencies]
 env_logger = "^0.3.1"

@@ -29,14 +29,14 @@ impl<'a> Encodable<'a> for &'a str {
     type Err = StringEncodeError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
-        writer.write_u16::<BigEndian>(self.len() as u16)
+        writer.write_u16::<BigEndian>(self.as_bytes().len() as u16)
             .map_err(From::from)
             .and_then(|_| writer.write_all(self.as_bytes()))
             .map_err(StringEncodeError::IoError)
     }
 
     fn encoded_length(&self) -> u32 {
-        2 + self.len() as u32
+        2 + self.as_bytes().len() as u32
     }
 }
 

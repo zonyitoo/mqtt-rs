@@ -4,10 +4,11 @@ use std::io::Cursor;
 
 use mqtt::{Encodable, Decodable};
 use mqtt::packet::{VariablePacket, PublishPacket, QoSWithPacketIdentifier};
+use mqtt::control::TopicName;
 
 fn main() {
     // Create a new Publish packet
-    let packet = PublishPacket::new("mqtt/learning".to_owned(),
+    let packet = PublishPacket::new(TopicName::new("mqtt/learning".to_owned()).unwrap(),
                                     QoSWithPacketIdentifier::Level2(10),
                                     b"Hello MQTT!".to_vec());
 

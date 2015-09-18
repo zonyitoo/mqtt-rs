@@ -106,6 +106,7 @@ pub enum VariableHeaderError {
     StringEncodeError(StringEncodeError),
     InvalidReservedFlag,
     FromUtf8Error(FromUtf8Error),
+    InvalidTopicName,
 }
 
 impl From<io::Error> for VariableHeaderError {
@@ -139,6 +140,7 @@ impl fmt::Display for VariableHeaderError {
             &VariableHeaderError::StringEncodeError(ref err) => write!(f, "{}", err),
             &VariableHeaderError::InvalidReservedFlag => write!(f, "Invalid reserved flags"),
             &VariableHeaderError::FromUtf8Error(ref err) => write!(f, "{}", err),
+            &VariableHeaderError::InvalidTopicName => write!(f, "Invalid topic name"),
         }
     }
 }
@@ -150,6 +152,7 @@ impl Error for VariableHeaderError {
             &VariableHeaderError::StringEncodeError(ref err) => err.description(),
             &VariableHeaderError::InvalidReservedFlag => "Invalid reserved flags",
             &VariableHeaderError::FromUtf8Error(ref err) => err.description(),
+            &VariableHeaderError::InvalidTopicName => "Invalid topic name",
         }
     }
 
@@ -159,6 +162,7 @@ impl Error for VariableHeaderError {
             &VariableHeaderError::StringEncodeError(ref err) => Some(err),
             &VariableHeaderError::InvalidReservedFlag => None,
             &VariableHeaderError::FromUtf8Error(ref err) => Some(err),
+            &VariableHeaderError::InvalidTopicName => None,
         }
     }
 }

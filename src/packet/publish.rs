@@ -1,6 +1,5 @@
 use std::io::{Read, Write};
 
-
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::{TopicName, PacketIdentifier};
 use packet::{Packet, PacketError};
@@ -22,7 +21,7 @@ pub struct PublishPacket {
 }
 
 impl PublishPacket {
-    pub fn new(topic_name: String, qos: QoSWithPacketIdentifier, payload: Vec<u8>) -> PublishPacket {
+    pub fn new(topic_name: TopicName, qos: QoSWithPacketIdentifier, payload: Vec<u8>) -> PublishPacket {
         let (qos, pkid) = match qos {
             QoSWithPacketIdentifier::Level0 => (0, None),
             QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
@@ -31,7 +30,7 @@ impl PublishPacket {
 
         let mut pk = PublishPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Publish), 0),
-            topic_name: TopicName(topic_name),
+            topic_name: topic_name,
             packet_identifier: pkid,
             payload: payload,
         };
@@ -86,13 +85,13 @@ impl PublishPacket {
         self.fixed_header.packet_type.flags & 0x01 != 0
     }
 
-    pub fn set_topic_name(&mut self, topic_name: String) {
-        self.topic_name.0 = topic_name;
+    pub fn set_topic_name(&mut self, topic_name: TopicName) {
+        self.topic_name = topic_name;
         self.fixed_header.remaining_length = self.calculate_remaining_length();
     }
 
     pub fn topic_name(&self) -> &str {
-        &self.topic_name.0[..]
+        &self.topic_name[..]
     }
 }
 
@@ -152,11 +151,13 @@ mod test {
 
     use std::io::Cursor;
 
+    use control::variable_header::TopicName;
     use {Encodable, Decodable};
 
     #[test]
     fn test_publish_packet_basic() {
-        let packet = PublishPacket::new("a/b".to_owned(), QoSWithPacketIdentifier::Level2(10), b"Hello world!".to_vec());
+        let packet = PublishPacket::new(TopicName::new("a/b".to_owned()).unwrap(),
+            QoSWithPacketIdentifier::Level2(10), b"Hello world!".to_vec());
 
         let mut buf = Vec::new();
         packet.encode(&mut buf).unwrap();

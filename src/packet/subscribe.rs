@@ -11,6 +11,7 @@ use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
 use {Encodable, Decodable, QualityOfService};
 use encodable::StringEncodeError;
+use topic_filter::{TopicFilter, TopicFilterError};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct SubscribePacket {
@@ -20,7 +21,7 @@ pub struct SubscribePacket {
 }
 
 impl SubscribePacket {
-    pub fn new(pkid: u16, subscribes: Vec<(String, QualityOfService)>) -> SubscribePacket {
+    pub fn new(pkid: u16, subscribes: Vec<(TopicFilter, QualityOfService)>) -> SubscribePacket {
         let mut pk = SubscribePacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Subscribe), 0),
             packet_identifier: PacketIdentifier(pkid),
@@ -77,17 +78,17 @@ impl<'a> Packet<'a> for SubscribePacket {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct SubscribePacketPayload {
-    subscribes: Vec<(String, QualityOfService)>,
+    subscribes: Vec<(TopicFilter, QualityOfService)>,
 }
 
 impl SubscribePacketPayload {
-    pub fn new(subs: Vec<(String, QualityOfService)>) -> SubscribePacketPayload {
+    pub fn new(subs: Vec<(TopicFilter, QualityOfService)>) -> SubscribePacketPayload {
         SubscribePacketPayload {
             subscribes: subs,
         }
     }
 
-    pub fn subscribes(&self) -> &[(String, QualityOfService)] {
+    pub fn subscribes(&self) -> &[(TopicFilter, QualityOfService)] {
         &self.subscribes[..]
     }
 }
@@ -120,7 +121,7 @@ impl<'a> Decodable<'a> for SubscribePacketPayload {
         let mut subs = Vec::new();
 
         while payload_len > 0 {
-            let filter = try!(String::decode(reader));
+            let filter = try!(TopicFilter::decode(reader));
             let qos = match try!(reader.read_u8()) {
                 0 => QualityOfService::Level0,
                 1 => QualityOfService::Level1,
@@ -142,6 +143,7 @@ pub enum SubscribePacketPayloadError {
     FromUtf8Error(FromUtf8Error),
     StringEncodeError(StringEncodeError),
     InvalidQualityOfService,
+    TopicFilterError(TopicFilterError),
 }
 
 impl fmt::Display for SubscribePacketPayloadError {
@@ -151,6 +153,7 @@ impl fmt::Display for SubscribePacketPayloadError {
             &SubscribePacketPayloadError::FromUtf8Error(ref err) => err.fmt(f),
             &SubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
             &SubscribePacketPayloadError::InvalidQualityOfService => write!(f, "Invalid quality of service"),
+            &SubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
         }
     }
 }
@@ -162,6 +165,7 @@ impl Error for SubscribePacketPayloadError {
             &SubscribePacketPayloadError::FromUtf8Error(ref err) => err.description(),
             &SubscribePacketPayloadError::StringEncodeError(ref err) => err.description(),
             &SubscribePacketPayloadError::InvalidQualityOfService => "Invalid quality of service",
+            &SubscribePacketPayloadError::TopicFilterError(ref err) => err.description(),
         }
     }
 
@@ -171,7 +175,14 @@ impl Error for SubscribePacketPayloadError {
             &SubscribePacketPayloadError::FromUtf8Error(ref err) => Some(err),
             &SubscribePacketPayloadError::StringEncodeError(ref err) => Some(err),
             &SubscribePacketPayloadError::InvalidQualityOfService => None,
+            &SubscribePacketPayloadError::TopicFilterError(ref err) => Some(err),
         }
+    }
+}
+
+impl From<TopicFilterError> for SubscribePacketPayloadError {
+    fn from(err: TopicFilterError) -> SubscribePacketPayloadError {
+        SubscribePacketPayloadError::TopicFilterError(err)
     }
 }
 

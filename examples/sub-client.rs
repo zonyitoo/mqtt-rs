@@ -16,6 +16,7 @@ use uuid::Uuid;
 use mqtt::{Encodable, Decodable, QualityOfService};
 use mqtt::packet::*;
 use mqtt::control::variable_header::ConnectReturnCode;
+use mqtt::TopicFilter;
 
 fn generate_client_id() -> String {
     format!("/MQTT/rust/{}", Uuid::new_v4().to_simple_string())
@@ -42,10 +43,10 @@ fn main() {
     let client_id = matches.value_of("CLIENT_ID")
         .map(|x| x.to_owned())
         .unwrap_or_else(generate_client_id);
-    let channel_filters: Vec<(String, QualityOfService)>
+    let channel_filters: Vec<(TopicFilter, QualityOfService)>
         = matches.values_of("SUBSCRIBE").unwrap()
                  .iter()
-                 .map(|c| (c.to_string(), QualityOfService::Level0))
+                 .map(|c| (TopicFilter::new(c.to_string()).unwrap(), QualityOfService::Level0))
                  .collect();
 
     print!("Connecting to {:?} ... ", server_addr);

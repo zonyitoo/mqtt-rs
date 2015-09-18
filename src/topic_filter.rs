@@ -126,45 +126,45 @@ mod test {
     #[test]
     fn test_topic_filter_validate() {
         let topic = "#".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "sport/tennis/player1".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "sport/tennis/player1/ranking".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "sport/tennis/player1/#".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "#".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "sport/tennis/#".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "sport/tennis#".to_owned();
-        assert!(TopicFilter::new(topic).is_err());
+        assert!(TopicFilter::new_checked(topic).is_err());
 
         let topic = "sport/tennis/#/ranking".to_owned();
-        assert!(TopicFilter::new(topic).is_err());
+        assert!(TopicFilter::new_checked(topic).is_err());
 
         let topic = "+".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "+/tennis/#".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "sport+".to_owned();
-        assert!(TopicFilter::new(topic).is_err());
+        assert!(TopicFilter::new_checked(topic).is_err());
 
         let topic = "sport/+/player1".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "+/+".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
 
         let topic = "$SYS/#".to_owned();
-        TopicFilter::new(topic).unwrap();
+        TopicFilter::new_checked(topic).unwrap();
     }
 }

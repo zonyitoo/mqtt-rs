@@ -1,8 +1,9 @@
 use std::io::{Read, Write};
 
 use control::{FixedHeader, PacketType, ControlType};
-use control::variable_header::{TopicName, PacketIdentifier};
+use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
+use topic_name::TopicName;
 use {Encodable, Decodable};
 
 #[derive(Debug)]
@@ -151,7 +152,7 @@ mod test {
 
     use std::io::Cursor;
 
-    use control::variable_header::TopicName;
+    use topic_name::TopicName;
     use {Encodable, Decodable};
 
     #[test]

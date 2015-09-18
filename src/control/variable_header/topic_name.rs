@@ -1,37 +1,30 @@
 use std::io::{Read, Write};
-use std::convert::From;
+use std::convert::{From, Into};
 use std::ops::Deref;
 
-use regex::Regex;
-
 use control::variable_header::VariableHeaderError;
+use topic_name::TopicName;
 use {Encodable, Decodable};
 
-const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^(\$?[^/\$]+)?(/[^/\$]+)*$";
-
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct TopicName(String);
+pub struct TopicNameHeader(TopicName);
 
-impl TopicName {
-    pub fn new(topic_name: String) -> Result<TopicName, VariableHeaderError> {
-        let re = Regex::new(TOPIC_NAME_VALIDATE_REGEX).unwrap();
-        if topic_name.is_empty() || topic_name.as_bytes().len() > 65535 || !re.is_match(&topic_name[..]) {
-            Err(VariableHeaderError::InvalidTopicName)
-        } else {
-            Ok(TopicName(topic_name))
+impl TopicNameHeader {
+    pub fn new(topic_name: String) -> Result<TopicNameHeader, VariableHeaderError> {
+        match TopicName::new(topic_name) {
+            Ok(h) => Ok(TopicNameHeader(h)),
+            Err(err) => Err(VariableHeaderError::TopicNameError(err)),
         }
-    }
-
-    pub unsafe fn new_unchecked(topic_name: String) -> TopicName {
-        TopicName(topic_name)
-    }
-
-    pub fn is_server_specific(&self) -> bool {
-        self.0.starts_with('$')
     }
 }
 
-impl Deref for TopicName {
+impl Into<TopicName> for TopicNameHeader {
+    fn into(self) -> TopicName {
+        self.0
+    }
+}
+
+impl Deref for TopicNameHeader {
     type Target = String;
 
     fn deref(&self) -> &String {
@@ -39,15 +32,7 @@ impl Deref for TopicName {
     }
 }
 
-pub struct TopicNameRef<'a>(&'a str);
-
-impl<'a> TopicNameRef<'a> {
-    pub fn is_server_specific(&self) -> bool {
-        self.0.starts_with('$')
-    }
-}
-
-impl<'a> Encodable<'a> for TopicName {
+impl<'a> Encodable<'a> for TopicNameHeader {
     type Err = VariableHeaderError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
@@ -59,25 +44,11 @@ impl<'a> Encodable<'a> for TopicName {
     }
 }
 
-impl<'a> Decodable<'a> for TopicName {
+impl<'a> Decodable<'a> for TopicNameHeader {
     type Err = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicName, VariableHeaderError> {
-        TopicName::new(try!(Decodable::decode(reader)))
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_topic_name_basic() {
-        let topic_name = "$SYS".to_owned();
-        TopicName::new(topic_name).unwrap();
-
-        let topic_name = "$SYS/broker/connection/test.cosm-energy/state".to_owned();
-        TopicName::new(topic_name).unwrap();
+    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicNameHeader, VariableHeaderError> {
+        TopicNameHeader::new(try!(Decodable::decode(reader)))
     }
 }

@@ -8,6 +8,7 @@ use control::fixed_header::FixedHeaderError;
 use control::variable_header::VariableHeaderError;
 use control::ControlType;
 use encodable::StringEncodeError;
+use topic_name::TopicNameError;
 use {Encodable, Decodable};
 
 pub use self::connect::ConnectPacket;
@@ -95,6 +96,7 @@ pub enum PacketError<'a, T: Packet<'a>> {
     MalformedPacket(String),
     StringEncodeError(StringEncodeError),
     IoError(io::Error),
+    TopicNameError(TopicNameError),
 }
 
 impl<'a, T: Packet<'a>> fmt::Display for PacketError<'a, T> {
@@ -106,6 +108,7 @@ impl<'a, T: Packet<'a>> fmt::Display for PacketError<'a, T> {
             &PacketError::MalformedPacket(ref err) => err.fmt(f),
             &PacketError::StringEncodeError(ref err) => err.fmt(f),
             &PacketError::IoError(ref err) => err.fmt(f),
+            &PacketError::TopicNameError(ref err) => err.fmt(f),
         }
     }
 }
@@ -119,6 +122,7 @@ impl<'a, T: Packet<'a> + fmt::Debug> Error for PacketError<'a, T> {
             &PacketError::MalformedPacket(ref err) => &err[..],
             &PacketError::StringEncodeError(ref err) => err.description(),
             &PacketError::IoError(ref err) => err.description(),
+            &PacketError::TopicNameError(ref err) => err.description(),
         }
     }
 
@@ -130,6 +134,7 @@ impl<'a, T: Packet<'a> + fmt::Debug> Error for PacketError<'a, T> {
             &PacketError::MalformedPacket(..) => None,
             &PacketError::StringEncodeError(ref err) => Some(err),
             &PacketError::IoError(ref err) => Some(err),
+            &PacketError::TopicNameError(ref err) => Some(err),
         }
     }
 }
@@ -155,6 +160,12 @@ impl<'a, T: Packet<'a>> From<io::Error> for PacketError<'a, T> {
 impl<'a, T: Packet<'a>> From<StringEncodeError> for PacketError<'a, T> {
     fn from(err: StringEncodeError) -> PacketError<'a, T> {
         PacketError::StringEncodeError(err)
+    }
+}
+
+impl<'a, T: Packet<'a>> From<TopicNameError> for PacketError<'a, T> {
+    fn from(err: TopicNameError) -> PacketError<'a, T> {
+        PacketError::TopicNameError(err)
     }
 }
 

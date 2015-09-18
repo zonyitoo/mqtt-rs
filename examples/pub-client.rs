@@ -16,8 +16,7 @@ use uuid::Uuid;
 use mqtt::{Encodable, Decodable, QualityOfService};
 use mqtt::packet::*;
 use mqtt::control::variable_header::ConnectReturnCode;
-use mqtt::TopicFilter;
-use mqtt::control::variable_header::TopicName;
+use mqtt::{TopicFilter, TopicName};
 
 fn generate_client_id() -> String {
     format!("/MQTT/rust/{}", Uuid::new_v4().to_simple_string())

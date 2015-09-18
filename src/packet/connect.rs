@@ -7,6 +7,7 @@ use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::{ProtocolName, ProtocolLevel, ConnectFlags, KeepAlive};
 use control::variable_header::protocol_level::SPEC_3_1_1;
 use packet::{Packet, PacketError};
+use topic_name::{TopicName, TopicNameError};
 use {Encodable, Decodable};
 use encodable::StringEncodeError;
 
@@ -52,7 +53,7 @@ impl ConnectPacket {
         self.fixed_header.remaining_length = self.calculate_remaining_length();
     }
 
-    pub fn set_will(&mut self, topic_message: Option<(String, String)>) {
+    pub fn set_will(&mut self, topic_message: Option<(TopicName, String)>) {
         self.flags.will_flag = topic_message.is_some();
 
         match topic_message {
@@ -177,7 +178,7 @@ impl<'a> Packet<'a> for ConnectPacket {
 #[derive(Debug, Eq, PartialEq)]
 pub struct ConnectPacketPayload {
     client_identifier: String,
-    will_topic: Option<String>,
+    will_topic: Option<TopicName>,
     will_message: Option<String>,
     user_name: Option<String>,
     password: Option<String>,
@@ -283,6 +284,7 @@ impl<'a> Decodable<'a> for ConnectPacketPayload {
 pub enum ConnectPacketPayloadError {
     IoError(io::Error),
     StringEncodeError(StringEncodeError),
+    TopicNameError(TopicNameError),
 }
 
 impl fmt::Display for ConnectPacketPayloadError {
@@ -290,6 +292,7 @@ impl fmt::Display for ConnectPacketPayloadError {
         match self {
             &ConnectPacketPayloadError::IoError(ref err) => err.fmt(f),
             &ConnectPacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
+            &ConnectPacketPayloadError::TopicNameError(ref err) => err.fmt(f),
         }
     }
 }
@@ -299,6 +302,7 @@ impl Error for ConnectPacketPayloadError {
         match self {
             &ConnectPacketPayloadError::IoError(ref err) => err.description(),
             &ConnectPacketPayloadError::StringEncodeError(ref err) => err.description(),
+            &ConnectPacketPayloadError::TopicNameError(ref err) => err.description(),
         }
     }
 
@@ -306,6 +310,7 @@ impl Error for ConnectPacketPayloadError {
         match self {
             &ConnectPacketPayloadError::IoError(ref err) => Some(err),
             &ConnectPacketPayloadError::StringEncodeError(ref err) => Some(err),
+            &ConnectPacketPayloadError::TopicNameError(ref err) => Some(err),
         }
     }
 }
@@ -313,6 +318,12 @@ impl Error for ConnectPacketPayloadError {
 impl From<StringEncodeError> for ConnectPacketPayloadError {
     fn from(err: StringEncodeError) -> ConnectPacketPayloadError {
         ConnectPacketPayloadError::StringEncodeError(err)
+    }
+}
+
+impl From<TopicNameError> for ConnectPacketPayloadError {
+    fn from(err: TopicNameError) -> ConnectPacketPayloadError {
+        ConnectPacketPayloadError::TopicNameError(err)
     }
 }
 

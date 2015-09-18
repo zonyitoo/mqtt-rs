@@ -4,7 +4,7 @@ use std::io::Cursor;
 
 use mqtt::{Encodable, Decodable};
 use mqtt::packet::{VariablePacket, PublishPacket, QoSWithPacketIdentifier};
-use mqtt::control::TopicName;
+use mqtt::TopicName;
 
 fn main() {
     // Create a new Publish packet

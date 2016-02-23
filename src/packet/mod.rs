@@ -361,7 +361,7 @@ mod test {
 
     #[test]
     fn test_variable_packet_basic() {
-        let packet = ConnectPacket::new("1234".to_owned());
+        let packet = ConnectPacket::new("MQTT".to_owned(), "1234".to_owned());
 
         // Wrap it
         let var_packet = VariablePacket::new(packet);

@@ -26,35 +26,57 @@ fn main() {
     env_logger::init().unwrap();
 
     let matches = App::new("sub-client")
-                    .author("Y. T. Chung <zonyitoo@gmail.com>")
-                    .arg(Arg::with_name("HOST").short("h").long("host").takes_value(true).required(true)
-                            .help("MQTT host"))
-                    .arg(Arg::with_name("SUBSCRIBE").short("s").long("subscribe").takes_value(true)
-                            .multiple(true).required(true).help("Channel filter to subscribe"))
-                    .arg(Arg::with_name("USER_NAME").short("u").long("username").takes_value(true)
-                            .help("Login user name"))
-                    .arg(Arg::with_name("PASSWORD").short("p").long("password").takes_value(true)
-                            .help("Password"))
-                    .arg(Arg::with_name("CLIENT_ID").short("i").long("client-identifier").takes_value(true)
-                            .help("Client identifier"))
-                    .get_matches();
+                      .author("Y. T. Chung <zonyitoo@gmail.com>")
+                      .arg(Arg::with_name("HOST")
+                               .short("h")
+                               .long("host")
+                               .takes_value(true)
+                               .required(true)
+                               .help("MQTT host"))
+                      .arg(Arg::with_name("SUBSCRIBE")
+                               .short("s")
+                               .long("subscribe")
+                               .takes_value(true)
+                               .multiple(true)
+                               .required(true)
+                               .help("Channel filter to subscribe"))
+                      .arg(Arg::with_name("USER_NAME")
+                               .short("u")
+                               .long("username")
+                               .takes_value(true)
+                               .help("Login user name"))
+                      .arg(Arg::with_name("PASSWORD")
+                               .short("p")
+                               .long("password")
+                               .takes_value(true)
+                               .help("Password"))
+                      .arg(Arg::with_name("CLIENT_ID")
+                               .short("i")
+                               .long("client-identifier")
+                               .takes_value(true)
+                               .help("Client identifier"))
+                      .get_matches();
 
     let server_addr = matches.value_of("HOST").unwrap();
     let client_id = matches.value_of("CLIENT_ID")
-        .map(|x| x.to_owned())
-        .unwrap_or_else(generate_client_id);
-    let channel_filters: Vec<(TopicFilter, QualityOfService)>
-        = matches.values_of("SUBSCRIBE").unwrap()
-                 .iter()
-                 .map(|c| (TopicFilter::new_checked(c.to_string()).unwrap(), QualityOfService::Level0))
-                 .collect();
+                           .map(|x| x.to_owned())
+                           .unwrap_or_else(generate_client_id);
+    let channel_filters: Vec<(TopicFilter, QualityOfService)> =
+        matches.values_of("SUBSCRIBE")
+               .unwrap()
+               .iter()
+               .map(|c| {
+                   (TopicFilter::new_checked(c.to_string()).unwrap(),
+                    QualityOfService::Level0)
+               })
+               .collect();
 
     print!("Connecting to {:?} ... ", server_addr);
     let mut stream = TcpStream::connect(server_addr).unwrap();
     println!("Connected!");
 
     println!("Client identifier {:?}", client_id);
-    let mut conn = ConnectPacket::new(client_id.to_owned());
+    let mut conn = ConnectPacket::new("MQTT".to_owned(), client_id.to_owned());
     conn.set_clean_session(true);
     let mut buf = Vec::new();
     conn.encode(&mut buf).unwrap();
@@ -64,7 +86,8 @@ fn main() {
     trace!("CONNACK {:?}", connack);
 
     if connack.connect_return_code() != ConnectReturnCode::ConnectionAccepted {
-        panic!("Failed to connect to server, return code {:?}", connack.connect_return_code());
+        panic!("Failed to connect to server, return code {:?}",
+               connack.connect_return_code());
     }
 
     // const CHANNEL_FILTER: &'static str = "typing-speed-test.aoeu.eu";
@@ -92,7 +115,7 @@ fn main() {
 
                 println!("Subscribed!");
                 break;
-            },
+            }
             _ => {}
         }
     }
@@ -112,7 +135,7 @@ fn main() {
                 let pingresp = PingrespPacket::new();
                 info!("Sending Ping response {:?}", pingresp);
                 pingresp.encode(&mut stream).unwrap();
-            },
+            }
             &VariablePacket::PublishPacket(ref publ) => {
                 let msg = match str::from_utf8(&publ.payload()[..]) {
                     Ok(msg) => msg,
@@ -122,7 +145,7 @@ fn main() {
                     }
                 };
                 println!("PUBLISH ({}): {}", publ.topic_name(), msg);
-            },
+            }
             _ => {}
         }
     }

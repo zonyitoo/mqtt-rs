@@ -48,6 +48,10 @@ impl ConnectPacket {
         self.encoded_variable_headers_length() + self.payload().encoded_length()
     }
 
+    pub fn set_keep_alive(&mut self, keep_alive: u16) {
+        self.keep_alive = KeepAlive(keep_alive);
+    }
+
     pub fn set_user_name(&mut self, name: Option<String>) {
         self.flags.user_name = name.is_some();
         self.payload.user_name = name;

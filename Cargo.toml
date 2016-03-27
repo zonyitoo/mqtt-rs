@@ -1,10 +1,7 @@
 [package]
+authors = ["Y. T. Chung <zonyitoo@gmail.com>"]
 name = "mqtt"
 version = "0.1.0"
-authors = ["Y. T. Chung <zonyitoo@gmail.com>"]
-
-[lib]
-name = "mqtt"
 
 [dependencies]
 byteorder = "^0.3.13"
@@ -12,6 +9,10 @@ log = "^0.3.2"
 regex = "^0.1.41"
 
 [dev-dependencies]
-env_logger = "^0.3.1"
 clap = "^1.4.0"
+env_logger = "^0.3.1"
 uuid = "^0.1.17"
+time = "*"
+
+[lib]
+name = "mqtt"

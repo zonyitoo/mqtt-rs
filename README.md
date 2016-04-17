@@ -6,8 +6,8 @@
 MQTT protocol library for Rust
 
 ```rust
-[dependencies.mqtt]
-git = "https://github.com/zonyitoo/mqtt-rs.git"
+[dependencies]
+mqtt-protocol = "0.1"
 ```
 
 ## Usage

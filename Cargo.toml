@@ -2,6 +2,10 @@
 authors = ["Y. T. Chung <zonyitoo@gmail.com>"]
 name = "mqtt-protocol"
 version = "0.1.0"
+license = "MIT/Apache-2.0"
+description = "MQTT Protocol Library"
+keywords = ["mqtt", "protocol"]
+repository = "https://github.com/zonyitoo/mqtt-rs"
 
 [dependencies]
 byteorder = "^0.3.13"

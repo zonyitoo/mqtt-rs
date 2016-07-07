@@ -6,7 +6,7 @@ use packet::{Packet, PacketError};
 use topic_name::TopicName;
 use {Encodable, Decodable};
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub enum QoSWithPacketIdentifier {
     Level0,
     Level1(u16),

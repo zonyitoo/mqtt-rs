@@ -31,12 +31,12 @@ fn main() {
 
     let matches = App::new("sub-client")
                       .author("Y. T. Chung <zonyitoo@gmail.com>")
-                      .arg(Arg::with_name("HOST")
-                               .short("h")
-                               .long("host")
+                      .arg(Arg::with_name("SERVER")
+                               .short("S")
+                               .long("server")
                                .takes_value(true)
                                .required(true)
-                               .help("MQTT host"))
+                               .help("MQTT server address (host:port)"))
                       .arg(Arg::with_name("SUBSCRIBE")
                                .short("s")
                                .long("subscribe")
@@ -61,7 +61,7 @@ fn main() {
                                .help("Client identifier"))
                       .get_matches();
 
-    let server_addr = matches.value_of("HOST").unwrap();
+    let server_addr = matches.value_of("SERVER").unwrap();
     let client_id = matches.value_of("CLIENT_ID")
                            .map(|x| x.to_owned())
                            .unwrap_or_else(generate_client_id);

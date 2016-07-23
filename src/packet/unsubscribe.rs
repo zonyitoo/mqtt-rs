@@ -11,6 +11,7 @@ use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
 use {Encodable, Decodable};
 use encodable::StringEncodeError;
+use topic_filter::{TopicFilter, TopicFilterError};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct UnsubscribePacket {
@@ -20,14 +21,13 @@ pub struct UnsubscribePacket {
 }
 
 impl UnsubscribePacket {
-    pub fn new(pkid: u16, subscribes: Vec<String>) -> UnsubscribePacket {
+    pub fn new(pkid: u16, subscribes: Vec<TopicFilter>) -> UnsubscribePacket {
         let mut pk = UnsubscribePacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Unsubscribe), 0),
             packet_identifier: PacketIdentifier(pkid),
             payload: UnsubscribePacketPayload::new(subscribes),
         };
-        pk.fixed_header.remaining_length =
-            pk.encoded_variable_headers_length() + pk.payload.encoded_length();
+        pk.fixed_header.remaining_length = pk.encoded_variable_headers_length() + pk.payload.encoded_length();
         pk
     }
 
@@ -63,10 +63,9 @@ impl<'a> Packet<'a> for UnsubscribePacket {
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
-        let payload: UnsubscribePacketPayload =
-            try!(UnsubscribePacketPayload::decode_with(reader, Some(fixed_header.remaining_length
-                                                                - packet_identifier.encoded_length()))
-                    .map_err(PacketError::PayloadError));
+        let payload: UnsubscribePacketPayload = try!(UnsubscribePacketPayload::decode_with(reader,
+                                                                                           Some(fixed_header.remaining_length - packet_identifier.encoded_length()))
+            .map_err(PacketError::PayloadError));
         Ok(UnsubscribePacket {
             fixed_header: fixed_header,
             packet_identifier: packet_identifier,
@@ -77,17 +76,15 @@ impl<'a> Packet<'a> for UnsubscribePacket {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct UnsubscribePacketPayload {
-    subscribes: Vec<String>,
+    subscribes: Vec<TopicFilter>,
 }
 
 impl UnsubscribePacketPayload {
-    pub fn new(subs: Vec<String>) -> UnsubscribePacketPayload {
-        UnsubscribePacketPayload {
-            subscribes: subs,
-        }
+    pub fn new(subs: Vec<TopicFilter>) -> UnsubscribePacketPayload {
+        UnsubscribePacketPayload { subscribes: subs }
     }
 
-    pub fn subscribes(&self) -> &[String] {
+    pub fn subscribes(&self) -> &[TopicFilter] {
         &self.subscribes[..]
     }
 }
@@ -104,7 +101,8 @@ impl<'a> Encodable<'a> for UnsubscribePacketPayload {
     }
 
     fn encoded_length(&self) -> u32 {
-        self.subscribes.iter()
+        self.subscribes
+            .iter()
             .fold(0, |b, a| b + a.encoded_length())
     }
 }
@@ -113,13 +111,12 @@ impl<'a> Decodable<'a> for UnsubscribePacketPayload {
     type Err = UnsubscribePacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R, payload_len: Option<u32>)
-            -> Result<UnsubscribePacketPayload, UnsubscribePacketPayloadError> {
+    fn decode_with<R: Read>(reader: &mut R, payload_len: Option<u32>) -> Result<UnsubscribePacketPayload, UnsubscribePacketPayloadError> {
         let mut payload_len = payload_len.expect("Must provide payload length");
         let mut subs = Vec::new();
 
         while payload_len > 0 {
-            let filter = try!(String::decode(reader));
+            let filter = try!(TopicFilter::decode(reader));
             payload_len -= filter.encoded_length();
             subs.push(filter);
         }
@@ -133,6 +130,7 @@ pub enum UnsubscribePacketPayloadError {
     IoError(io::Error),
     FromUtf8Error(FromUtf8Error),
     StringEncodeError(StringEncodeError),
+    TopicFilterError(TopicFilterError),
 }
 
 impl fmt::Display for UnsubscribePacketPayloadError {
@@ -141,6 +139,7 @@ impl fmt::Display for UnsubscribePacketPayloadError {
             &UnsubscribePacketPayloadError::IoError(ref err) => err.fmt(f),
             &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => err.fmt(f),
             &UnsubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
+            &UnsubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
         }
     }
 }
@@ -151,6 +150,7 @@ impl Error for UnsubscribePacketPayloadError {
             &UnsubscribePacketPayloadError::IoError(ref err) => err.description(),
             &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => err.description(),
             &UnsubscribePacketPayloadError::StringEncodeError(ref err) => err.description(),
+            &UnsubscribePacketPayloadError::TopicFilterError(ref err) => err.description(),
         }
     }
 
@@ -159,6 +159,7 @@ impl Error for UnsubscribePacketPayloadError {
             &UnsubscribePacketPayloadError::IoError(ref err) => Some(err),
             &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => Some(err),
             &UnsubscribePacketPayloadError::StringEncodeError(ref err) => Some(err),
+            &UnsubscribePacketPayloadError::TopicFilterError(ref err) => Some(err),
         }
     }
 }
@@ -172,5 +173,11 @@ impl From<StringEncodeError> for UnsubscribePacketPayloadError {
 impl From<byteorder::Error> for UnsubscribePacketPayloadError {
     fn from(err: byteorder::Error) -> UnsubscribePacketPayloadError {
         UnsubscribePacketPayloadError::IoError(From::from(err))
+    }
+}
+
+impl From<TopicFilterError> for UnsubscribePacketPayloadError {
+    fn from(err: TopicFilterError) -> UnsubscribePacketPayloadError {
+        UnsubscribePacketPayloadError::TopicFilterError(err)
     }
 }

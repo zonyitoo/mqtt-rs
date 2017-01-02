@@ -58,7 +58,7 @@ impl ConnectPacket {
         self.fixed_header.remaining_length = self.calculate_remaining_length();
     }
 
-    pub fn set_will(&mut self, topic_message: Option<(TopicName, String)>) {
+    pub fn set_will(&mut self, topic_message: Option<(TopicName, Vec<u8>)>) {
         self.flags.will_flag = topic_message.is_some();
 
         match topic_message {
@@ -107,7 +107,7 @@ impl ConnectPacket {
         self.payload.password.as_ref().map(|x| &x[..])
     }
 
-    pub fn will(&self) -> Option<(&str, &str)> {
+    pub fn will(&self) -> Option<(&str, &Vec<u8>)> {
         self.payload
             .will_topic
             .as_ref()
@@ -116,7 +116,6 @@ impl ConnectPacket {
                 self.payload
                     .will_message
                     .as_ref()
-                    .map(|x| &x[..])
                     .map(|msg| (topic, msg))
             })
     }
@@ -190,7 +189,7 @@ impl<'a> Packet<'a> for ConnectPacket {
 pub struct ConnectPacketPayload {
     client_identifier: String,
     will_topic: Option<TopicName>,
-    will_message: Option<String>,
+    will_message: Option<Vec<u8>>,
     user_name: Option<String>,
     password: Option<String>,
 }
@@ -324,6 +323,12 @@ impl Error for ConnectPacketPayloadError {
             &ConnectPacketPayloadError::StringEncodeError(ref err) => Some(err),
             &ConnectPacketPayloadError::TopicNameError(ref err) => Some(err),
         }
+    }
+}
+
+impl From<io::Error> for ConnectPacketPayloadError {
+    fn from(err: io::Error) -> ConnectPacketPayloadError {
+        ConnectPacketPayloadError::IoError(err)
     }
 }
 

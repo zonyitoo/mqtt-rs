@@ -7,7 +7,7 @@ MQTT protocol library for Rust
 
 ```rust
 [dependencies]
-mqtt-protocol = "0.2"
+mqtt-protocol = "0.3"
 ```
 
 ## Usage

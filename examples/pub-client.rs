@@ -144,7 +144,7 @@ fn main() {
 
         let message = format!("{}: {}", user_name, line.trim_right());
 
-        for chan in channels.iter() {
+        for chan in &channels {
             let publish_packet = PublishPacket::new(chan.clone(),
                                                     QoSWithPacketIdentifier::Level0,
                                                     message.as_bytes().to_vec());

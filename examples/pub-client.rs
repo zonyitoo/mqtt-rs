@@ -140,10 +140,7 @@ fn main() {
         let mut line = String::new();
         stdin.read_line(&mut line).unwrap();
 
-        match line.trim_right() {
-            "" => continue,
-            _ => {}
-        }
+        if line.trim_right() == "" { continue }
 
         let message = format!("{}: {}", user_name, line.trim_right());
 

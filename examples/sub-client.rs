@@ -114,16 +114,13 @@ fn main() {
         };
         trace!("PACKET {:?}", packet);
 
-        match &packet {
-            &VariablePacket::SubackPacket(ref ack) => {
-                if ack.packet_identifier() != 10 {
-                    panic!("SUBACK packet identifier not match");
-                }
-
-                println!("Subscribed!");
-                break;
+        if let VariablePacket::SubackPacket(ref ack) = packet {
+            if ack.packet_identifier() != 10 {
+                panic!("SUBACK packet identifier not match");
             }
-            _ => {}
+
+            println!("Subscribed!");
+            break;
         }
     }
 

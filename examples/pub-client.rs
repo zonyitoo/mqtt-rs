@@ -116,13 +116,13 @@ fn main() {
             };
             trace!("PACKET {:?}", packet);
 
-            match &packet {
-                &VariablePacket::PingreqPacket(..) => {
+            match packet {
+                VariablePacket::PingreqPacket(..) => {
                     let pingresp = PingrespPacket::new();
                     info!("Sending Ping response {:?}", pingresp);
                     pingresp.encode(&mut cloned_stream).unwrap();
                 }
-                &VariablePacket::DisconnectPacket(..) => {
+                VariablePacket::DisconnectPacket(..) => {
                     break;
                 }
                 _ => {

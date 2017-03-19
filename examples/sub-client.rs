@@ -159,11 +159,11 @@ fn main() {
         };
         trace!("PACKET {:?}", packet);
 
-        match &packet {
-            &VariablePacket::PingrespPacket(..) => {
+        match packet {
+            VariablePacket::PingrespPacket(..) => {
                 println!("Receiving PINGRESP from broker ..");
             }
-            &VariablePacket::PublishPacket(ref publ) => {
+            VariablePacket::PublishPacket(ref publ) => {
                 let msg = match str::from_utf8(&publ.payload()[..]) {
                     Ok(msg) => msg,
                     Err(err) => {

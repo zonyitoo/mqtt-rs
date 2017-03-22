@@ -22,13 +22,15 @@ pub trait Decodable<'a>: Sized {
         Self::decode_with(reader, None)
     }
 
-    fn decode_with<R: Read>(reader: &mut R, Cond: Option<Self::Cond>) -> Result<Self, Self::Err>;
+    fn decode_with<R: Read>(reader: &mut R, cond: Option<Self::Cond>) -> Result<Self, Self::Err>;
 }
 
 impl<'a> Encodable<'a> for &'a str {
     type Err = StringEncodeError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
+        assert!(self.as_bytes().len() <= u16::max_value() as usize);
+
         writer.write_u16::<BigEndian>(self.as_bytes().len() as u16)
             .map_err(From::from)
             .and_then(|_| writer.write_all(self.as_bytes()))
@@ -71,11 +73,10 @@ impl<'a> Decodable<'a> for String {
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<String, StringEncodeError> {
         let len = try!(reader.read_u16::<BigEndian>()) as usize;
         let mut buf = Vec::with_capacity(len);
-        try!(reader.take(len as u64).read_to_end(&mut buf));
-
-        if buf.len() < len {
-            return Err(StringEncodeError::MalformedData);
+        unsafe {
+            buf.set_len(len);
         }
+        try!(reader.read_exact(&mut buf));
 
         String::from_utf8(buf).map_err(StringEncodeError::FromUtf8Error)
     }
@@ -101,9 +102,12 @@ impl<'a> Decodable<'a> for Vec<u8> {
         match length {
             Some(length) => {
                 let mut buf = Vec::with_capacity(length as usize);
-                try!(reader.take(length as u64).read_to_end(&mut buf));
+                unsafe {
+                    buf.set_len(length as usize);
+                }
+                try!(reader.read_exact(&mut buf));
                 Ok(buf)
-            },
+            }
             None => {
                 let mut buf = Vec::new();
                 try!(reader.read_to_end(&mut buf));
@@ -131,6 +135,38 @@ impl<'a> Decodable<'a> for () {
 
     fn decode_with<R: Read>(_: &mut R, _: Option<()>) -> Result<(), NoError> {
         Ok(())
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct VarBytes(pub Vec<u8>);
+
+impl<'a> Encodable<'a> for VarBytes {
+    type Err = io::Error;
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), Self::Err> {
+        assert!(self.0.len() <= u16::max_value() as usize);
+        let len = self.0.len() as u16;
+        try!(writer.write_u16::<BigEndian>(len));
+        try!(writer.write_all(&self.0));
+        Ok(())
+    }
+
+    fn encoded_length(&self) -> u32 {
+        2 + self.0.len() as u32
+    }
+}
+
+impl<'a> Decodable<'a> for VarBytes {
+    type Err = io::Error;
+    type Cond = ();
+    fn decode_with<R: Read>(reader: &mut R, _: Option<()>) -> Result<VarBytes, io::Error> {
+        let length = try!(reader.read_u16::<BigEndian>()) as usize;
+        let mut buf = Vec::with_capacity(length);
+        unsafe {
+            buf.set_len(length);
+        }
+        try!(reader.read_exact(&mut buf));
+        Ok(VarBytes(buf))
     }
 }
 
@@ -179,7 +215,7 @@ impl Error for StringEncodeError {
         match self {
             &StringEncodeError::IoError(ref err) => Some(err),
             &StringEncodeError::FromUtf8Error(ref err) => Some(err),
-            &StringEncodeError::MalformedData => None
+            &StringEncodeError::MalformedData => None,
         }
     }
 }
@@ -199,5 +235,30 @@ impl From<byteorder::Error> for StringEncodeError {
 impl From<FromUtf8Error> for StringEncodeError {
     fn from(err: FromUtf8Error) -> StringEncodeError {
         StringEncodeError::FromUtf8Error(err)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use std::io::Cursor;
+
+    #[test]
+    fn varbyte_encode() {
+        let test_var = vec![0, 1, 2, 3, 4, 5];
+        let bytes = VarBytes(test_var);
+
+        assert_eq!(bytes.encoded_length() as usize, 2 + 6);
+
+        let mut buf = Vec::new();
+        bytes.encode(&mut buf).unwrap();
+
+        assert_eq!(&buf, &[0, 6, 0, 1, 2, 3, 4, 5]);
+
+        let mut reader = Cursor::new(buf);
+        let decoded = VarBytes::decode(&mut reader).unwrap();
+
+        assert_eq!(decoded, bytes);
     }
 }

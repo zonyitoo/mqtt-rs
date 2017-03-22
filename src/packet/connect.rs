@@ -9,7 +9,7 @@ use control::variable_header::protocol_level::SPEC_3_1_1;
 use packet::{Packet, PacketError};
 use topic_name::{TopicName, TopicNameError};
 use {Encodable, Decodable};
-use encodable::StringEncodeError;
+use encodable::{StringEncodeError, VarBytes};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct ConnectPacket {
@@ -64,7 +64,7 @@ impl ConnectPacket {
         match topic_message {
             Some((topic, msg)) => {
                 self.payload.will_topic = Some(topic);
-                self.payload.will_message = Some(msg);
+                self.payload.will_message = Some(VarBytes(msg));
             }
             None => {
                 self.payload.will_topic = None;
@@ -116,7 +116,7 @@ impl ConnectPacket {
                 self.payload
                     .will_message
                     .as_ref()
-                    .map(|msg| (topic, msg))
+                    .map(|msg| (topic, &msg.0))
             })
     }
 
@@ -148,9 +148,7 @@ impl<'a> Packet<'a> for ConnectPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self,
-                                         writer: &mut W)
-                                         -> Result<(), PacketError<'a, Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
         try!(self.protocol_name.encode(writer));
         try!(self.protocol_level.encode(writer));
         try!(self.flags.encode(writer));
@@ -160,19 +158,15 @@ impl<'a> Packet<'a> for ConnectPacket {
     }
 
     fn encoded_variable_headers_length(&self) -> u32 {
-        self.protocol_name.encoded_length() + self.protocol_level.encoded_length() +
-        self.flags.encoded_length() + self.keep_alive.encoded_length()
+        self.protocol_name.encoded_length() + self.protocol_level.encoded_length() + self.flags.encoded_length() + self.keep_alive.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R,
-                              fixed_header: FixedHeader)
-                              -> Result<Self, PacketError<'a, Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         let protoname: ProtocolName = try!(Decodable::decode(reader));
         let protocol_level: ProtocolLevel = try!(Decodable::decode(reader));
         let flags: ConnectFlags = try!(Decodable::decode(reader));
         let keep_alive: KeepAlive = try!(Decodable::decode(reader));
-        let payload: ConnectPacketPayload = try!(Decodable::decode_with(reader, Some(&flags))
-                                                     .map_err(PacketError::PayloadError));
+        let payload: ConnectPacketPayload = try!(Decodable::decode_with(reader, Some(&flags)).map_err(PacketError::PayloadError));
 
         Ok(ConnectPacket {
             fixed_header: fixed_header,
@@ -189,7 +183,7 @@ impl<'a> Packet<'a> for ConnectPacket {
 pub struct ConnectPacketPayload {
     client_identifier: String,
     will_topic: Option<TopicName>,
-    will_message: Option<Vec<u8>>,
+    will_message: Option<VarBytes>,
     user_name: Option<String>,
     password: Option<String>,
 }
@@ -232,10 +226,8 @@ impl<'a> Encodable<'a> for ConnectPacketPayload {
     }
 
     fn encoded_length(&self) -> u32 {
-        self.client_identifier.encoded_length() +
-        self.will_topic.as_ref().map(|t| t.encoded_length()).unwrap_or(0) +
-        self.will_message.as_ref().map(|t| t.encoded_length()).unwrap_or(0) +
-        self.user_name.as_ref().map(|t| t.encoded_length()).unwrap_or(0) +
+        self.client_identifier.encoded_length() + self.will_topic.as_ref().map(|t| t.encoded_length()).unwrap_or(0) +
+        self.will_message.as_ref().map(|t| t.encoded_length()).unwrap_or(0) + self.user_name.as_ref().map(|t| t.encoded_length()).unwrap_or(0) +
         self.password.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
     }
 }
@@ -244,9 +236,7 @@ impl<'a> Decodable<'a> for ConnectPacketPayload {
     type Err = ConnectPacketPayloadError;
     type Cond = &'a ConnectFlags;
 
-    fn decode_with<R: Read>(reader: &mut R,
-                            rest: Option<&'a ConnectFlags>)
-                            -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
+    fn decode_with<R: Read>(reader: &mut R, rest: Option<&'a ConnectFlags>) -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
         let mut need_will_topic = false;
         let mut need_will_message = false;
         let mut need_user_name = false;

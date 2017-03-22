@@ -116,13 +116,13 @@ fn main() {
             };
             trace!("PACKET {:?}", packet);
 
-            match &packet {
-                &VariablePacket::PingreqPacket(..) => {
+            match packet {
+                VariablePacket::PingreqPacket(..) => {
                     let pingresp = PingrespPacket::new();
                     info!("Sending Ping response {:?}", pingresp);
                     pingresp.encode(&mut cloned_stream).unwrap();
                 }
-                &VariablePacket::DisconnectPacket(..) => {
+                VariablePacket::DisconnectPacket(..) => {
                     break;
                 }
                 _ => {
@@ -140,14 +140,11 @@ fn main() {
         let mut line = String::new();
         stdin.read_line(&mut line).unwrap();
 
-        match line.trim_right() {
-            "" => continue,
-            _ => {}
-        }
+        if line.trim_right() == "" { continue }
 
         let message = format!("{}: {}", user_name, line.trim_right());
 
-        for chan in channels.iter() {
+        for chan in &channels {
             let publish_packet = PublishPacket::new(chan.clone(),
                                                     QoSWithPacketIdentifier::Level0,
                                                     message.as_bytes().to_vec());

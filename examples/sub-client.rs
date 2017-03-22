@@ -114,16 +114,13 @@ fn main() {
         };
         trace!("PACKET {:?}", packet);
 
-        match &packet {
-            &VariablePacket::SubackPacket(ref ack) => {
-                if ack.packet_identifier() != 10 {
-                    panic!("SUBACK packet identifier not match");
-                }
-
-                println!("Subscribed!");
-                break;
+        if let VariablePacket::SubackPacket(ref ack) = packet {
+            if ack.packet_identifier() != 10 {
+                panic!("SUBACK packet identifier not match");
             }
-            _ => {}
+
+            println!("Subscribed!");
+            break;
         }
     }
 
@@ -159,11 +156,11 @@ fn main() {
         };
         trace!("PACKET {:?}", packet);
 
-        match &packet {
-            &VariablePacket::PingrespPacket(..) => {
+        match packet {
+            VariablePacket::PingrespPacket(..) => {
                 println!("Receiving PINGRESP from broker ..");
             }
-            &VariablePacket::PublishPacket(ref publ) => {
+            VariablePacket::PublishPacket(ref publ) => {
                 let msg = match str::from_utf8(&publ.payload()[..]) {
                     Ok(msg) => msg,
                     Err(err) => {

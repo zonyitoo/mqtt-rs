@@ -26,7 +26,7 @@ pub struct PublishPacket {
 }
 
 impl PublishPacket {
-    pub fn new(topic_name: TopicName, qos: QoSWithPacketIdentifier, payload: Vec<u8>) -> PublishPacket {
+    pub fn new<P: Into<Vec<u8>>>(topic_name: TopicName, qos: QoSWithPacketIdentifier, payload: P) -> PublishPacket {
         let (qos, pkid) = match qos {
             QoSWithPacketIdentifier::Level0 => (0, None),
             QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
@@ -37,7 +37,7 @@ impl PublishPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Publish), 0),
             topic_name: topic_name,
             packet_identifier: pkid,
-            payload: payload,
+            payload: payload.into(),
         };
         pk.fixed_header.packet_type.flags |= qos << 1;
         pk.fixed_header.remaining_length = pk.calculate_remaining_length();

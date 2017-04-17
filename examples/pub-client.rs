@@ -73,7 +73,7 @@ fn main() {
     println!("Connected!");
 
     println!("Client identifier {:?}", client_id);
-    let mut conn = ConnectPacket::new("MQTT".to_owned(), client_id.to_owned());
+    let mut conn = ConnectPacket::new("MQTT", client_id);
     conn.set_clean_session(true);
     let mut buf = Vec::new();
     conn.encode(&mut buf).unwrap();
@@ -146,7 +146,7 @@ fn main() {
         for chan in &channels {
             let publish_packet = PublishPacket::new(chan.clone(),
                                                     QoSWithPacketIdentifier::Level0,
-                                                    message.as_bytes().to_vec());
+                                                    message.clone());
             let mut buf = Vec::new();
             publish_packet.encode(&mut buf).unwrap();
             stream.write_all(&buf[..]).unwrap();

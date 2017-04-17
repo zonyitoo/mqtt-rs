@@ -26,18 +26,24 @@ pub struct ConnectPacket {
 }
 
 impl ConnectPacket {
-    pub fn new(protoname: String, client_identifier: String) -> ConnectPacket {
+    pub fn new<P, C>(protoname: P, client_identifier: C) -> ConnectPacket
+        where P: Into<String>,
+              C: Into<String>
+    {
         ConnectPacket::with_level(protoname, client_identifier, SPEC_3_1_1)
     }
 
-    pub fn with_level(protoname: String, client_identifier: String, level: u8) -> ConnectPacket {
+    pub fn with_level<P, C>(protoname: P, client_identifier: C, level: u8) -> ConnectPacket
+        where P: Into<String>,
+              C: Into<String>
+    {
         let mut pk = ConnectPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Connect), 0),
-            protocol_name: ProtocolName(protoname),
+            protocol_name: ProtocolName(protoname.into()),
             protocol_level: ProtocolLevel(level),
             flags: ConnectFlags::empty(),
             keep_alive: KeepAlive(0),
-            payload: ConnectPacketPayload::new(client_identifier),
+            payload: ConnectPacketPayload::new(client_identifier.into()),
         };
 
         pk.fixed_header.remaining_length = pk.calculate_remaining_length();
@@ -83,8 +89,8 @@ impl ConnectPacket {
         self.fixed_header.remaining_length = self.calculate_remaining_length();
     }
 
-    pub fn set_client_identifier(&mut self, id: String) {
-        self.payload.client_identifier = id;
+    pub fn set_client_identifier<I: Into<String>>(&mut self, id: I) {
+        self.payload.client_identifier = id.into();
         self.fixed_header.remaining_length = self.calculate_remaining_length();
     }
 

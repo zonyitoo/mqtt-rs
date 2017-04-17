@@ -1,3 +1,5 @@
+//! SUBACK
+
 use std::io::{self, Read, Write};
 use std::error::Error;
 use std::fmt;
@@ -10,6 +12,7 @@ use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
 use {Encodable, Decodable};
 
+/// Subscribe code
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum SubscribeReturnCode {
@@ -19,6 +22,7 @@ pub enum SubscribeReturnCode {
     Failure = 0x80,
 }
 
+/// `SUBACK` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct SubackPacket {
     fixed_header: FixedHeader,

@@ -1,12 +1,17 @@
+//! Packet types
+
 use std::error::Error;
 use std::fmt;
 
+/// Packet type
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct PacketType {
     pub control_type: ControlType,
     pub flags: u8,
 }
 
+/// Defined control types
+#[cfg_attr(rustfmt, rustfmt_skip)]
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ControlType {
@@ -54,6 +59,7 @@ pub enum ControlType {
 }
 
 impl PacketType {
+    /// Creates a packet type
     #[inline]
     pub fn new(t: ControlType, flags: u8) -> PacketType {
         PacketType {
@@ -62,6 +68,9 @@ impl PacketType {
         }
     }
 
+    /// Creates a packet type with default flags
+    ///
+    /// http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Table_2.2_-
     #[inline]
     pub fn with_default(t: ControlType) -> PacketType {
         match t {
@@ -87,11 +96,13 @@ impl PacketType {
         }
     }
 
+    /// To code
     pub fn to_u8(&self) -> u8 {
-        (self.control_type as u8) << 4
-            | (self.flags & 0x0F)
+        (self.control_type as u8) << 4 | (self.flags & 0x0F)
     }
 
+    /// From code
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     pub fn from_u8(val: u8) -> Result<PacketType, PacketTypeError> {
 
         let type_val = val >> 4;
@@ -106,7 +117,7 @@ impl PacketType {
                 }
             )
         }
-
+        
         match type_val {
             value::CONNECT      => vconst!(0x00, ControlType::Connect),
             value::CONNACK      => vconst!(0x00, ControlType::ConnectAcknowledgement),
@@ -135,6 +146,7 @@ impl PacketType {
     }
 }
 
+/// Parsing packet type errors
 #[derive(Debug)]
 pub enum PacketTypeError {
     ReservedType(u8, u8),
@@ -162,19 +174,20 @@ impl Error for PacketTypeError {
     }
 }
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 mod value {
-    pub const CONNECT: u8 = 1;
-    pub const CONNACK: u8 = 2;
-    pub const PUBLISH: u8 = 3;
-    pub const PUBACK: u8 = 4;
-    pub const PUBREC: u8 = 5;
-    pub const PUBREL: u8 = 6;
-    pub const PUBCOMP: u8 = 7;
-    pub const SUBSCRIBE: u8 = 8;
-    pub const SUBACK: u8 = 9;
+    pub const CONNECT:     u8 = 1;
+    pub const CONNACK:     u8 = 2;
+    pub const PUBLISH:     u8 = 3;
+    pub const PUBACK:      u8 = 4;
+    pub const PUBREC:      u8 = 5;
+    pub const PUBREL:      u8 = 6;
+    pub const PUBCOMP:     u8 = 7;
+    pub const SUBSCRIBE:   u8 = 8;
+    pub const SUBACK:      u8 = 9;
     pub const UNSUBSCRIBE: u8 = 10;
-    pub const UNSUBACK: u8 = 11;
-    pub const PINGREQ: u8 = 12;
-    pub const PINGRESP: u8 = 13;
-    pub const DISCONNECT: u8 = 14;
+    pub const UNSUBACK:    u8 = 11;
+    pub const PINGREQ:     u8 = 12;
+    pub const PINGRESP:    u8 = 13;
+    pub const DISCONNECT:  u8 = 14;
 }

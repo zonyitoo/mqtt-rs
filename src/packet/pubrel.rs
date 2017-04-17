@@ -1,11 +1,13 @@
-use std::io::{Read, Write};
+//! PUBREL
 
+use std::io::{Read, Write};
 
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
 use {Encodable, Decodable};
 
+/// `PUBREL` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct PubrelPacket {
     fixed_header: FixedHeader,
@@ -55,9 +57,9 @@ impl<'a> Packet<'a> for PubrelPacket {
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
         Ok(PubrelPacket {
-            fixed_header: fixed_header,
-            packet_identifier: packet_identifier,
-            payload: (),
-        })
+               fixed_header: fixed_header,
+               packet_identifier: packet_identifier,
+               payload: (),
+           })
     }
 }

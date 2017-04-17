@@ -1,11 +1,11 @@
 use std::io::{Read, Write};
 use std::convert::{From, Into};
-use std::ops::Deref;
 
 use control::variable_header::VariableHeaderError;
 use topic_name::TopicName;
 use {Encodable, Decodable};
 
+/// Topic name wrapper
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TopicNameHeader(TopicName);
 
@@ -21,14 +21,6 @@ impl TopicNameHeader {
 impl Into<TopicName> for TopicNameHeader {
     fn into(self) -> TopicName {
         self.0
-    }
-}
-
-impl Deref for TopicNameHeader {
-    type Target = String;
-
-    fn deref(&self) -> &String {
-        &self.0
     }
 }
 

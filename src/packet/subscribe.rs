@@ -1,3 +1,5 @@
+//! SUBSCRIBE
+
 use std::io::{self, Read, Write};
 use std::string::FromUtf8Error;
 use std::error::Error;
@@ -13,6 +15,7 @@ use {Encodable, Decodable, QualityOfService};
 use encodable::StringEncodeError;
 use topic_filter::{TopicFilter, TopicFilterError};
 
+/// `SUBSCRIBE` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct SubscribePacket {
     fixed_header: FixedHeader,
@@ -74,6 +77,7 @@ impl<'a> Packet<'a> for SubscribePacket {
     }
 }
 
+/// Payload of subscribe packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct SubscribePacketPayload {
     subscribes: Vec<(TopicFilter, QualityOfService)>,

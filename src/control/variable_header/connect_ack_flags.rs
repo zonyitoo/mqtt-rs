@@ -6,6 +6,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use control::variable_header::VariableHeaderError;
 use {Encodable, Decodable};
 
+/// Flags in `CONNACK` packet
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct ConnackFlags {
     pub session_present: bool,
@@ -13,9 +14,7 @@ pub struct ConnackFlags {
 
 impl ConnackFlags {
     pub fn empty() -> ConnackFlags {
-        ConnackFlags {
-            session_present: false,
-        }
+        ConnackFlags { session_present: false }
     }
 }
 
@@ -42,8 +41,6 @@ impl<'a> Decodable<'a> for ConnackFlags {
             return Err(VariableHeaderError::InvalidReservedFlag);
         }
 
-        Ok(ConnackFlags {
-            session_present: code == 1,
-        })
+        Ok(ConnackFlags { session_present: code == 1 })
     }
 }

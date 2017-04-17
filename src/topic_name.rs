@@ -1,8 +1,11 @@
+//! Topic name
+
 use std::io::{Read, Write};
 use std::convert::Into;
 use std::ops::Deref;
 use std::fmt;
 use std::error::Error;
+use std::mem;
 
 use regex::Regex;
 
@@ -20,10 +23,15 @@ fn is_invalid_topic_name(topic_name: &str) -> bool {
     topic_name.is_empty() || topic_name.as_bytes().len() > 65535 || !TOPIC_NAME_VALIDATOR.is_match(&topic_name)
 }
 
+/// Topic name
+///
+/// http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TopicName(String);
 
 impl TopicName {
+    /// Creates a new topic name from string
+    /// Return error if the string is not a valid topic name
     pub fn new<S: Into<String>>(topic_name: S) -> Result<TopicName, TopicNameError> {
         let topic_name = topic_name.into();
         if is_invalid_topic_name(&topic_name) {
@@ -33,12 +41,9 @@ impl TopicName {
         }
     }
 
+    /// Creates a new topic name from string without validation
     pub unsafe fn new_unchecked(topic_name: String) -> TopicName {
         TopicName(topic_name)
-    }
-
-    pub fn is_server_specific(&self) -> bool {
-        self.0.starts_with('$')
     }
 }
 
@@ -49,10 +54,10 @@ impl Into<String> for TopicName {
 }
 
 impl Deref for TopicName {
-    type Target = String;
+    type Target = TopicNameRef;
 
-    fn deref(&self) -> &String {
-        &self.0
+    fn deref(&self) -> &TopicNameRef {
+        unsafe { TopicNameRef::new_unchecked(&self.0) }
     }
 }
 
@@ -80,6 +85,7 @@ impl<'a> Decodable<'a> for TopicName {
     }
 }
 
+/// Errors while parsing topic names
 #[derive(Debug)]
 pub enum TopicNameError {
     StringEncodeError(StringEncodeError),
@@ -108,6 +114,43 @@ impl Error for TopicNameError {
             &TopicNameError::StringEncodeError(ref err) => Some(err),
             &TopicNameError::InvalidTopicName(..) => None,
         }
+    }
+}
+
+/// Reference to a topic name
+#[derive(Debug, Eq, PartialEq)]
+pub struct TopicNameRef(str);
+
+impl TopicNameRef {
+    /// Creates a new topic name from string
+    /// Return error if the string is not a valid topic name
+    pub fn new<S: AsRef<str> + ?Sized>(topic_name: &S) -> Result<&TopicNameRef, TopicNameError> {
+        let topic_name = topic_name.as_ref();
+        if is_invalid_topic_name(&topic_name) {
+            Err(TopicNameError::InvalidTopicName(topic_name.to_owned()))
+        } else {
+            Ok(unsafe { mem::transmute(topic_name) })
+        }
+    }
+
+    /// Creates a new topic name from string without validation
+    pub unsafe fn new_unchecked<S: AsRef<str> + ?Sized>(topic_name: &S) -> &TopicNameRef {
+        mem::transmute(topic_name.as_ref())
+    }
+
+    /// Check if this topic name is only for server.
+    ///
+    /// Topic names that beginning with a '$' character are reserved for servers
+    pub fn is_server_specific(&self) -> bool {
+        self.0.starts_with('$')
+    }
+}
+
+impl Deref for TopicNameRef {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        &self.0
     }
 }
 

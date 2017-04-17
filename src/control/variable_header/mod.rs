@@ -1,3 +1,5 @@
+//! Variable header in MQTT
+
 use std::convert::From;
 use std::error::Error;
 use std::io;
@@ -16,15 +18,16 @@ pub use self::connect_ack_flags::ConnackFlags;
 pub use self::connect_ret_code::ConnectReturnCode;
 pub use self::topic_name::TopicNameHeader;
 
-pub mod packet_identifier;
-pub mod protocol_name;
+mod packet_identifier;
+mod protocol_name;
 pub mod protocol_level;
-pub mod connect_flags;
-pub mod keep_alive;
-pub mod connect_ack_flags;
-pub mod connect_ret_code;
-pub mod topic_name;
+mod connect_flags;
+mod keep_alive;
+mod connect_ack_flags;
+mod connect_ret_code;
+mod topic_name;
 
+/// Errors while decoding variable header
 #[derive(Debug)]
 pub enum VariableHeaderError {
     IoError(io::Error),

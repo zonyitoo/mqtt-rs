@@ -1,9 +1,11 @@
-use std::io::{Read, Write};
+//! DISCONNECT
 
+use std::io::{Read, Write};
 
 use control::{FixedHeader, PacketType, ControlType};
 use packet::{Packet, PacketError};
 
+/// `DISCONNECT` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct DisconnectPacket {
     fixed_header: FixedHeader,
@@ -40,8 +42,8 @@ impl<'a> Packet<'a> for DisconnectPacket {
 
     fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         Ok(DisconnectPacket {
-            fixed_header: fixed_header,
-            payload: (),
-        })
+               fixed_header: fixed_header,
+               payload: (),
+           })
     }
 }

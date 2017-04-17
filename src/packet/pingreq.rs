@@ -1,9 +1,11 @@
-use std::io::{Read, Write};
+//! PINGREQ
 
+use std::io::{Read, Write};
 
 use control::{FixedHeader, PacketType, ControlType};
 use packet::{Packet, PacketError};
 
+/// `PINGREQ` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct PingreqPacket {
     fixed_header: FixedHeader,
@@ -40,8 +42,8 @@ impl<'a> Packet<'a> for PingreqPacket {
 
     fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         Ok(PingreqPacket {
-            fixed_header: fixed_header,
-            payload: (),
-        })
+               fixed_header: fixed_header,
+               payload: (),
+           })
     }
 }

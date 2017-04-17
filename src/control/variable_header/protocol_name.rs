@@ -4,6 +4,21 @@ use std::convert::From;
 use control::variable_header::VariableHeaderError;
 use {Encodable, Decodable};
 
+/// Protocol name in variable header
+///
+/// # Example
+///
+/// ```plain
+/// 7                          3                          0
+/// +--------------------------+--------------------------+
+/// | Length MSB (0)                                      |
+/// | Length LSB (4)                                      |
+/// | 0100                     | 1101                     | 'M'
+/// | 0101                     | 0001                     | 'Q'
+/// | 0101                     | 0100                     | 'T'
+/// | 0101                     | 0100                     | 'T'
+/// +--------------------------+--------------------------+
+/// ```
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ProtocolName(pub String);
 

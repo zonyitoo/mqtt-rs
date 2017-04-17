@@ -1,9 +1,11 @@
-use std::io::{Read, Write};
+//! PINGRESP
 
+use std::io::{Read, Write};
 
 use control::{FixedHeader, PacketType, ControlType};
 use packet::{Packet, PacketError};
 
+/// `PINGRESP` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct PingrespPacket {
     fixed_header: FixedHeader,
@@ -40,8 +42,8 @@ impl<'a> Packet<'a> for PingrespPacket {
 
     fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         Ok(PingrespPacket {
-            fixed_header: fixed_header,
-            payload: (),
-        })
+               fixed_header: fixed_header,
+               payload: (),
+           })
     }
 }

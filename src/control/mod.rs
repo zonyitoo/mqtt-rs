@@ -1,3 +1,4 @@
+//! Control packets
 
 pub use self::packet_type::{PacketType, ControlType};
 pub use self::fixed_header::FixedHeader;

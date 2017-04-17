@@ -1,11 +1,13 @@
-use std::io::{Read, Write};
+//! PUBCOMP
 
+use std::io::{Read, Write};
 
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
 use {Encodable, Decodable};
 
+/// `PUBCOMP` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct PubcompPacket {
     fixed_header: FixedHeader,
@@ -55,9 +57,9 @@ impl<'a> Packet<'a> for PubcompPacket {
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
         Ok(PubcompPacket {
-            fixed_header: fixed_header,
-            packet_identifier: packet_identifier,
-            payload: (),
-        })
+               fixed_header: fixed_header,
+               packet_identifier: packet_identifier,
+               payload: (),
+           })
     }
 }

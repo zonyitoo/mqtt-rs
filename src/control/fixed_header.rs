@@ -1,3 +1,4 @@
+//! Fixed header in MQTT
 
 use std::io::{self, Read, Write};
 use std::convert::From;

@@ -13,6 +13,7 @@ pub const SERVICE_UNAVAILABLE: u8 = 0x03;
 pub const BAD_USER_NAME_OR_PASSWORD: u8 = 0x04;
 pub const NOT_AUTHORIZED: u8 = 0x05;
 
+/// Return code for `CONNACK` packet
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ConnectReturnCode {
     ConnectionAccepted,
@@ -25,6 +26,7 @@ pub enum ConnectReturnCode {
 }
 
 impl ConnectReturnCode {
+    /// Get the code
     pub fn to_u8(&self) -> u8 {
         match *self {
             ConnectReturnCode::ConnectionAccepted => CONNECTION_ACCEPTED,
@@ -37,6 +39,7 @@ impl ConnectReturnCode {
         }
     }
 
+    /// Create `ConnectReturnCode` from code
     pub fn from_u8(code: u8) -> ConnectReturnCode {
         match code {
             CONNECTION_ACCEPTED => ConnectReturnCode::ConnectionAccepted,
@@ -54,8 +57,7 @@ impl<'a> Encodable<'a> for ConnectReturnCode {
     type Err = VariableHeaderError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
-        writer.write_u8(self.to_u8())
-            .map_err(From::from)
+        writer.write_u8(self.to_u8()).map_err(From::from)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -68,7 +70,8 @@ impl<'a> Decodable<'a> for ConnectReturnCode {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ConnectReturnCode, VariableHeaderError> {
-        reader.read_u8()
+        reader
+            .read_u8()
             .map(ConnectReturnCode::from_u8)
             .map_err(From::from)
     }

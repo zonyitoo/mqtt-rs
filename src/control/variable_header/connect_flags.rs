@@ -6,6 +6,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use control::variable_header::VariableHeaderError;
 use {Encodable, Decodable};
 
+/// Flags for `CONNECT` packet
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct ConnectFlags {
     pub user_name: bool,
@@ -32,6 +33,7 @@ impl ConnectFlags {
 impl<'a> Encodable<'a> for ConnectFlags {
     type Err = VariableHeaderError;
 
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
         let code = ((self.user_name as u8) << 7)
             | ((self.password as u8) << 6)
@@ -59,12 +61,12 @@ impl<'a> Decodable<'a> for ConnectFlags {
         }
 
         Ok(ConnectFlags {
-            user_name: (code & 0b1000_0000) != 0,
-            password: (code & 0b0100_0000) != 0,
-            will_retain: (code & 0b0010_0000) != 0,
-            will_qos: (code & 0b0001_1000) >> 3,
-            will_flag: (code & 0b0000_0100) != 0,
-            clean_session: (code & 0b0000_0010) != 0,
-        })
+               user_name: (code & 0b1000_0000) != 0,
+               password: (code & 0b0100_0000) != 0,
+               will_retain: (code & 0b0010_0000) != 0,
+               will_qos: (code & 0b0001_1000) >> 3,
+               will_flag: (code & 0b0000_0100) != 0,
+               clean_session: (code & 0b0000_0010) != 0,
+           })
     }
 }

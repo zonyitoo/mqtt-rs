@@ -1,11 +1,13 @@
-use std::io::{Read, Write};
+//! PUBACK
 
+use std::io::{Read, Write};
 
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
 use {Encodable, Decodable};
 
+/// `PUBACK` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct PubackPacket {
     fixed_header: FixedHeader,
@@ -16,7 +18,8 @@ pub struct PubackPacket {
 impl PubackPacket {
     pub fn new(pkid: u16) -> PubackPacket {
         PubackPacket {
-            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::PublishAcknowledgement), 2),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::PublishAcknowledgement),
+                                           2),
             packet_identifier: PacketIdentifier(pkid),
             payload: (),
         }
@@ -55,9 +58,9 @@ impl<'a> Packet<'a> for PubackPacket {
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
         Ok(PubackPacket {
-            fixed_header: fixed_header,
-            packet_identifier: packet_identifier,
-            payload: (),
-        })
+               fixed_header: fixed_header,
+               packet_identifier: packet_identifier,
+               payload: (),
+           })
     }
 }

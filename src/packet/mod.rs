@@ -1,3 +1,5 @@
+//! Specific packets
+
 use std::io::{self, Read, Write};
 use std::error::Error;
 use std::fmt;
@@ -43,14 +45,20 @@ pub mod suback;
 pub mod unsuback;
 pub mod unsubscribe;
 
+/// Methods for encoding and decoding a packet
 pub trait Packet<'a>: Sized {
     type Payload: Encodable<'a> + Decodable<'a> + 'a;
 
+    /// Get a `FixedHeader` of this packet
     fn fixed_header(&self) -> &FixedHeader;
+    /// Get payload
     fn payload(&self) -> &Self::Payload;
 
+    /// Encode variable headers to writer
     fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>>;
+    /// Length of bytes after encoding variable header
     fn encoded_variable_headers_length(&self) -> u32;
+    /// Deocde packet with a `FixedHeader`
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>>;
 }
 
@@ -61,13 +69,13 @@ impl<'a, T: Packet<'a> + fmt::Debug + 'a> Encodable<'a> for T {
         try!(self.fixed_header().encode(writer));
         try!(self.encode_variable_headers(writer));
 
-        self.payload().encode(writer).map_err(PacketError::PayloadError)
+        self.payload()
+            .encode(writer)
+            .map_err(PacketError::PayloadError)
     }
 
     fn encoded_length(&self) -> u32 {
-        self.fixed_header().encoded_length()
-            + self.encoded_variable_headers_length()
-            + self.payload().encoded_length()
+        self.fixed_header().encoded_length() + self.encoded_variable_headers_length() + self.payload().encoded_length()
     }
 }
 
@@ -75,19 +83,18 @@ impl<'a, T: Packet<'a> + fmt::Debug + 'a> Decodable<'a> for T {
     type Err = PacketError<'a, T>;
     type Cond = FixedHeader;
 
-    fn decode_with<R: Read>(reader: &mut R, fixed_header: Option<FixedHeader>)
-            -> Result<Self, PacketError<'a, Self>> {
-        let fixed_header: FixedHeader =
-            if let Some(hdr) = fixed_header {
-                hdr
-            } else {
-                try!(Decodable::decode(reader))
-            };
+    fn decode_with<R: Read>(reader: &mut R, fixed_header: Option<FixedHeader>) -> Result<Self, PacketError<'a, Self>> {
+        let fixed_header: FixedHeader = if let Some(hdr) = fixed_header {
+            hdr
+        } else {
+            try!(Decodable::decode(reader))
+        };
 
         <Self as Packet>::decode_packet(reader, fixed_header)
     }
 }
 
+/// Parsing errors for packet
 #[derive(Debug)]
 pub enum PacketError<'a, T: Packet<'a>> {
     FixedHeaderError(FixedHeaderError),
@@ -171,6 +178,7 @@ impl<'a, T: Packet<'a>> From<TopicNameError> for PacketError<'a, T> {
 
 macro_rules! impl_variable_packet {
     ($($name:ident & $errname:ident => $hdr:ident,)+) => {
+        /// Variable packet
         #[derive(Debug, Eq, PartialEq)]
         pub enum VariablePacket {
             $(
@@ -246,6 +254,7 @@ macro_rules! impl_variable_packet {
             }
         }
 
+        /// Parsing errors for variable packet
         #[derive(Debug)]
         pub enum VariablePacketError<'a> {
             FixedHeaderError(FixedHeaderError),

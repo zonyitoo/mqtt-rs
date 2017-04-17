@@ -1,7 +1,8 @@
+//! CONNECT
+
 use std::io::{self, Read, Write};
 use std::error::Error;
 use std::fmt;
-
 
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::{ProtocolName, ProtocolLevel, ConnectFlags, KeepAlive};
@@ -11,6 +12,7 @@ use topic_name::{TopicName, TopicNameError};
 use {Encodable, Decodable};
 use encodable::{StringEncodeError, VarBytes};
 
+/// `CONNECT` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct ConnectPacket {
     fixed_header: FixedHeader,
@@ -113,11 +115,11 @@ impl ConnectPacket {
             .as_ref()
             .map(|x| &x[..])
             .and_then(|topic| {
-                self.payload
-                    .will_message
-                    .as_ref()
-                    .map(|msg| (topic, &msg.0))
-            })
+                          self.payload
+                              .will_message
+                              .as_ref()
+                              .map(|msg| (topic, &msg.0))
+                      })
     }
 
     pub fn will_retain(&self) -> bool {
@@ -169,16 +171,17 @@ impl<'a> Packet<'a> for ConnectPacket {
         let payload: ConnectPacketPayload = try!(Decodable::decode_with(reader, Some(&flags)).map_err(PacketError::PayloadError));
 
         Ok(ConnectPacket {
-            fixed_header: fixed_header,
-            protocol_name: protoname,
-            protocol_level: protocol_level,
-            flags: flags,
-            keep_alive: keep_alive,
-            payload: payload,
-        })
+               fixed_header: fixed_header,
+               protocol_name: protoname,
+               protocol_level: protocol_level,
+               flags: flags,
+               keep_alive: keep_alive,
+               payload: payload,
+           })
     }
 }
 
+/// Payloads for connect packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct ConnectPacketPayload {
     client_identifier: String,
@@ -226,9 +229,23 @@ impl<'a> Encodable<'a> for ConnectPacketPayload {
     }
 
     fn encoded_length(&self) -> u32 {
-        self.client_identifier.encoded_length() + self.will_topic.as_ref().map(|t| t.encoded_length()).unwrap_or(0) +
-        self.will_message.as_ref().map(|t| t.encoded_length()).unwrap_or(0) + self.user_name.as_ref().map(|t| t.encoded_length()).unwrap_or(0) +
-        self.password.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
+        self.client_identifier.encoded_length() +
+        self.will_topic
+            .as_ref()
+            .map(|t| t.encoded_length())
+            .unwrap_or(0) +
+        self.will_message
+            .as_ref()
+            .map(|t| t.encoded_length())
+            .unwrap_or(0) +
+        self.user_name
+            .as_ref()
+            .map(|t| t.encoded_length())
+            .unwrap_or(0) +
+        self.password
+            .as_ref()
+            .map(|t| t.encoded_length())
+            .unwrap_or(0)
     }
 }
 
@@ -272,12 +289,12 @@ impl<'a> Decodable<'a> for ConnectPacketPayload {
         };
 
         Ok(ConnectPacketPayload {
-            client_identifier: ident,
-            will_topic: topic,
-            will_message: msg,
-            user_name: uname,
-            password: pwd,
-        })
+               client_identifier: ident,
+               will_topic: topic,
+               will_message: msg,
+               user_name: uname,
+               password: pwd,
+           })
     }
 }
 

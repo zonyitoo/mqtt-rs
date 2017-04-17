@@ -1,11 +1,13 @@
-use std::io::{Read, Write};
+//! CONNACK
 
+use std::io::{Read, Write};
 
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::{ConnackFlags, ConnectReturnCode};
 use packet::{Packet, PacketError};
 use {Encodable, Decodable};
 
+/// `CONNACK` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct ConnackPacket {
     fixed_header: FixedHeader,
@@ -17,7 +19,8 @@ pub struct ConnackPacket {
 impl ConnackPacket {
     pub fn new(session_present: bool, ret_code: ConnectReturnCode) -> ConnackPacket {
         ConnackPacket {
-            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement),
+                                           2),
             flags: ConnackFlags { session_present: session_present },
             ret_code: ret_code,
             payload: (),
@@ -59,11 +62,11 @@ impl<'a> Packet<'a> for ConnackPacket {
         let code: ConnectReturnCode = try!(Decodable::decode(reader));
 
         Ok(ConnackPacket {
-            fixed_header: fixed_header,
-            flags: flags,
-            ret_code: code,
-            payload: (),
-        })
+               fixed_header: fixed_header,
+               flags: flags,
+               ret_code: code,
+               payload: (),
+           })
     }
 }
 

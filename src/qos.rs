@@ -1,3 +1,5 @@
+//! QoS (Quality of Services)
+
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub enum QualityOfService {

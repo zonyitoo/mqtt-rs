@@ -69,7 +69,7 @@ fn main() {
     let channel_filters: Vec<(TopicFilter, QualityOfService)> = matches
         .values_of("SUBSCRIBE")
         .unwrap()
-        .map(|c| (TopicFilter::new_checked(c.to_string()).unwrap(), QualityOfService::Level0))
+        .map(|c| (TopicFilter::new(c.to_string()).unwrap(), QualityOfService::Level0))
         .collect();
 
     let keep_alive = 10;

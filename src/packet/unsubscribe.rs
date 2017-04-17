@@ -1,3 +1,5 @@
+//! UNSUBSCRIBE
+
 use std::io::{self, Read, Write};
 use std::string::FromUtf8Error;
 use std::error::Error;
@@ -11,6 +13,7 @@ use {Encodable, Decodable};
 use encodable::StringEncodeError;
 use topic_filter::{TopicFilter, TopicFilterError};
 
+/// `UNSUBSCRIBE` packet
 #[derive(Debug, Eq, PartialEq)]
 pub struct UnsubscribePacket {
     fixed_header: FixedHeader,

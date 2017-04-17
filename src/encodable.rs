@@ -1,3 +1,5 @@
+//! Encodable traits
+
 use std::io::{self, Read, Write};
 use std::error::Error;
 use std::string::FromUtf8Error;
@@ -7,21 +9,27 @@ use std::marker::Sized;
 
 use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
 
+/// Methods for encoding an Object to bytes according to MQTT specification
 pub trait Encodable<'a> {
     type Err: Error + 'a;
 
+    /// Encodes to writer
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), Self::Err>;
+    /// Length of bytes after encoded
     fn encoded_length(&self) -> u32;
 }
 
+/// Methods for decoding bytes to an Object according to MQTT specification
 pub trait Decodable<'a>: Sized {
     type Err: Error + 'a;
     type Cond;
 
+    /// Decodes object from reader
     fn decode<R: Read>(reader: &mut R) -> Result<Self, Self::Err> {
         Self::decode_with(reader, None)
     }
 
+    /// Decodes object with additional data (or hints)
     fn decode_with<R: Read>(reader: &mut R, cond: Option<Self::Cond>) -> Result<Self, Self::Err>;
 }
 
@@ -139,6 +147,7 @@ impl<'a> Decodable<'a> for () {
     }
 }
 
+/// Bytes that encoded with length
 #[derive(Debug, Eq, PartialEq)]
 pub struct VarBytes(pub Vec<u8>);
 
@@ -171,6 +180,7 @@ impl<'a> Decodable<'a> for VarBytes {
     }
 }
 
+/// Error that indicates we won't have any errors
 #[derive(Debug)]
 pub struct NoError;
 
@@ -186,6 +196,7 @@ impl Error for NoError {
     }
 }
 
+/// Errors while parsing to a string
 #[derive(Debug)]
 pub enum StringEncodeError {
     IoError(io::Error),

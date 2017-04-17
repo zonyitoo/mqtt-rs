@@ -10,8 +10,16 @@ use regex::Regex;
 use {Encodable, Decodable};
 use encodable::StringEncodeError;
 
-const VALIDATE_TOPIC_FILTER_REGEX: &'static str =
-    r"^(#|((\+|\$?[^/\$\+#]+)?(/(\+|[^/\$\+#]+))*?(/(\+|#|[^/\$\+#]+))?))$";
+const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(#|((\+|\$?[^/\$\+#]+)?(/(\+|[^/\$\+#]+))*?(/(\+|#|[^/\$\+#]+))?))$";
+
+lazy_static! {
+    static ref TOPIC_FILTER_VALIDATOR: Regex = Regex::new(VALIDATE_TOPIC_FILTER_REGEX).unwrap();
+}
+
+#[inline]
+fn is_invalid_topic_filter(topic: &str) -> bool {
+    topic.is_empty() || topic.as_bytes().len() > 65535 || !TOPIC_FILTER_VALIDATOR.is_match(&topic)
+}
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TopicFilter(String);
@@ -19,8 +27,7 @@ pub struct TopicFilter(String);
 impl TopicFilter {
     pub fn new_checked<S: Into<String>>(topic: S) -> Result<TopicFilter, TopicFilterError> {
         let topic = topic.into();
-        let re = Regex::new(VALIDATE_TOPIC_FILTER_REGEX).unwrap();
-        if topic.is_empty() || topic.as_bytes().len() > 65535 || !re.is_match(&topic[..]) {
+        if is_invalid_topic_filter(&topic) {
             Err(TopicFilterError::InvalidTopicFilter(topic))
         } else {
             Ok(TopicFilter(topic))
@@ -36,7 +43,9 @@ impl<'a> Encodable<'a> for TopicFilter {
     type Err = TopicFilterError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicFilterError> {
-        (&self.0[..]).encode(writer).map_err(TopicFilterError::StringEncodeError)
+        (&self.0[..])
+            .encode(writer)
+            .map_err(TopicFilterError::StringEncodeError)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -67,9 +76,8 @@ pub struct TopicFilterRef(str);
 
 impl TopicFilterRef {
     pub fn new_checked<S: AsRef<str> + ?Sized>(topic: &S) -> Result<&TopicFilterRef, TopicFilterError> {
-        let re = Regex::new(VALIDATE_TOPIC_FILTER_REGEX).unwrap();
         let topic = topic.as_ref();
-        if topic.is_empty() || topic.as_bytes().len() > 65535 || !re.is_match(&topic[..]) {
+        if is_invalid_topic_filter(topic) {
             Err(TopicFilterError::InvalidTopicFilter(topic.to_owned()))
         } else {
             Ok(unsafe { mem::transmute(topic) })

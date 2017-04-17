@@ -5,7 +5,7 @@ use std::fmt;
 use std::convert::From;
 use std::marker::Sized;
 
-use byteorder::{self, BigEndian, WriteBytesExt, ReadBytesExt};
+use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
 
 pub trait Encodable<'a> {
     type Err: Error + 'a;
@@ -31,7 +31,8 @@ impl<'a> Encodable<'a> for &'a str {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
         assert!(self.as_bytes().len() <= u16::max_value() as usize);
 
-        writer.write_u16::<BigEndian>(self.as_bytes().len() as u16)
+        writer
+            .write_u16::<BigEndian>(self.as_bytes().len() as u16)
             .map_err(From::from)
             .and_then(|_| writer.write_all(self.as_bytes()))
             .map_err(StringEncodeError::IoError)
@@ -223,12 +224,6 @@ impl Error for StringEncodeError {
 impl From<io::Error> for StringEncodeError {
     fn from(err: io::Error) -> StringEncodeError {
         StringEncodeError::IoError(err)
-    }
-}
-
-impl From<byteorder::Error> for StringEncodeError {
-    fn from(err: byteorder::Error) -> StringEncodeError {
-        StringEncodeError::IoError(From::from(err))
     }
 }
 

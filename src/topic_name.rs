@@ -9,15 +9,24 @@ use regex::Regex;
 use encodable::StringEncodeError;
 use {Encodable, Decodable};
 
-const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^(\$?[^/\$]+)?(/[^/\$]+)*$";
+const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^(\$?[^/\$]+)?(/[^/\$]*)*$";
+
+lazy_static! {
+    static ref TOPIC_NAME_VALIDATOR: Regex = Regex::new(TOPIC_NAME_VALIDATE_REGEX).unwrap();
+}
+
+#[inline]
+fn is_invalid_topic_name(topic_name: &str) -> bool {
+    topic_name.is_empty() || topic_name.as_bytes().len() > 65535 || !TOPIC_NAME_VALIDATOR.is_match(&topic_name)
+}
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TopicName(String);
 
 impl TopicName {
-    pub fn new(topic_name: String) -> Result<TopicName, TopicNameError> {
-        let re = Regex::new(TOPIC_NAME_VALIDATE_REGEX).unwrap();
-        if topic_name.is_empty() || topic_name.as_bytes().len() > 65535 || !re.is_match(&topic_name[..]) {
+    pub fn new<S: Into<String>>(topic_name: S) -> Result<TopicName, TopicNameError> {
+        let topic_name = topic_name.into();
+        if is_invalid_topic_name(&topic_name) {
             Err(TopicNameError::InvalidTopicName(topic_name))
         } else {
             Ok(TopicName(topic_name))
@@ -47,19 +56,13 @@ impl Deref for TopicName {
     }
 }
 
-pub struct TopicNameRef<'a>(&'a str);
-
-impl<'a> TopicNameRef<'a> {
-    pub fn is_server_specific(&self) -> bool {
-        self.0.starts_with('$')
-    }
-}
-
 impl<'a> Encodable<'a> for TopicName {
     type Err = TopicNameError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicNameError> {
-        (&self.0[..]).encode(writer).map_err(TopicNameError::StringEncodeError)
+        (&self.0[..])
+            .encode(writer)
+            .map_err(TopicNameError::StringEncodeError)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -72,7 +75,8 @@ impl<'a> Decodable<'a> for TopicName {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicName, TopicNameError> {
-        TopicName::new(try!(Decodable::decode(reader).map_err(TopicNameError::StringEncodeError)))
+        let topic_name: String = try!(Decodable::decode(reader).map_err(TopicNameError::StringEncodeError));
+        TopicName::new(topic_name)
     }
 }
 
@@ -112,11 +116,22 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_topic_name_basic() {
+    fn topic_name_sys() {
         let topic_name = "$SYS".to_owned();
         TopicName::new(topic_name).unwrap();
 
         let topic_name = "$SYS/broker/connection/test.cosm-energy/state".to_owned();
         TopicName::new(topic_name).unwrap();
+    }
+
+    #[test]
+    fn topic_name_slash() {
+        TopicName::new("/").unwrap();
+    }
+
+    #[test]
+    fn topic_name_basic() {
+        TopicName::new("/finance").unwrap();
+        TopicName::new("/finance//def").unwrap();
     }
 }

@@ -4,8 +4,6 @@ use std::error::Error;
 use std::fmt;
 use std::convert::From;
 
-use byteorder;
-
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
@@ -65,12 +63,12 @@ impl<'a> Packet<'a> for UnsubscribePacket {
         let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
         let payload: UnsubscribePacketPayload = try!(UnsubscribePacketPayload::decode_with(reader,
                                                                                            Some(fixed_header.remaining_length - packet_identifier.encoded_length()))
-            .map_err(PacketError::PayloadError));
+                                                             .map_err(PacketError::PayloadError));
         Ok(UnsubscribePacket {
-            fixed_header: fixed_header,
-            packet_identifier: packet_identifier,
-            payload: payload,
-        })
+               fixed_header: fixed_header,
+               packet_identifier: packet_identifier,
+               payload: payload,
+           })
     }
 }
 
@@ -170,9 +168,9 @@ impl From<StringEncodeError> for UnsubscribePacketPayloadError {
     }
 }
 
-impl From<byteorder::Error> for UnsubscribePacketPayloadError {
-    fn from(err: byteorder::Error) -> UnsubscribePacketPayloadError {
-        UnsubscribePacketPayloadError::IoError(From::from(err))
+impl From<io::Error> for UnsubscribePacketPayloadError {
+    fn from(err: io::Error) -> UnsubscribePacketPayloadError {
+        UnsubscribePacketPayloadError::IoError(err)
     }
 }
 

@@ -4,8 +4,6 @@ use std::io;
 use std::fmt;
 use std::string::FromUtf8Error;
 
-use byteorder;
-
 use encodable::StringEncodeError;
 use topic_name::TopicNameError;
 
@@ -39,12 +37,6 @@ pub enum VariableHeaderError {
 impl From<io::Error> for VariableHeaderError {
     fn from(err: io::Error) -> VariableHeaderError {
         VariableHeaderError::IoError(err)
-    }
-}
-
-impl From<byteorder::Error> for VariableHeaderError {
-    fn from(err: byteorder::Error) -> VariableHeaderError {
-        VariableHeaderError::IoError(From::from(err))
     }
 }
 

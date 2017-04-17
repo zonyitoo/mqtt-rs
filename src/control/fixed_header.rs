@@ -4,7 +4,7 @@ use std::convert::From;
 use std::error::Error;
 use std::fmt;
 
-use byteorder::{self, ReadBytesExt, WriteBytesExt};
+use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use control::packet_type::{PacketType, PacketTypeError};
 use {Encodable, Decodable};
@@ -68,16 +68,15 @@ impl<'a> Encodable<'a> for FixedHeader {
     }
 
     fn encoded_length(&self) -> u32 {
-        let rem_size =
-            if self.remaining_length >= 2_097_152 {
-                4
-            } else if self.remaining_length >= 16_384 {
-                3
-            } else if self.remaining_length >= 128 {
-                2
-            } else {
-                1
-            };
+        let rem_size = if self.remaining_length >= 2_097_152 {
+            4
+        } else if self.remaining_length >= 16_384 {
+            3
+        } else if self.remaining_length >= 128 {
+            2
+        } else {
+            1
+        };
         1 + rem_size
     }
 }
@@ -108,10 +107,8 @@ impl<'a> Decodable<'a> for FixedHeader {
 
         match PacketType::from_u8(type_val) {
             Ok(packet_type) => Ok(FixedHeader::new(packet_type, remaining_len)),
-            Err(PacketTypeError::UndefinedType(ty, _))
-                => Err(FixedHeaderError::Unrecognized(ty, remaining_len)),
-            Err(PacketTypeError::ReservedType(ty, _))
-                => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
+            Err(PacketTypeError::UndefinedType(ty, _)) => Err(FixedHeaderError::Unrecognized(ty, remaining_len)),
+            Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
             Err(err) => Err(From::from(err)),
         }
     }
@@ -135,12 +132,6 @@ impl From<io::Error> for FixedHeaderError {
 impl From<PacketTypeError> for FixedHeaderError {
     fn from(err: PacketTypeError) -> FixedHeaderError {
         FixedHeaderError::PacketTypeError(err)
-    }
-}
-
-impl From<byteorder::Error> for FixedHeaderError {
-    fn from(err: byteorder::Error) -> FixedHeaderError {
-        FixedHeaderError::IoError(From::from(err))
     }
 }
 
@@ -201,7 +192,8 @@ mod test {
         let stream = b"\x10\xc1\x02";
         let mut cursor = Cursor::new(&stream[..]);
         let header = FixedHeader::decode(&mut cursor).unwrap();
-        assert_eq!(header.packet_type, PacketType::with_default(ControlType::Connect));
+        assert_eq!(header.packet_type,
+                   PacketType::with_default(ControlType::Connect));
         assert_eq!(header.remaining_length, 321);
     }
 

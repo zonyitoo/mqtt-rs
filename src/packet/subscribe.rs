@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fmt;
 use std::convert::From;
 
-use byteorder::{self, WriteBytesExt, ReadBytesExt};
+use byteorder::{WriteBytesExt, ReadBytesExt};
 
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::PacketIdentifier;
@@ -27,8 +27,7 @@ impl SubscribePacket {
             packet_identifier: PacketIdentifier(pkid),
             payload: SubscribePacketPayload::new(subscribes),
         };
-        pk.fixed_header.remaining_length =
-            pk.encoded_variable_headers_length() + pk.payload.encoded_length();
+        pk.fixed_header.remaining_length = pk.encoded_variable_headers_length() + pk.payload.encoded_length();
         pk
     }
 
@@ -64,15 +63,14 @@ impl<'a> Packet<'a> for SubscribePacket {
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
-        let payload: SubscribePacketPayload =
-            try!(SubscribePacketPayload::decode_with(reader, Some(fixed_header.remaining_length
-                                                                - packet_identifier.encoded_length()))
-                    .map_err(PacketError::PayloadError));
+        let payload: SubscribePacketPayload = try!(SubscribePacketPayload::decode_with(reader,
+                                                                                       Some(fixed_header.remaining_length - packet_identifier.encoded_length()))
+                                                           .map_err(PacketError::PayloadError));
         Ok(SubscribePacket {
-            fixed_header: fixed_header,
-            packet_identifier: packet_identifier,
-            payload: payload,
-        })
+               fixed_header: fixed_header,
+               packet_identifier: packet_identifier,
+               payload: payload,
+           })
     }
 }
 
@@ -83,9 +81,7 @@ pub struct SubscribePacketPayload {
 
 impl SubscribePacketPayload {
     pub fn new(subs: Vec<(TopicFilter, QualityOfService)>) -> SubscribePacketPayload {
-        SubscribePacketPayload {
-            subscribes: subs,
-        }
+        SubscribePacketPayload { subscribes: subs }
     }
 
     pub fn subscribes(&self) -> &[(TopicFilter, QualityOfService)] {
@@ -106,7 +102,8 @@ impl<'a> Encodable<'a> for SubscribePacketPayload {
     }
 
     fn encoded_length(&self) -> u32 {
-        self.subscribes.iter()
+        self.subscribes
+            .iter()
             .fold(0, |b, a| b + a.0.encoded_length() + 1)
     }
 }
@@ -115,8 +112,7 @@ impl<'a> Decodable<'a> for SubscribePacketPayload {
     type Err = SubscribePacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R, payload_len: Option<u32>)
-            -> Result<SubscribePacketPayload, SubscribePacketPayloadError> {
+    fn decode_with<R: Read>(reader: &mut R, payload_len: Option<u32>) -> Result<SubscribePacketPayload, SubscribePacketPayloadError> {
         let mut payload_len = payload_len.expect("Must provide payload length");
         let mut subs = Vec::new();
 
@@ -192,8 +188,8 @@ impl From<StringEncodeError> for SubscribePacketPayloadError {
     }
 }
 
-impl From<byteorder::Error> for SubscribePacketPayloadError {
-    fn from(err: byteorder::Error) -> SubscribePacketPayloadError {
-        SubscribePacketPayloadError::IoError(From::from(err))
+impl From<io::Error> for SubscribePacketPayloadError {
+    fn from(err: io::Error) -> SubscribePacketPayloadError {
+        SubscribePacketPayloadError::IoError(err)
     }
 }

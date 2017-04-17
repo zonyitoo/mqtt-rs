@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt;
 use std::convert::From;
 
-use byteorder::{self, WriteBytesExt, ReadBytesExt};
+use byteorder::{WriteBytesExt, ReadBytesExt};
 
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::PacketIdentifier;
@@ -13,10 +13,10 @@ use {Encodable, Decodable};
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum SubscribeReturnCode {
-    MaximumQoSLevel0    = 0x00,
-    MaximumQoSLevel1    = 0x01,
-    MaximumQoSLevel2    = 0x02,
-    Failure             = 0x80,
+    MaximumQoSLevel0 = 0x00,
+    MaximumQoSLevel1 = 0x01,
+    MaximumQoSLevel2 = 0x02,
+    Failure = 0x80,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -29,12 +29,12 @@ pub struct SubackPacket {
 impl SubackPacket {
     pub fn new(pkid: u16, subscribes: Vec<SubscribeReturnCode>) -> SubackPacket {
         let mut pk = SubackPacket {
-            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::SubscribeAcknowledgement), 0),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::SubscribeAcknowledgement),
+                                           0),
             packet_identifier: PacketIdentifier(pkid),
             payload: SubackPacketPayload::new(subscribes),
         };
-        pk.fixed_header.remaining_length =
-            pk.encoded_variable_headers_length() + pk.payload.encoded_length();
+        pk.fixed_header.remaining_length = pk.encoded_variable_headers_length() + pk.payload.encoded_length();
         pk
     }
 
@@ -70,15 +70,14 @@ impl<'a> Packet<'a> for SubackPacket {
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
         let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
-        let payload: SubackPacketPayload =
-            try!(SubackPacketPayload::decode_with(reader, Some(fixed_header.remaining_length
-                                                                - packet_identifier.encoded_length()))
-                    .map_err(PacketError::PayloadError));
+        let payload: SubackPacketPayload = try!(SubackPacketPayload::decode_with(reader,
+                                                                                 Some(fixed_header.remaining_length - packet_identifier.encoded_length()))
+                                                        .map_err(PacketError::PayloadError));
         Ok(SubackPacket {
-            fixed_header: fixed_header,
-            packet_identifier: packet_identifier,
-            payload: payload,
-        })
+               fixed_header: fixed_header,
+               packet_identifier: packet_identifier,
+               payload: payload,
+           })
     }
 }
 
@@ -89,9 +88,7 @@ pub struct SubackPacketPayload {
 
 impl SubackPacketPayload {
     pub fn new(subs: Vec<SubscribeReturnCode>) -> SubackPacketPayload {
-        SubackPacketPayload {
-            subscribes: subs,
-        }
+        SubackPacketPayload { subscribes: subs }
     }
 
     pub fn subscribes(&self) -> &[SubscribeReturnCode] {
@@ -119,8 +116,7 @@ impl<'a> Decodable<'a> for SubackPacketPayload {
     type Err = SubackPacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R, payload_len: Option<u32>)
-            -> Result<SubackPacketPayload, SubackPacketPayloadError> {
+    fn decode_with<R: Read>(reader: &mut R, payload_len: Option<u32>) -> Result<SubackPacketPayload, SubackPacketPayloadError> {
         let payload_len = payload_len.expect("Must provide payload length");
         let mut subs = Vec::new();
 
@@ -150,8 +146,7 @@ impl fmt::Display for SubackPacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &SubackPacketPayloadError::IoError(ref err) => err.fmt(f),
-            &SubackPacketPayloadError::InvalidSubscribeReturnCode(code) =>
-                write!(f, "Invalid subscribe return code {}", code),
+            &SubackPacketPayloadError::InvalidSubscribeReturnCode(code) => write!(f, "Invalid subscribe return code {}", code),
         }
     }
 }
@@ -172,8 +167,8 @@ impl Error for SubackPacketPayloadError {
     }
 }
 
-impl From<byteorder::Error> for SubackPacketPayloadError {
-    fn from(err: byteorder::Error) -> SubackPacketPayloadError {
-        SubackPacketPayloadError::IoError(From::from(err))
+impl From<io::Error> for SubackPacketPayloadError {
+    fn from(err: io::Error) -> SubackPacketPayloadError {
+        SubackPacketPayloadError::IoError(err)
     }
 }

@@ -8,9 +8,9 @@ use mqtt::TopicName;
 
 fn main() {
     // Create a new Publish packet
-    let packet = PublishPacket::new(TopicName::new("mqtt/learning".to_owned()).unwrap(),
+    let packet = PublishPacket::new(TopicName::new("mqtt/learning").unwrap(),
                                     QoSWithPacketIdentifier::Level2(10),
-                                    b"Hello MQTT!".to_vec());
+                                    "Hello MQTT!");
 
     // Encode
     let mut buf = Vec::new();

@@ -55,11 +55,13 @@ impl<'a> Encodable<'a> for &'a [u8] {
     type Err = io::Error;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
-        writer.write_all(self)
+        writer.write_u16::<BigEndian>(self.len() as u16)
+            .map_err(From::from)
+            .and_then(|_| writer.write_all(self))
     }
 
     fn encoded_length(&self) -> u32 {
-        self.len() as u32
+        self.len() as u32 + 2
     }
 }
 
@@ -110,6 +112,7 @@ impl<'a> Decodable<'a> for Vec<u8> {
     fn decode_with<R: Read>(reader: &mut R, length: Option<u32>) -> Result<Vec<u8>, io::Error> {
         match length {
             Some(length) => {
+                try!(reader.read_u16::<BigEndian>()); //Throw away the initial bytes specifying length
                 let mut buf = Vec::with_capacity(length as usize);
                 unsafe {
                     buf.set_len(length as usize);
@@ -118,7 +121,8 @@ impl<'a> Decodable<'a> for Vec<u8> {
                 Ok(buf)
             }
             None => {
-                let mut buf = Vec::new();
+                let length = try!(reader.read_u16::<BigEndian>());
+                let mut buf = Vec::with_capacity(length as usize);
                 try!(reader.read_to_end(&mut buf));
                 Ok(buf)
             }

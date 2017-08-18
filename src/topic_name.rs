@@ -12,7 +12,7 @@ use regex::Regex;
 use encodable::StringEncodeError;
 use {Encodable, Decodable};
 
-const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^(\$?[^/\$]+)?(/[^/\$]*)*$";
+const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^[^#+]+$";
 
 lazy_static! {
     static ref TOPIC_NAME_VALIDATOR: Regex = Regex::new(TOPIC_NAME_VALIDATE_REGEX).unwrap();

@@ -13,7 +13,7 @@ use {Encodable, Decodable};
 use encodable::StringEncodeError;
 use topic_name::TopicNameRef;
 
-const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(#|((\+|\$?[^/\$\+#]+)?(/(\+|[^/\$\+#]+))*?(/(\+|#|[^/\$\+#]+))?))$";
+const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(([^+#]*|\+)(/([^+#]*|\+))*(/#)?|#)$";
 
 lazy_static! {
     static ref TOPIC_FILTER_VALIDATOR: Regex = Regex::new(VALIDATE_TOPIC_FILTER_REGEX).unwrap();

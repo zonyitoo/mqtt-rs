@@ -7,6 +7,7 @@ use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
 use topic_name::TopicName;
 use {Encodable, Decodable};
+use qos::QualityOfService;
 
 /// QoS with identifier pairs
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -14,6 +15,16 @@ pub enum QoSWithPacketIdentifier {
     Level0,
     Level1(u16),
     Level2(u16),
+}
+
+impl QoSWithPacketIdentifier {
+    pub fn new(qos: QualityOfService, id: u16) -> QoSWithPacketIdentifier {
+        match (qos, id) {
+            (QualityOfService::Level0, _) => QoSWithPacketIdentifier::Level0,
+            (QualityOfService::Level1, id) => QoSWithPacketIdentifier::Level1(id),
+            (QualityOfService::Level2, id) => QoSWithPacketIdentifier::Level2(id),
+        }
+    }
 }
 
 /// `PUBLISH` packet

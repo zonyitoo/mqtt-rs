@@ -4,12 +4,14 @@ use std::io::{self, Read, Write};
 use std::error::Error;
 use std::fmt;
 use std::convert::From;
+use std::cmp::Ordering;
 
 use byteorder::{WriteBytesExt, ReadBytesExt};
 
 use control::{FixedHeader, PacketType, ControlType};
 use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
+use qos::QualityOfService;
 use {Encodable, Decodable};
 
 /// Subscribe code
@@ -20,6 +22,33 @@ pub enum SubscribeReturnCode {
     MaximumQoSLevel1 = 0x01,
     MaximumQoSLevel2 = 0x02,
     Failure = 0x80,
+}
+
+impl PartialOrd for SubscribeReturnCode {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        use self::SubscribeReturnCode::*;
+        match (self, other) {
+            (&Failure, _) => None,
+            (_, &Failure) => None,
+            (&MaximumQoSLevel0, &MaximumQoSLevel0) => Some(Ordering::Equal),
+            (&MaximumQoSLevel1, &MaximumQoSLevel1) => Some(Ordering::Equal),
+            (&MaximumQoSLevel2, &MaximumQoSLevel2) => Some(Ordering::Equal),
+            (&MaximumQoSLevel0, _) => Some(Ordering::Less),
+            (&MaximumQoSLevel1, &MaximumQoSLevel0) => Some(Ordering::Greater),
+            (&MaximumQoSLevel1, &MaximumQoSLevel2) => Some(Ordering::Less),
+            (&MaximumQoSLevel2, _) => Some(Ordering::Greater),
+        }
+    }
+}
+
+impl From<QualityOfService> for SubscribeReturnCode {
+    fn from(qos: QualityOfService) -> Self {
+        match qos {
+            QualityOfService::Level0 => SubscribeReturnCode::MaximumQoSLevel0,
+            QualityOfService::Level1 => SubscribeReturnCode::MaximumQoSLevel1,
+            QualityOfService::Level2 => SubscribeReturnCode::MaximumQoSLevel2,
+        }
+    }
 }
 
 /// `SUBACK` packet

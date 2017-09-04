@@ -1,18 +1,18 @@
 //! SUBSCRIBE
 
-use std::io::{self, Read, Write};
-use std::string::FromUtf8Error;
+use std::convert::From;
 use std::error::Error;
 use std::fmt;
-use std::convert::From;
+use std::io::{self, Read, Write};
+use std::string::FromUtf8Error;
 
-use byteorder::{WriteBytesExt, ReadBytesExt};
+use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use control::{FixedHeader, PacketType, ControlType};
+use {Decodable, Encodable, QualityOfService};
+use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::PacketIdentifier;
-use packet::{Packet, PacketError};
-use {Encodable, Decodable, QualityOfService};
 use encodable::StringEncodeError;
+use packet::{Packet, PacketError};
 use topic_filter::{TopicFilter, TopicFilterError};
 
 /// `SUBSCRIBE` packet
@@ -55,7 +55,7 @@ impl<'a> Packet<'a> for SubscribePacket {
     }
 
     fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
-        try!(self.packet_identifier.encode(writer));
+        self.packet_identifier.encode(writer)?;
 
         Ok(())
     }
@@ -65,10 +65,12 @@ impl<'a> Packet<'a> for SubscribePacket {
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
-        let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
-        let payload: SubscribePacketPayload = try!(SubscribePacketPayload::decode_with(reader,
-                                                                                       Some(fixed_header.remaining_length - packet_identifier.encoded_length()))
-                                                           .map_err(PacketError::PayloadError));
+        let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
+        let payload: SubscribePacketPayload =
+            SubscribePacketPayload::decode_with(reader,
+                                                Some(fixed_header.remaining_length -
+                                                         packet_identifier.encoded_length()))
+            .map_err(PacketError::PayloadError)?;
         Ok(SubscribePacket {
                fixed_header: fixed_header,
                packet_identifier: packet_identifier,
@@ -98,8 +100,8 @@ impl<'a> Encodable<'a> for SubscribePacketPayload {
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), Self::Err> {
         for &(ref filter, ref qos) in self.subscribes.iter() {
-            try!(filter.encode(writer));
-            try!(writer.write_u8(*qos as u8));
+            filter.encode(writer)?;
+            writer.write_u8(*qos as u8)?;
         }
 
         Ok(())
@@ -116,13 +118,15 @@ impl<'a> Decodable<'a> for SubscribePacketPayload {
     type Err = SubscribePacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R, payload_len: Option<u32>) -> Result<SubscribePacketPayload, SubscribePacketPayloadError> {
+    fn decode_with<R: Read>(reader: &mut R,
+                            payload_len: Option<u32>)
+                            -> Result<SubscribePacketPayload, SubscribePacketPayloadError> {
         let mut payload_len = payload_len.expect("Must provide payload length");
         let mut subs = Vec::new();
 
         while payload_len > 0 {
-            let filter = try!(TopicFilter::decode(reader));
-            let qos = match try!(reader.read_u8()) {
+            let filter = TopicFilter::decode(reader)?;
+            let qos = match reader.read_u8()? {
                 0 => QualityOfService::Level0,
                 1 => QualityOfService::Level1,
                 2 => QualityOfService::Level2,

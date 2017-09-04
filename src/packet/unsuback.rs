@@ -2,10 +2,10 @@
 
 use std::io::{Read, Write};
 
-use control::{FixedHeader, PacketType, ControlType};
+use {Decodable, Encodable};
+use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
-use {Encodable, Decodable};
 
 /// `UNSUBACK` packet
 #[derive(Debug, Eq, PartialEq)]
@@ -18,8 +18,7 @@ pub struct UnsubackPacket {
 impl UnsubackPacket {
     pub fn new(pkid: u16) -> UnsubackPacket {
         UnsubackPacket {
-            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::UnsubscribeAcknowledgement),
-                                           2),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::UnsubscribeAcknowledgement), 2),
             packet_identifier: PacketIdentifier(pkid),
             payload: (),
         }
@@ -46,7 +45,7 @@ impl<'a> Packet<'a> for UnsubackPacket {
     }
 
     fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
-        try!(self.packet_identifier.encode(writer));
+        self.packet_identifier.encode(writer)?;
 
         Ok(())
     }
@@ -56,7 +55,7 @@ impl<'a> Packet<'a> for UnsubackPacket {
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
-        let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
+        let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         Ok(UnsubackPacket {
                fixed_header: fixed_header,
                packet_identifier: packet_identifier,

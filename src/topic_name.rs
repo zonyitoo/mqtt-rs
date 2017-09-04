@@ -1,16 +1,16 @@
 //! Topic name
 
-use std::io::{Read, Write};
 use std::convert::Into;
-use std::ops::Deref;
-use std::fmt;
 use std::error::Error;
+use std::fmt;
+use std::io::{Read, Write};
 use std::mem;
+use std::ops::Deref;
 
 use regex::Regex;
 
+use {Decodable, Encodable};
 use encodable::StringEncodeError;
-use {Encodable, Decodable};
 
 const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^[^#+]+$";
 
@@ -80,7 +80,8 @@ impl<'a> Decodable<'a> for TopicName {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicName, TopicNameError> {
-        let topic_name: String = try!(Decodable::decode(reader).map_err(TopicNameError::StringEncodeError));
+        let topic_name: String = Decodable::decode(reader)
+            .map_err(TopicNameError::StringEncodeError)?;
         TopicName::new(topic_name)
     }
 }

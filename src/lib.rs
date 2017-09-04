@@ -40,7 +40,7 @@ extern crate regex;
 #[macro_use]
 extern crate lazy_static;
 
-pub use self::encodable::{Encodable, Decodable};
+pub use self::encodable::{Decodable, Encodable};
 pub use self::qos::QualityOfService;
 pub use self::topic_filter::{TopicFilter, TopicFilterRef};
 pub use self::topic_name::{TopicName, TopicNameRef};

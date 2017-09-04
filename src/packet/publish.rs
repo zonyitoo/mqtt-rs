@@ -2,12 +2,12 @@
 
 use std::io::{Read, Write};
 
-use control::{FixedHeader, PacketType, ControlType};
+use {Decodable, Encodable};
+use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
-use topic_name::TopicName;
-use {Encodable, Decodable};
 use qos::QualityOfService;
+use topic_name::TopicName;
 
 /// QoS with identifier pairs
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -122,10 +122,10 @@ impl<'a> Packet<'a> for PublishPacket {
     }
 
     fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
-        try!(self.topic_name.encode(writer));
+        self.topic_name.encode(writer)?;
 
         if let Some(pkid) = self.packet_identifier.as_ref() {
-            try!(pkid.encode(writer));
+            pkid.encode(writer)?;
         }
 
         Ok(())
@@ -133,29 +133,28 @@ impl<'a> Packet<'a> for PublishPacket {
 
     fn encoded_variable_headers_length(&self) -> u32 {
         self.topic_name.encoded_length() +
-        self.packet_identifier
-            .as_ref()
-            .map(|x| x.encoded_length())
-            .unwrap_or(0)
+            self.packet_identifier
+                .as_ref()
+                .map(|x| x.encoded_length())
+                .unwrap_or(0)
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
-        let topic_name: TopicName = try!(TopicName::decode(reader));
+        let topic_name: TopicName = TopicName::decode(reader)?;
 
         let packet_identifier = if fixed_header.packet_type.flags & 0x06 != 0 {
-            Some(try!(PacketIdentifier::decode(reader)))
+            Some(PacketIdentifier::decode(reader)?)
         } else {
             None
         };
 
         let vhead_len = topic_name.encoded_length() +
-                        packet_identifier
-                            .as_ref()
-                            .map(|x| x.encoded_length())
-                            .unwrap_or(0);
+            packet_identifier.as_ref()
+                             .map(|x| x.encoded_length())
+                             .unwrap_or(0);
         let payload_len = fixed_header.remaining_length - vhead_len;
 
-        let payload: Vec<u8> = try!(Decodable::decode_with(reader, Some(payload_len)));
+        let payload: Vec<u8> = Decodable::decode_with(reader, Some(payload_len))?;
 
         Ok(PublishPacket {
                fixed_header: fixed_header,
@@ -172,8 +171,8 @@ mod test {
 
     use std::io::Cursor;
 
+    use {Decodable, Encodable};
     use topic_name::TopicName;
-    use {Encodable, Decodable};
 
     #[test]
     fn test_publish_packet_basic() {

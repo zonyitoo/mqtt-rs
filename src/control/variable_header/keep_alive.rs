@@ -1,10 +1,10 @@
-use std::io::{Read, Write};
 use std::convert::From;
+use std::io::{Read, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
+use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
-use {Encodable, Decodable};
 
 /// Keep alive time interval
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -27,9 +27,8 @@ impl<'a> Decodable<'a> for KeepAlive {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<KeepAlive, VariableHeaderError> {
-        reader
-            .read_u16::<BigEndian>()
-            .map(KeepAlive)
-            .map_err(From::from)
+        reader.read_u16::<BigEndian>()
+              .map(KeepAlive)
+              .map_err(From::from)
     }
 }

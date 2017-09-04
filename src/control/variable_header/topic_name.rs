@@ -1,9 +1,9 @@
-use std::io::{Read, Write};
 use std::convert::{From, Into};
+use std::io::{Read, Write};
 
+use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
 use topic_name::TopicName;
-use {Encodable, Decodable};
 
 /// Topic name wrapper
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -41,6 +41,6 @@ impl<'a> Decodable<'a> for TopicNameHeader {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicNameHeader, VariableHeaderError> {
-        TopicNameHeader::new(try!(Decodable::decode(reader)))
+        TopicNameHeader::new(Decodable::decode(reader)?)
     }
 }

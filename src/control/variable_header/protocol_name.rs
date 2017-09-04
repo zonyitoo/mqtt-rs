@@ -1,8 +1,8 @@
-use std::io::{Read, Write};
 use std::convert::From;
+use std::io::{Read, Write};
 
+use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
-use {Encodable, Decodable};
 
 /// Protocol name in variable header
 ///
@@ -39,6 +39,6 @@ impl<'a> Decodable<'a> for ProtocolName {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ProtocolName, VariableHeaderError> {
-        Ok(ProtocolName(try!(Decodable::decode(reader))))
+        Ok(ProtocolName(Decodable::decode(reader)?))
     }
 }

@@ -117,7 +117,7 @@ impl PacketType {
                 }
             )
         }
-        
+
         match type_val {
             value::CONNECT      => vconst!(0x00, ControlType::Connect),
             value::CONNACK      => vconst!(0x00, ControlType::ConnectAcknowledgement),

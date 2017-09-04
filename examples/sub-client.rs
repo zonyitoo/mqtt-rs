@@ -6,21 +6,21 @@ extern crate clap;
 extern crate uuid;
 extern crate time;
 
-use std::net::TcpStream;
 use std::io::Write;
+use std::net::TcpStream;
 use std::str;
 
 use clap::{App, Arg};
 
 use uuid::Uuid;
 
-use mqtt::{Encodable, Decodable, QualityOfService};
-use mqtt::packet::*;
-use mqtt::control::variable_header::ConnectReturnCode;
+use mqtt::{Decodable, Encodable, QualityOfService};
 use mqtt::TopicFilter;
+use mqtt::control::variable_header::ConnectReturnCode;
+use mqtt::packet::*;
 
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 
 fn generate_client_id() -> String {
     format!("/MQTT/rust/{}", Uuid::new_v4().simple().to_string())
@@ -62,15 +62,14 @@ fn main() {
         .get_matches();
 
     let server_addr = matches.value_of("SERVER").unwrap();
-    let client_id = matches
-        .value_of("CLIENT_ID")
-        .map(|x| x.to_owned())
-        .unwrap_or_else(generate_client_id);
-    let channel_filters: Vec<(TopicFilter, QualityOfService)> = matches
-        .values_of("SUBSCRIBE")
-        .unwrap()
-        .map(|c| (TopicFilter::new(c.to_string()).unwrap(), QualityOfService::Level0))
-        .collect();
+    let client_id = matches.value_of("CLIENT_ID")
+                           .map(|x| x.to_owned())
+                           .unwrap_or_else(generate_client_id);
+    let channel_filters: Vec<(TopicFilter, QualityOfService)> =
+        matches.values_of("SUBSCRIBE")
+               .unwrap()
+               .map(|c| (TopicFilter::new(c.to_string()).unwrap(), QualityOfService::Level0))
+               .collect();
 
     let keep_alive = 10;
 
@@ -90,8 +89,7 @@ fn main() {
     trace!("CONNACK {:?}", connack);
 
     if connack.connect_return_code() != ConnectReturnCode::ConnectionAccepted {
-        panic!("Failed to connect to server, return code {:?}",
-               connack.connect_return_code());
+        panic!("Failed to connect to server, return code {:?}", connack.connect_return_code());
     }
 
     // const CHANNEL_FILTER: &'static str = "typing-speed-test.aoeu.eu";

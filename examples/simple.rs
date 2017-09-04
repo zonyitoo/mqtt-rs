@@ -2,9 +2,9 @@ extern crate mqtt;
 
 use std::io::Cursor;
 
-use mqtt::{Encodable, Decodable};
-use mqtt::packet::{VariablePacket, PublishPacket, QoSWithPacketIdentifier};
+use mqtt::{Decodable, Encodable};
 use mqtt::TopicName;
+use mqtt::packet::{PublishPacket, QoSWithPacketIdentifier, VariablePacket};
 
 fn main() {
     // Create a new Publish packet

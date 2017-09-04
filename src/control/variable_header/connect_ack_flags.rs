@@ -1,10 +1,10 @@
-use std::io::{Read, Write};
 use std::convert::From;
+use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
+use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
-use {Encodable, Decodable};
 
 /// Flags in `CONNACK` packet
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -36,7 +36,7 @@ impl<'a> Decodable<'a> for ConnackFlags {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ConnackFlags, VariableHeaderError> {
-        let code = try!(reader.read_u8());
+        let code = reader.read_u8()?;
         if code & !1 != 0 {
             return Err(VariableHeaderError::InvalidReservedFlag);
         }

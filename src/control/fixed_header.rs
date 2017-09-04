@@ -1,14 +1,14 @@
 //! Fixed header in MQTT
 
-use std::io::{self, Read, Write};
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
+use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
+use {Decodable, Encodable};
 use control::packet_type::{PacketType, PacketTypeError};
-use {Encodable, Decodable};
 
 /// Fixed header for each MQTT control packet
 ///
@@ -47,7 +47,7 @@ impl<'a> Encodable<'a> for FixedHeader {
     type Err = FixedHeaderError;
 
     fn encode<W: Write>(&self, wr: &mut W) -> Result<(), FixedHeaderError> {
-        try!(wr.write_u8(self.packet_type.to_u8()));
+        wr.write_u8(self.packet_type.to_u8())?;
 
         let mut cur_len = self.remaining_length;
         loop {
@@ -58,7 +58,7 @@ impl<'a> Encodable<'a> for FixedHeader {
                 byte |= 0x80;
             }
 
-            try!(wr.write_u8(byte));
+            wr.write_u8(byte)?;
 
             if cur_len == 0 {
                 break;
@@ -87,11 +87,11 @@ impl<'a> Decodable<'a> for FixedHeader {
     type Cond = ();
 
     fn decode_with<R: Read>(rdr: &mut R, _rest: Option<()>) -> Result<FixedHeader, FixedHeaderError> {
-        let type_val = try!(rdr.read_u8());
+        let type_val = rdr.read_u8()?;
         let remaining_len = {
             let mut cur = 0u32;
             for i in 0.. {
-                let byte = try!(rdr.read_u8());
+                let byte = rdr.read_u8()?;
                 cur |= ((byte as u32) & 0x7F) << (7 * i);
 
                 if i >= 4 {
@@ -174,9 +174,9 @@ impl Error for FixedHeaderError {
 mod test {
     use super::*;
 
+    use {Decodable, Encodable};
+    use control::packet_type::{ControlType, PacketType};
     use std::io::Cursor;
-    use control::packet_type::{PacketType, ControlType};
-    use {Encodable, Decodable};
 
     #[test]
     fn test_encode_fixed_header() {
@@ -193,8 +193,7 @@ mod test {
         let stream = b"\x10\xc1\x02";
         let mut cursor = Cursor::new(&stream[..]);
         let header = FixedHeader::decode(&mut cursor).unwrap();
-        assert_eq!(header.packet_type,
-                   PacketType::with_default(ControlType::Connect));
+        assert_eq!(header.packet_type, PacketType::with_default(ControlType::Connect));
         assert_eq!(header.remaining_length, 321);
     }
 

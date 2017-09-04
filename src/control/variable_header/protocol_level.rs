@@ -1,12 +1,12 @@
 //! Protocol level header
 
-use std::io::{Read, Write};
 use std::convert::From;
+use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
+use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
-use {Encodable, Decodable};
 
 pub const SPEC_3_1_1: u8 = 0x04;
 

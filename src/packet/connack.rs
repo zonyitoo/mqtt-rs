@@ -2,10 +2,10 @@
 
 use std::io::{Read, Write};
 
-use control::{FixedHeader, PacketType, ControlType};
+use {Decodable, Encodable};
+use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::{ConnackFlags, ConnectReturnCode};
 use packet::{Packet, PacketError};
-use {Encodable, Decodable};
 
 /// `CONNACK` packet
 #[derive(Debug, Eq, PartialEq)]
@@ -19,8 +19,7 @@ pub struct ConnackPacket {
 impl ConnackPacket {
     pub fn new(session_present: bool, ret_code: ConnectReturnCode) -> ConnackPacket {
         ConnackPacket {
-            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement),
-                                           2),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
             flags: ConnackFlags { session_present: session_present },
             ret_code: ret_code,
             payload: (),
@@ -48,8 +47,8 @@ impl<'a> Packet<'a> for ConnackPacket {
     }
 
     fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
-        try!(self.flags.encode(writer));
-        try!(self.ret_code.encode(writer));
+        self.flags.encode(writer)?;
+        self.ret_code.encode(writer)?;
         Ok(())
     }
 
@@ -58,8 +57,8 @@ impl<'a> Packet<'a> for ConnackPacket {
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
-        let flags: ConnackFlags = try!(Decodable::decode(reader));
-        let code: ConnectReturnCode = try!(Decodable::decode(reader));
+        let flags: ConnackFlags = Decodable::decode(reader)?;
+        let code: ConnectReturnCode = Decodable::decode(reader)?;
 
         Ok(ConnackPacket {
                fixed_header: fixed_header,
@@ -76,8 +75,8 @@ mod test {
 
     use std::io::Cursor;
 
+    use {Decodable, Encodable};
     use control::variable_header::ConnectReturnCode;
-    use {Encodable, Decodable};
 
     #[test]
     pub fn test_connack_packet_basic() {

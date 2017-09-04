@@ -1,30 +1,30 @@
 //! Specific packets
 
-use std::io::{self, Read, Write};
+use std::convert::From;
 use std::error::Error;
 use std::fmt;
-use std::convert::From;
+use std::io::{self, Read, Write};
 
+use {Decodable, Encodable};
+use control::ControlType;
 use control::FixedHeader;
 use control::fixed_header::FixedHeaderError;
 use control::variable_header::VariableHeaderError;
-use control::ControlType;
 use encodable::StringEncodeError;
 use topic_name::TopicNameError;
-use {Encodable, Decodable};
 
-pub use self::connect::ConnectPacket;
 pub use self::connack::ConnackPacket;
-pub use self::publish::PublishPacket;
-pub use self::puback::PubackPacket;
-pub use self::pubrec::PubrecPacket;
-pub use self::pubrel::PubrelPacket;
-pub use self::pubcomp::PubcompPacket;
+pub use self::connect::ConnectPacket;
+pub use self::disconnect::DisconnectPacket;
 pub use self::pingreq::PingreqPacket;
 pub use self::pingresp::PingrespPacket;
-pub use self::disconnect::DisconnectPacket;
-pub use self::subscribe::SubscribePacket;
+pub use self::puback::PubackPacket;
+pub use self::pubcomp::PubcompPacket;
+pub use self::publish::PublishPacket;
+pub use self::pubrec::PubrecPacket;
+pub use self::pubrel::PubrelPacket;
 pub use self::suback::SubackPacket;
+pub use self::subscribe::SubscribePacket;
 pub use self::unsuback::UnsubackPacket;
 pub use self::unsubscribe::UnsubscribePacket;
 
@@ -66,8 +66,8 @@ impl<'a, T: Packet<'a> + fmt::Debug + 'a> Encodable<'a> for T {
     type Err = PacketError<'a, T>;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, T>> {
-        try!(self.fixed_header().encode(writer));
-        try!(self.encode_variable_headers(writer));
+        self.fixed_header().encode(writer)?;
+        self.encode_variable_headers(writer)?;
 
         self.payload()
             .encode(writer)
@@ -87,7 +87,7 @@ impl<'a, T: Packet<'a> + fmt::Debug + 'a> Decodable<'a> for T {
         let fixed_header: FixedHeader = if let Some(hdr) = fixed_header {
             hdr
         } else {
-            try!(Decodable::decode(reader))
+            Decodable::decode(reader)?
         };
 
         <Self as Packet>::decode_packet(reader, fixed_header)
@@ -354,7 +354,8 @@ impl_variable_packet! {
 
 impl VariablePacket {
     pub fn new<T>(t: T) -> VariablePacket
-        where VariablePacket: From<T>
+    where
+        VariablePacket: From<T>,
     {
         From::from(t)
     }
@@ -366,7 +367,7 @@ mod test {
 
     use std::io::Cursor;
 
-    use {Encodable, Decodable};
+    use {Decodable, Encodable};
 
     #[test]
     fn test_variable_packet_basic() {

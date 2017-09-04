@@ -1,13 +1,13 @@
 //! Encodable traits
 
-use std::io::{self, Read, Write};
-use std::error::Error;
-use std::string::FromUtf8Error;
-use std::fmt;
 use std::convert::From;
+use std::error::Error;
+use std::fmt;
+use std::io::{self, Read, Write};
 use std::marker::Sized;
+use std::string::FromUtf8Error;
 
-use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 /// Methods for encoding an Object to bytes according to MQTT specification
 pub trait Encodable<'a> {
@@ -39,11 +39,10 @@ impl<'a> Encodable<'a> for &'a str {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
         assert!(self.as_bytes().len() <= u16::max_value() as usize);
 
-        writer
-            .write_u16::<BigEndian>(self.as_bytes().len() as u16)
-            .map_err(From::from)
-            .and_then(|_| writer.write_all(self.as_bytes()))
-            .map_err(StringEncodeError::IoError)
+        writer.write_u16::<BigEndian>(self.as_bytes().len() as u16)
+              .map_err(From::from)
+              .and_then(|_| writer.write_all(self.as_bytes()))
+              .map_err(StringEncodeError::IoError)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -80,12 +79,12 @@ impl<'a> Decodable<'a> for String {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<String, StringEncodeError> {
-        let len = try!(reader.read_u16::<BigEndian>()) as usize;
+        let len = reader.read_u16::<BigEndian>()? as usize;
         let mut buf = Vec::with_capacity(len);
         unsafe {
             buf.set_len(len);
         }
-        try!(reader.read_exact(&mut buf));
+        reader.read_exact(&mut buf)?;
 
         String::from_utf8(buf).map_err(StringEncodeError::FromUtf8Error)
     }
@@ -114,12 +113,12 @@ impl<'a> Decodable<'a> for Vec<u8> {
                 unsafe {
                     buf.set_len(length as usize);
                 }
-                try!(reader.read_exact(&mut buf));
+                reader.read_exact(&mut buf)?;
                 Ok(buf)
             }
             None => {
                 let mut buf = Vec::new();
-                try!(reader.read_to_end(&mut buf));
+                reader.read_to_end(&mut buf)?;
                 Ok(buf)
             }
         }
@@ -156,8 +155,8 @@ impl<'a> Encodable<'a> for VarBytes {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), Self::Err> {
         assert!(self.0.len() <= u16::max_value() as usize);
         let len = self.0.len() as u16;
-        try!(writer.write_u16::<BigEndian>(len));
-        try!(writer.write_all(&self.0));
+        writer.write_u16::<BigEndian>(len)?;
+        writer.write_all(&self.0)?;
         Ok(())
     }
 
@@ -170,12 +169,12 @@ impl<'a> Decodable<'a> for VarBytes {
     type Err = io::Error;
     type Cond = ();
     fn decode_with<R: Read>(reader: &mut R, _: Option<()>) -> Result<VarBytes, io::Error> {
-        let length = try!(reader.read_u16::<BigEndian>()) as usize;
+        let length = reader.read_u16::<BigEndian>()? as usize;
         let mut buf = Vec::with_capacity(length);
         unsafe {
             buf.set_len(length);
         }
-        try!(reader.read_exact(&mut buf));
+        reader.read_exact(&mut buf)?;
         Ok(VarBytes(buf))
     }
 }

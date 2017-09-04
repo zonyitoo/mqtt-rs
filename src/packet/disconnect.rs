@@ -2,7 +2,7 @@
 
 use std::io::{Read, Write};
 
-use control::{FixedHeader, PacketType, ControlType};
+use control::{ControlType, FixedHeader, PacketType};
 use packet::{Packet, PacketError};
 
 /// `DISCONNECT` packet

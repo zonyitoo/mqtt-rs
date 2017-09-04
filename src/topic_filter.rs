@@ -1,15 +1,15 @@
 //! Topic filter
 
-use std::io::{Read, Write};
-use std::fmt;
-use std::error::Error;
-use std::ops::Deref;
-use std::mem;
 use std::convert::Into;
+use std::error::Error;
+use std::fmt;
+use std::io::{Read, Write};
+use std::mem;
+use std::ops::Deref;
 
 use regex::Regex;
 
-use {Encodable, Decodable};
+use {Decodable, Encodable};
 use encodable::StringEncodeError;
 use topic_name::TopicNameRef;
 
@@ -75,7 +75,8 @@ impl<'a> Decodable<'a> for TopicFilter {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicFilter, TopicFilterError> {
-        let topic_filter: String = try!(Decodable::decode(reader).map_err(TopicFilterError::StringEncodeError));
+        let topic_filter: String = Decodable::decode(reader)
+            .map_err(TopicFilterError::StringEncodeError)?;
         TopicFilter::new(topic_filter)
     }
 }

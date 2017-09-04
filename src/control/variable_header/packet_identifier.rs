@@ -1,10 +1,10 @@
-use std::io::{Read, Write};
 use std::convert::From;
+use std::io::{Read, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
+use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
-use {Encodable, Decodable};
 
 /// Packet identifier
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -27,9 +27,8 @@ impl<'a> Decodable<'a> for PacketIdentifier {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<PacketIdentifier, VariableHeaderError> {
-        reader
-            .read_u16::<BigEndian>()
-            .map(PacketIdentifier)
-            .map_err(From::from)
+        reader.read_u16::<BigEndian>()
+              .map(PacketIdentifier)
+              .map_err(From::from)
     }
 }

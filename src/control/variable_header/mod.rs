@@ -2,20 +2,20 @@
 
 use std::convert::From;
 use std::error::Error;
-use std::io;
 use std::fmt;
+use std::io;
 use std::string::FromUtf8Error;
 
 use encodable::StringEncodeError;
 use topic_name::TopicNameError;
 
-pub use self::packet_identifier::PacketIdentifier;
-pub use self::protocol_name::ProtocolName;
-pub use self::protocol_level::ProtocolLevel;
-pub use self::connect_flags::ConnectFlags;
-pub use self::keep_alive::KeepAlive;
 pub use self::connect_ack_flags::ConnackFlags;
+pub use self::connect_flags::ConnectFlags;
 pub use self::connect_ret_code::ConnectReturnCode;
+pub use self::keep_alive::KeepAlive;
+pub use self::packet_identifier::PacketIdentifier;
+pub use self::protocol_level::ProtocolLevel;
+pub use self::protocol_name::ProtocolName;
 pub use self::topic_name::TopicNameHeader;
 
 mod packet_identifier;

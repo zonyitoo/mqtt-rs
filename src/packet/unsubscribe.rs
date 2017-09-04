@@ -1,16 +1,16 @@
 //! UNSUBSCRIBE
 
-use std::io::{self, Read, Write};
-use std::string::FromUtf8Error;
+use std::convert::From;
 use std::error::Error;
 use std::fmt;
-use std::convert::From;
+use std::io::{self, Read, Write};
+use std::string::FromUtf8Error;
 
-use control::{FixedHeader, PacketType, ControlType};
+use {Decodable, Encodable};
+use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::PacketIdentifier;
-use packet::{Packet, PacketError};
-use {Encodable, Decodable};
 use encodable::StringEncodeError;
+use packet::{Packet, PacketError};
 use topic_filter::{TopicFilter, TopicFilterError};
 
 /// `UNSUBSCRIBE` packet
@@ -53,7 +53,7 @@ impl<'a> Packet<'a> for UnsubscribePacket {
     }
 
     fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
-        try!(self.packet_identifier.encode(writer));
+        self.packet_identifier.encode(writer)?;
 
         Ok(())
     }
@@ -63,10 +63,12 @@ impl<'a> Packet<'a> for UnsubscribePacket {
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
-        let packet_identifier: PacketIdentifier = try!(PacketIdentifier::decode(reader));
-        let payload: UnsubscribePacketPayload = try!(UnsubscribePacketPayload::decode_with(reader,
-                                                                                           Some(fixed_header.remaining_length - packet_identifier.encoded_length()))
-                                                             .map_err(PacketError::PayloadError));
+        let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
+        let payload: UnsubscribePacketPayload =
+            UnsubscribePacketPayload::decode_with(reader,
+                                                  Some(fixed_header.remaining_length -
+                                                           packet_identifier.encoded_length()))
+            .map_err(PacketError::PayloadError)?;
         Ok(UnsubscribePacket {
                fixed_header: fixed_header,
                packet_identifier: packet_identifier,
@@ -95,7 +97,7 @@ impl<'a> Encodable<'a> for UnsubscribePacketPayload {
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), Self::Err> {
         for filter in self.subscribes.iter() {
-            try!(filter.encode(writer));
+            filter.encode(writer)?;
         }
 
         Ok(())
@@ -112,12 +114,14 @@ impl<'a> Decodable<'a> for UnsubscribePacketPayload {
     type Err = UnsubscribePacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R, payload_len: Option<u32>) -> Result<UnsubscribePacketPayload, UnsubscribePacketPayloadError> {
+    fn decode_with<R: Read>(reader: &mut R,
+                            payload_len: Option<u32>)
+                            -> Result<UnsubscribePacketPayload, UnsubscribePacketPayloadError> {
         let mut payload_len = payload_len.expect("Must provide payload length");
         let mut subs = Vec::new();
 
         while payload_len > 0 {
-            let filter = try!(TopicFilter::decode(reader));
+            let filter = TopicFilter::decode(reader)?;
             payload_len -= filter.encoded_length();
             subs.push(filter);
         }

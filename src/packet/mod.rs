@@ -51,8 +51,10 @@ pub trait Packet: Sized {
 
     /// Get a `FixedHeader` of this packet
     fn fixed_header(&self) -> &FixedHeader;
-    /// Get payload
-    fn payload(&self) -> &Self::Payload;
+    /// Get the payload
+    fn payload(self) -> Self::Payload;
+    /// Get a borrow of payload
+    fn payload_ref(&self) -> &Self::Payload;
 
     /// Encode variable headers to writer
     fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>>;
@@ -69,13 +71,13 @@ impl<T: Packet + fmt::Debug> Encodable for T {
         self.fixed_header().encode(writer)?;
         self.encode_variable_headers(writer)?;
 
-        self.payload()
+        self.payload_ref()
             .encode(writer)
             .map_err(PacketError::PayloadError)
     }
 
     fn encoded_length(&self) -> u32 {
-        self.fixed_header().encoded_length() + self.encoded_variable_headers_length() + self.payload().encoded_length()
+        self.fixed_header().encoded_length() + self.encoded_variable_headers_length() + self.payload_ref().encoded_length()
     }
 }
 

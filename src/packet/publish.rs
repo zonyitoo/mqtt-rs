@@ -57,7 +57,7 @@ impl PublishPacket {
 
     #[inline]
     fn calculate_remaining_length(&self) -> u32 {
-        self.encoded_variable_headers_length() + self.payload().encoded_length()
+        self.encoded_variable_headers_length() + self.payload_ref().encoded_length()
     }
 
     pub fn set_dup(&mut self, dup: bool) {
@@ -117,7 +117,11 @@ impl Packet for PublishPacket {
         &self.fixed_header
     }
 
-    fn payload(&self) -> &Self::Payload {
+    fn payload(self) -> Self::Payload {
+        self.payload
+    }
+
+    fn payload_ref(&self) -> &Self::Payload {
         &self.payload
     }
 

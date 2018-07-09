@@ -40,7 +40,11 @@ impl Packet for PubcompPacket {
         &self.fixed_header
     }
 
-    fn payload(&self) -> &Self::Payload {
+    fn payload(self) -> Self::Payload {
+        self.payload
+    }
+
+    fn payload_ref(&self) -> &Self::Payload {
         &self.payload
     }
 

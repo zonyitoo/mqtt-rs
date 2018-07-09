@@ -55,7 +55,7 @@ impl ConnectPacket {
 
     #[inline]
     fn calculate_remaining_length(&self) -> u32 {
-        self.encoded_variable_headers_length() + self.payload().encoded_length()
+        self.encoded_variable_headers_length() + self.payload_ref().encoded_length()
     }
 
     pub fn set_keep_alive(&mut self, keep_alive: u16) {
@@ -154,7 +154,11 @@ impl Packet for ConnectPacket {
         &self.fixed_header
     }
 
-    fn payload(&self) -> &ConnectPacketPayload {
+    fn payload(self) -> ConnectPacketPayload {
+        self.payload
+    }
+
+    fn payload_ref(&self) -> &ConnectPacketPayload {
         &self.payload
     }
 

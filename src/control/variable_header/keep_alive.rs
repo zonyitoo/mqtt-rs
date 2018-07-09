@@ -10,7 +10,7 @@ use control::variable_header::VariableHeaderError;
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct KeepAlive(pub u16);
 
-impl<'a> Encodable<'a> for KeepAlive {
+impl Encodable for KeepAlive {
     type Err = VariableHeaderError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
@@ -22,7 +22,7 @@ impl<'a> Encodable<'a> for KeepAlive {
     }
 }
 
-impl<'a> Decodable<'a> for KeepAlive {
+impl Decodable for KeepAlive {
     type Err = VariableHeaderError;
     type Cond = ();
 

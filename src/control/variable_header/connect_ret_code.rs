@@ -53,7 +53,7 @@ impl ConnectReturnCode {
     }
 }
 
-impl<'a> Encodable<'a> for ConnectReturnCode {
+impl Encodable for ConnectReturnCode {
     type Err = VariableHeaderError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
@@ -65,7 +65,7 @@ impl<'a> Encodable<'a> for ConnectReturnCode {
     }
 }
 
-impl<'a> Decodable<'a> for ConnectReturnCode {
+impl Decodable for ConnectReturnCode {
     type Err = VariableHeaderError;
     type Cond = ();
 

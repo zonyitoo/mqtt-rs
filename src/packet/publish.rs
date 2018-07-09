@@ -110,7 +110,7 @@ impl PublishPacket {
     }
 }
 
-impl<'a> Packet<'a> for PublishPacket {
+impl Packet for PublishPacket {
     type Payload = Vec<u8>;
 
     fn fixed_header(&self) -> &FixedHeader {
@@ -121,7 +121,7 @@ impl<'a> Packet<'a> for PublishPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
         self.topic_name.encode(writer)?;
 
         if let Some(pkid) = self.packet_identifier.as_ref() {
@@ -139,7 +139,7 @@ impl<'a> Packet<'a> for PublishPacket {
                 .unwrap_or(0)
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let topic_name: TopicName = TopicName::decode(reader)?;
 
         let packet_identifier = if fixed_header.packet_type.flags & 0x06 != 0 {

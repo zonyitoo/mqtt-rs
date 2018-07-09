@@ -147,7 +147,7 @@ impl ConnectPacket {
     }
 }
 
-impl<'a> Packet<'a> for ConnectPacket {
+impl Packet for ConnectPacket {
     type Payload = ConnectPacketPayload;
 
     fn fixed_header(&self) -> &FixedHeader {
@@ -158,7 +158,7 @@ impl<'a> Packet<'a> for ConnectPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
         self.protocol_name.encode(writer)?;
         self.protocol_level.encode(writer)?;
         self.flags.encode(writer)?;
@@ -172,12 +172,12 @@ impl<'a> Packet<'a> for ConnectPacket {
             self.keep_alive.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let protoname: ProtocolName = Decodable::decode(reader)?;
         let protocol_level: ProtocolLevel = Decodable::decode(reader)?;
         let flags: ConnectFlags = Decodable::decode(reader)?;
         let keep_alive: KeepAlive = Decodable::decode(reader)?;
-        let payload: ConnectPacketPayload = Decodable::decode_with(reader, Some(&flags))
+        let payload: ConnectPacketPayload = Decodable::decode_with(reader, Some(flags))
             .map_err(PacketError::PayloadError)?;
 
         Ok(ConnectPacket {
@@ -213,7 +213,7 @@ impl ConnectPacketPayload {
     }
 }
 
-impl<'a> Encodable<'a> for ConnectPacketPayload {
+impl Encodable for ConnectPacketPayload {
     type Err = ConnectPacketPayloadError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), ConnectPacketPayloadError> {
@@ -259,12 +259,12 @@ impl<'a> Encodable<'a> for ConnectPacketPayload {
     }
 }
 
-impl<'a> Decodable<'a> for ConnectPacketPayload {
+impl Decodable for ConnectPacketPayload {
     type Err = ConnectPacketPayloadError;
-    type Cond = &'a ConnectFlags;
+    type Cond = ConnectFlags;
 
     fn decode_with<R: Read>(reader: &mut R,
-                            rest: Option<&'a ConnectFlags>)
+                            rest: Option<ConnectFlags>)
                             -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
         let mut need_will_topic = false;
         let mut need_will_message = false;

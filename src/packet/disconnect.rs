@@ -21,7 +21,7 @@ impl DisconnectPacket {
     }
 }
 
-impl<'a> Packet<'a> for DisconnectPacket {
+impl Packet for DisconnectPacket {
     type Payload = ();
 
     fn fixed_header(&self) -> &FixedHeader {
@@ -32,7 +32,7 @@ impl<'a> Packet<'a> for DisconnectPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, _writer: &mut W) -> Result<(), PacketError<'a, Self>> {
+    fn encode_variable_headers<W: Write>(&self, _writer: &mut W) -> Result<(), PacketError<Self>> {
         Ok(())
     }
 
@@ -40,7 +40,7 @@ impl<'a> Packet<'a> for DisconnectPacket {
         0
     }
 
-    fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
+    fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         Ok(DisconnectPacket {
                fixed_header: fixed_header,
                payload: (),

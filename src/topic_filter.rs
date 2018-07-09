@@ -56,7 +56,7 @@ impl TopicFilter {
     }
 }
 
-impl<'a> Encodable<'a> for TopicFilter {
+impl Encodable for TopicFilter {
     type Err = TopicFilterError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicFilterError> {
@@ -70,7 +70,7 @@ impl<'a> Encodable<'a> for TopicFilter {
     }
 }
 
-impl<'a> Decodable<'a> for TopicFilter {
+impl Decodable for TopicFilter {
     type Err = TopicFilterError;
     type Cond = ();
 

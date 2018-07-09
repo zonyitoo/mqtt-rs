@@ -22,7 +22,7 @@ use control::variable_header::VariableHeaderError;
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ProtocolName(pub String);
 
-impl<'a> Encodable<'a> for ProtocolName {
+impl Encodable for ProtocolName {
     type Err = VariableHeaderError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
@@ -34,7 +34,7 @@ impl<'a> Encodable<'a> for ProtocolName {
     }
 }
 
-impl<'a> Decodable<'a> for ProtocolName {
+impl Decodable for ProtocolName {
     type Err = VariableHeaderError;
     type Cond = ();
 

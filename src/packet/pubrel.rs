@@ -33,7 +33,7 @@ impl PubrelPacket {
     }
 }
 
-impl<'a> Packet<'a> for PubrelPacket {
+impl Packet for PubrelPacket {
     type Payload = ();
 
     fn fixed_header(&self) -> &FixedHeader {
@@ -44,7 +44,7 @@ impl<'a> Packet<'a> for PubrelPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
         self.packet_identifier.encode(writer)?;
 
         Ok(())
@@ -54,7 +54,7 @@ impl<'a> Packet<'a> for PubrelPacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         Ok(PubrelPacket {
                fixed_header: fixed_header,

@@ -43,7 +43,7 @@ impl FixedHeader {
     }
 }
 
-impl<'a> Encodable<'a> for FixedHeader {
+impl Encodable for FixedHeader {
     type Err = FixedHeaderError;
 
     fn encode<W: Write>(&self, wr: &mut W) -> Result<(), FixedHeaderError> {
@@ -82,7 +82,7 @@ impl<'a> Encodable<'a> for FixedHeader {
     }
 }
 
-impl<'a> Decodable<'a> for FixedHeader {
+impl Decodable for FixedHeader {
     type Err = FixedHeaderError;
     type Cond = ();
 

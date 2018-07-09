@@ -18,7 +18,7 @@ impl ConnackFlags {
     }
 }
 
-impl<'a> Encodable<'a> for ConnackFlags {
+impl Encodable for ConnackFlags {
     type Err = VariableHeaderError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
@@ -31,7 +31,7 @@ impl<'a> Encodable<'a> for ConnackFlags {
     }
 }
 
-impl<'a> Decodable<'a> for ConnackFlags {
+impl Decodable for ConnackFlags {
     type Err = VariableHeaderError;
     type Cond = ();
 

@@ -30,7 +30,7 @@ impl ConnectFlags {
     }
 }
 
-impl<'a> Encodable<'a> for ConnectFlags {
+impl Encodable for ConnectFlags {
     type Err = VariableHeaderError;
 
     #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -50,7 +50,7 @@ impl<'a> Encodable<'a> for ConnectFlags {
     }
 }
 
-impl<'a> Decodable<'a> for ConnectFlags {
+impl Decodable for ConnectFlags {
     type Err = VariableHeaderError;
     type Cond = ();
 

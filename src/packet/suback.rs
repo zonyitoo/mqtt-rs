@@ -79,7 +79,7 @@ impl SubackPacket {
     }
 }
 
-impl<'a> Packet<'a> for SubackPacket {
+impl Packet for SubackPacket {
     type Payload = SubackPacketPayload;
 
     fn fixed_header(&self) -> &FixedHeader {
@@ -90,7 +90,7 @@ impl<'a> Packet<'a> for SubackPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
         self.packet_identifier.encode(writer)?;
 
         Ok(())
@@ -100,7 +100,7 @@ impl<'a> Packet<'a> for SubackPacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         let payload: SubackPacketPayload =
             SubackPacketPayload::decode_with(reader,
@@ -129,7 +129,7 @@ impl SubackPacketPayload {
     }
 }
 
-impl<'a> Encodable<'a> for SubackPacketPayload {
+impl Encodable for SubackPacketPayload {
     type Err = SubackPacketPayloadError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), Self::Err> {
@@ -145,7 +145,7 @@ impl<'a> Encodable<'a> for SubackPacketPayload {
     }
 }
 
-impl<'a> Decodable<'a> for SubackPacketPayload {
+impl Decodable for SubackPacketPayload {
     type Err = SubackPacketPayloadError;
     type Cond = u32;
 

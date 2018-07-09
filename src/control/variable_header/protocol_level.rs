@@ -14,7 +14,7 @@ pub const SPEC_3_1_1: u8 = 0x04;
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct ProtocolLevel(pub u8);
 
-impl<'a> Encodable<'a> for ProtocolLevel {
+impl Encodable for ProtocolLevel {
     type Err = VariableHeaderError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
@@ -26,7 +26,7 @@ impl<'a> Encodable<'a> for ProtocolLevel {
     }
 }
 
-impl<'a> Decodable<'a> for ProtocolLevel {
+impl Decodable for ProtocolLevel {
     type Err = VariableHeaderError;
     type Cond = ();
 

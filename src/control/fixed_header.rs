@@ -48,10 +48,10 @@ impl FixedHeader {
     /// Asynchronously parse a single fixed header from an AsyncRead type, such as a network
     /// socket.
     pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self), Error = FixedHeaderError> {
-        async_io::read_exact(rdr, [0u8; 2])
+        async_io::read_exact(rdr, [0u8])
             .from_err()
-            .and_then(|(rdr, [type_val, cur])| {
-                future::loop_fn((rdr, u32::from(cur), 0), |(rdr, mut cur, i)| {
+            .and_then(|(rdr, [type_val])| {
+                future::loop_fn((rdr, 0, 0), |(rdr, mut cur, i)| {
                     async_io::read_exact(rdr, [0u8])
                         .from_err()
                         .and_then(move |(rdr, [byte])| {

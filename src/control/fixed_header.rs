@@ -7,6 +7,9 @@ use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
+use futures::{future, Future};
+use tokio_io::{io as async_io, AsyncRead};
+
 use {Decodable, Encodable};
 use control::packet_type::{PacketType, PacketTypeError};
 
@@ -40,6 +43,39 @@ impl FixedHeader {
             packet_type: packet_type,
             remaining_length: remaining_length,
         }
+    }
+
+    /// Asynchronously parse a single fixed header from an AsyncRead type, such as a network
+    /// socket.
+    pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self), Error = FixedHeaderError> {
+        async_io::read_exact(rdr, [0u8; 2])
+            .from_err()
+            .and_then(|(rdr, [type_val, cur])| {
+                future::loop_fn((rdr, u32::from(cur), 0), |(rdr, mut cur, i)| {
+                    async_io::read_exact(rdr, [0u8])
+                        .from_err()
+                        .and_then(move |(rdr, [byte])| {
+                            cur |= (u32::from(byte) & 0x7F) << (7 * i);
+
+                            if i >= 4 {
+                                return Err(FixedHeaderError::MalformedRemainingLength);
+                            }
+
+                            if byte & 0x80 == 0 {
+                                Ok(future::Loop::Break((rdr, cur)))
+                            } else {
+                                Ok(future::Loop::Continue((rdr, cur, i + 1)))
+                            }
+                        })
+                }).and_then(move |(rdr, remaining_len)| match PacketType::from_u8(type_val) {
+                    Ok(packet_type) => Ok((rdr, FixedHeader::new(packet_type, remaining_len))),
+                    Err(PacketTypeError::UndefinedType(ty, _)) => {
+                        Err(FixedHeaderError::Unrecognized(ty, remaining_len))
+                    }
+                    Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
+                    Err(err) => Err(From::from(err)),
+                })
+            })
     }
 }
 

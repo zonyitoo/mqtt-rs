@@ -3,7 +3,10 @@
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Write, Cursor};
+
+use futures::Future;
+use tokio_io::{io as async_io, AsyncRead};
 
 use {Decodable, Encodable};
 use control::ControlType;
@@ -186,6 +189,46 @@ macro_rules! impl_variable_packet {
             $(
                 $name($name),
             )+
+        }
+
+        impl VariablePacket {
+            pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self), Error = VariablePacketError> {
+                FixedHeader::parse(rdr).then(|result| {
+                    let (rdr, fixed_header) = match result {
+                        Ok((rdr, header)) => (rdr, header),
+                        Err(FixedHeaderError::Unrecognized(code, _length)) => {
+                            // can't read excess bytes from rdr as it was dropped when an error
+                            // occurred
+                            return Err(VariablePacketError::UnrecognizedPacket(code, Vec::new()));
+                        },
+                        Err(FixedHeaderError::ReservedType(code, _length)) => {
+                            // can't read excess bytes from rdr as it was dropped when an error
+                            // occurred
+                            return Err(VariablePacketError::ReservedPacket(code, Vec::new()));
+                        },
+                        Err(err) => return Err(From::from(err))
+                    };
+
+                    Ok((rdr, fixed_header))
+                }).and_then(|(rdr, fixed_header)| {
+                    let buffer = vec![0u8; fixed_header.remaining_length as usize];
+                    async_io::read_exact(rdr, buffer)
+                        .from_err()
+                        .and_then(move |(rdr, buffer)| {
+                            let mut buff_rdr = Cursor::new(buffer);
+                            let output = match fixed_header.packet_type.control_type {
+                                $(
+                                    ControlType::$hdr => {
+                                        let pk = <$name as Packet>::decode_packet(&mut buff_rdr, fixed_header)?;
+                                        VariablePacket::$name(pk)
+                                    }
+                                )+
+                            };
+
+                            Ok((rdr, output))
+                        })
+                })
+            }
         }
 
         $(

@@ -10,8 +10,8 @@ use std::string::FromUtf8Error;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 /// Methods for encoding an Object to bytes according to MQTT specification
-pub trait Encodable<'a> {
-    type Err: Error + 'a;
+pub trait Encodable {
+    type Err: Error;
 
     /// Encodes to writer
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), Self::Err>;
@@ -20,8 +20,8 @@ pub trait Encodable<'a> {
 }
 
 /// Methods for decoding bytes to an Object according to MQTT specification
-pub trait Decodable<'a>: Sized {
-    type Err: Error + 'a;
+pub trait Decodable: Sized {
+    type Err: Error;
     type Cond;
 
     /// Decodes object from reader
@@ -33,7 +33,7 @@ pub trait Decodable<'a>: Sized {
     fn decode_with<R: Read>(reader: &mut R, cond: Option<Self::Cond>) -> Result<Self, Self::Err>;
 }
 
-impl<'a> Encodable<'a> for &'a str {
+impl<'a> Encodable for &'a str {
     type Err = StringEncodeError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
@@ -50,7 +50,7 @@ impl<'a> Encodable<'a> for &'a str {
     }
 }
 
-impl<'a> Encodable<'a> for &'a [u8] {
+impl<'a> Encodable for &'a [u8] {
     type Err = io::Error;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
@@ -62,7 +62,7 @@ impl<'a> Encodable<'a> for &'a [u8] {
     }
 }
 
-impl<'a> Encodable<'a> for String {
+impl Encodable for String {
     type Err = StringEncodeError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
@@ -74,7 +74,7 @@ impl<'a> Encodable<'a> for String {
     }
 }
 
-impl<'a> Decodable<'a> for String {
+impl Decodable for String {
     type Err = StringEncodeError;
     type Cond = ();
 
@@ -90,7 +90,7 @@ impl<'a> Decodable<'a> for String {
     }
 }
 
-impl<'a> Encodable<'a> for Vec<u8> {
+impl Encodable for Vec<u8> {
     type Err = io::Error;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
@@ -102,7 +102,7 @@ impl<'a> Encodable<'a> for Vec<u8> {
     }
 }
 
-impl<'a> Decodable<'a> for Vec<u8> {
+impl Decodable for Vec<u8> {
     type Err = io::Error;
     type Cond = u32;
 
@@ -125,7 +125,7 @@ impl<'a> Decodable<'a> for Vec<u8> {
     }
 }
 
-impl<'a> Encodable<'a> for () {
+impl Encodable for () {
     type Err = NoError;
 
     fn encode<W: Write>(&self, _: &mut W) -> Result<(), NoError> {
@@ -137,7 +137,7 @@ impl<'a> Encodable<'a> for () {
     }
 }
 
-impl<'a> Decodable<'a> for () {
+impl Decodable for () {
     type Err = NoError;
     type Cond = ();
 
@@ -150,7 +150,7 @@ impl<'a> Decodable<'a> for () {
 #[derive(Debug, Eq, PartialEq)]
 pub struct VarBytes(pub Vec<u8>);
 
-impl<'a> Encodable<'a> for VarBytes {
+impl Encodable for VarBytes {
     type Err = io::Error;
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), Self::Err> {
         assert!(self.0.len() <= u16::max_value() as usize);
@@ -165,7 +165,7 @@ impl<'a> Encodable<'a> for VarBytes {
     }
 }
 
-impl<'a> Decodable<'a> for VarBytes {
+impl Decodable for VarBytes {
     type Err = io::Error;
     type Cond = ();
     fn decode_with<R: Read>(reader: &mut R, _: Option<()>) -> Result<VarBytes, io::Error> {

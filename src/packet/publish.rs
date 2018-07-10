@@ -57,7 +57,7 @@ impl PublishPacket {
 
     #[inline]
     fn calculate_remaining_length(&self) -> u32 {
-        self.encoded_variable_headers_length() + self.payload().encoded_length()
+        self.encoded_variable_headers_length() + self.payload_ref().encoded_length()
     }
 
     pub fn set_dup(&mut self, dup: bool) {
@@ -110,18 +110,22 @@ impl PublishPacket {
     }
 }
 
-impl<'a> Packet<'a> for PublishPacket {
+impl Packet for PublishPacket {
     type Payload = Vec<u8>;
 
     fn fixed_header(&self) -> &FixedHeader {
         &self.fixed_header
     }
 
-    fn payload(&self) -> &Self::Payload {
+    fn payload(self) -> Self::Payload {
+        self.payload
+    }
+
+    fn payload_ref(&self) -> &Self::Payload {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
         self.topic_name.encode(writer)?;
 
         if let Some(pkid) = self.packet_identifier.as_ref() {
@@ -139,7 +143,7 @@ impl<'a> Packet<'a> for PublishPacket {
                 .unwrap_or(0)
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let topic_name: TopicName = TopicName::decode(reader)?;
 
         let packet_identifier = if fixed_header.packet_type.flags & 0x06 != 0 {

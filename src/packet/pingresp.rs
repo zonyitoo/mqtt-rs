@@ -21,18 +21,22 @@ impl PingrespPacket {
     }
 }
 
-impl<'a> Packet<'a> for PingrespPacket {
+impl Packet for PingrespPacket {
     type Payload = ();
 
     fn fixed_header(&self) -> &FixedHeader {
         &self.fixed_header
     }
 
-    fn payload(&self) -> &Self::Payload {
+    fn payload(self) -> Self::Payload {
+        self.payload
+    }
+
+    fn payload_ref(&self) -> &Self::Payload {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, _writer: &mut W) -> Result<(), PacketError<'a, Self>> {
+    fn encode_variable_headers<W: Write>(&self, _writer: &mut W) -> Result<(), PacketError<Self>> {
         Ok(())
     }
 
@@ -40,7 +44,7 @@ impl<'a> Packet<'a> for PingrespPacket {
         0
     }
 
-    fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>> {
+    fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         Ok(PingrespPacket {
                fixed_header: fixed_header,
                payload: (),

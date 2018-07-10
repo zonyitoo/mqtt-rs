@@ -24,7 +24,7 @@ impl Into<TopicName> for TopicNameHeader {
     }
 }
 
-impl<'a> Encodable<'a> for TopicNameHeader {
+impl Encodable for TopicNameHeader {
     type Err = VariableHeaderError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
@@ -36,7 +36,7 @@ impl<'a> Encodable<'a> for TopicNameHeader {
     }
 }
 
-impl<'a> Decodable<'a> for TopicNameHeader {
+impl Decodable for TopicNameHeader {
     type Err = VariableHeaderError;
     type Cond = ();
 

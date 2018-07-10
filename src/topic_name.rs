@@ -61,7 +61,7 @@ impl Deref for TopicName {
     }
 }
 
-impl<'a> Encodable<'a> for TopicName {
+impl Encodable for TopicName {
     type Err = TopicNameError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicNameError> {
@@ -75,7 +75,7 @@ impl<'a> Encodable<'a> for TopicName {
     }
 }
 
-impl<'a> Decodable<'a> for TopicName {
+impl Decodable for TopicName {
     type Err = TopicNameError;
     type Cond = ();
 

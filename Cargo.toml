@@ -13,12 +13,15 @@ byteorder = "1.0"
 log = "0.3"
 regex = "0.2"
 lazy_static = "0.2"
+tokio-io = "0.1.7"
+futures = "0.1.22"
 
 [dev-dependencies]
 clap = "2.23"
 env_logger = "0.4"
 uuid = { version = "0.4", features = ["v4"] }
 time = "0.1"
+tokio = "0.1.7"
 
 [lib]
 name = "mqtt"

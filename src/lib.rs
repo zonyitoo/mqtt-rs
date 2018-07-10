@@ -39,6 +39,8 @@ extern crate byteorder;
 extern crate regex;
 #[macro_use]
 extern crate lazy_static;
+extern crate futures;
+extern crate tokio_io;
 
 pub use self::encodable::{Decodable, Encodable};
 pub use self::qos::QualityOfService;

@@ -3,7 +3,10 @@
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Write, Cursor};
+
+use futures::Future;
+use tokio_io::{io as async_io, AsyncRead};
 
 use {Decodable, Encodable};
 use control::ControlType;
@@ -46,44 +49,46 @@ pub mod unsuback;
 pub mod unsubscribe;
 
 /// Methods for encoding and decoding a packet
-pub trait Packet<'a>: Sized {
-    type Payload: Encodable<'a> + Decodable<'a> + 'a;
+pub trait Packet: Sized {
+    type Payload: Encodable + Decodable;
 
     /// Get a `FixedHeader` of this packet
     fn fixed_header(&self) -> &FixedHeader;
-    /// Get payload
-    fn payload(&self) -> &Self::Payload;
+    /// Get the payload
+    fn payload(self) -> Self::Payload;
+    /// Get a borrow of payload
+    fn payload_ref(&self) -> &Self::Payload;
 
     /// Encode variable headers to writer
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, Self>>;
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>>;
     /// Length of bytes after encoding variable header
     fn encoded_variable_headers_length(&self) -> u32;
     /// Deocde packet with a `FixedHeader`
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<'a, Self>>;
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>>;
 }
 
-impl<'a, T: Packet<'a> + fmt::Debug + 'a> Encodable<'a> for T {
-    type Err = PacketError<'a, T>;
+impl<T: Packet + fmt::Debug> Encodable for T {
+    type Err = PacketError<T>;
 
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<'a, T>> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<T>> {
         self.fixed_header().encode(writer)?;
         self.encode_variable_headers(writer)?;
 
-        self.payload()
+        self.payload_ref()
             .encode(writer)
             .map_err(PacketError::PayloadError)
     }
 
     fn encoded_length(&self) -> u32 {
-        self.fixed_header().encoded_length() + self.encoded_variable_headers_length() + self.payload().encoded_length()
+        self.fixed_header().encoded_length() + self.encoded_variable_headers_length() + self.payload_ref().encoded_length()
     }
 }
 
-impl<'a, T: Packet<'a> + fmt::Debug + 'a> Decodable<'a> for T {
-    type Err = PacketError<'a, T>;
+impl<T: Packet + fmt::Debug> Decodable for T {
+    type Err = PacketError<T>;
     type Cond = FixedHeader;
 
-    fn decode_with<R: Read>(reader: &mut R, fixed_header: Option<FixedHeader>) -> Result<Self, PacketError<'a, Self>> {
+    fn decode_with<R: Read>(reader: &mut R, fixed_header: Option<FixedHeader>) -> Result<Self, PacketError<Self>> {
         let fixed_header: FixedHeader = if let Some(hdr) = fixed_header {
             hdr
         } else {
@@ -96,17 +101,17 @@ impl<'a, T: Packet<'a> + fmt::Debug + 'a> Decodable<'a> for T {
 
 /// Parsing errors for packet
 #[derive(Debug)]
-pub enum PacketError<'a, T: Packet<'a>> {
+pub enum PacketError<T: Packet> {
     FixedHeaderError(FixedHeaderError),
     VariableHeaderError(VariableHeaderError),
-    PayloadError(<<T as Packet<'a>>::Payload as Encodable<'a>>::Err),
+    PayloadError(<<T as Packet>::Payload as Encodable>::Err),
     MalformedPacket(String),
     StringEncodeError(StringEncodeError),
     IoError(io::Error),
     TopicNameError(TopicNameError),
 }
 
-impl<'a, T: Packet<'a>> fmt::Display for PacketError<'a, T> {
+impl<T: Packet> fmt::Display for PacketError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &PacketError::FixedHeaderError(ref err) => err.fmt(f),
@@ -120,7 +125,7 @@ impl<'a, T: Packet<'a>> fmt::Display for PacketError<'a, T> {
     }
 }
 
-impl<'a, T: Packet<'a> + fmt::Debug> Error for PacketError<'a, T> {
+impl<T: Packet + fmt::Debug> Error for PacketError<T> {
     fn description(&self) -> &str {
         match self {
             &PacketError::FixedHeaderError(ref err) => err.description(),
@@ -146,32 +151,32 @@ impl<'a, T: Packet<'a> + fmt::Debug> Error for PacketError<'a, T> {
     }
 }
 
-impl<'a, T: Packet<'a>> From<FixedHeaderError> for PacketError<'a, T> {
-    fn from(err: FixedHeaderError) -> PacketError<'a, T> {
+impl<T: Packet> From<FixedHeaderError> for PacketError<T> {
+    fn from(err: FixedHeaderError) -> PacketError<T> {
         PacketError::FixedHeaderError(err)
     }
 }
 
-impl<'a, T: Packet<'a>> From<VariableHeaderError> for PacketError<'a, T> {
-    fn from(err: VariableHeaderError) -> PacketError<'a, T> {
+impl<T: Packet> From<VariableHeaderError> for PacketError<T> {
+    fn from(err: VariableHeaderError) -> PacketError<T> {
         PacketError::VariableHeaderError(err)
     }
 }
 
-impl<'a, T: Packet<'a>> From<io::Error> for PacketError<'a, T> {
-    fn from(err: io::Error) -> PacketError<'a, T> {
+impl<T: Packet> From<io::Error> for PacketError<T> {
+    fn from(err: io::Error) -> PacketError<T> {
         PacketError::IoError(err)
     }
 }
 
-impl<'a, T: Packet<'a>> From<StringEncodeError> for PacketError<'a, T> {
-    fn from(err: StringEncodeError) -> PacketError<'a, T> {
+impl<T: Packet> From<StringEncodeError> for PacketError<T> {
+    fn from(err: StringEncodeError) -> PacketError<T> {
         PacketError::StringEncodeError(err)
     }
 }
 
-impl<'a, T: Packet<'a>> From<TopicNameError> for PacketError<'a, T> {
-    fn from(err: TopicNameError) -> PacketError<'a, T> {
+impl<T: Packet> From<TopicNameError> for PacketError<T> {
+    fn from(err: TopicNameError) -> PacketError<T> {
         PacketError::TopicNameError(err)
     }
 }
@@ -186,6 +191,46 @@ macro_rules! impl_variable_packet {
             )+
         }
 
+        impl VariablePacket {
+            pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self), Error = VariablePacketError> {
+                FixedHeader::parse(rdr).then(|result| {
+                    let (rdr, fixed_header) = match result {
+                        Ok((rdr, header)) => (rdr, header),
+                        Err(FixedHeaderError::Unrecognized(code, _length)) => {
+                            // can't read excess bytes from rdr as it was dropped when an error
+                            // occurred
+                            return Err(VariablePacketError::UnrecognizedPacket(code, Vec::new()));
+                        },
+                        Err(FixedHeaderError::ReservedType(code, _length)) => {
+                            // can't read excess bytes from rdr as it was dropped when an error
+                            // occurred
+                            return Err(VariablePacketError::ReservedPacket(code, Vec::new()));
+                        },
+                        Err(err) => return Err(From::from(err))
+                    };
+
+                    Ok((rdr, fixed_header))
+                }).and_then(|(rdr, fixed_header)| {
+                    let buffer = vec![0u8; fixed_header.remaining_length as usize];
+                    async_io::read_exact(rdr, buffer)
+                        .from_err()
+                        .and_then(move |(rdr, buffer)| {
+                            let mut buff_rdr = Cursor::new(buffer);
+                            let output = match fixed_header.packet_type.control_type {
+                                $(
+                                    ControlType::$hdr => {
+                                        let pk = <$name as Packet>::decode_packet(&mut buff_rdr, fixed_header)?;
+                                        VariablePacket::$name(pk)
+                                    }
+                                )+
+                            };
+
+                            Ok((rdr, output))
+                        })
+                })
+            }
+        }
+
         $(
             impl From<$name> for VariablePacket {
                 fn from(pk: $name) -> VariablePacket {
@@ -194,10 +239,10 @@ macro_rules! impl_variable_packet {
             }
         )+
 
-        impl<'a> Encodable<'a> for VariablePacket {
-            type Err = VariablePacketError<'a>;
+        impl Encodable for VariablePacket {
+            type Err = VariablePacketError;
 
-            fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariablePacketError<'a>> {
+            fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariablePacketError> {
                 match self {
                     $(
                         &VariablePacket::$name(ref pk) => pk.encode(writer).map_err(From::from),
@@ -214,8 +259,8 @@ macro_rules! impl_variable_packet {
             }
         }
 
-        impl<'a> Decodable<'a> for VariablePacket {
-            type Err = VariablePacketError<'a>;
+        impl Decodable for VariablePacket {
+            type Err = VariablePacketError;
             type Cond = FixedHeader;
 
             fn decode_with<R: Read>(reader: &mut R, fixed_header: Option<FixedHeader>)
@@ -246,7 +291,7 @@ macro_rules! impl_variable_packet {
                 match fixed_header.packet_type.control_type {
                     $(
                         ControlType::$hdr => {
-                            let pk = try!(<$name as Packet<'a>>::decode_packet(reader, fixed_header));
+                            let pk = try!(<$name as Packet>::decode_packet(reader, fixed_header));
                             Ok(VariablePacket::$name(pk))
                         }
                     )+
@@ -256,37 +301,37 @@ macro_rules! impl_variable_packet {
 
         /// Parsing errors for variable packet
         #[derive(Debug)]
-        pub enum VariablePacketError<'a> {
+        pub enum VariablePacketError {
             FixedHeaderError(FixedHeaderError),
             UnrecognizedPacket(u8, Vec<u8>),
             ReservedPacket(u8, Vec<u8>),
             IoError(io::Error),
             $(
-                $errname(PacketError<'a, $name>),
+                $errname(PacketError<$name>),
             )+
         }
 
-        impl<'a> From<FixedHeaderError> for VariablePacketError<'a> {
-            fn from(err: FixedHeaderError) -> VariablePacketError<'a> {
+        impl From<FixedHeaderError> for VariablePacketError {
+            fn from(err: FixedHeaderError) -> VariablePacketError {
                 VariablePacketError::FixedHeaderError(err)
             }
         }
 
-        impl<'a> From<io::Error> for VariablePacketError<'a> {
-            fn from(err: io::Error) -> VariablePacketError<'a> {
+        impl From<io::Error> for VariablePacketError {
+            fn from(err: io::Error) -> VariablePacketError {
                 VariablePacketError::IoError(err)
             }
         }
 
         $(
-            impl<'a> From<PacketError<'a, $name>> for VariablePacketError<'a> {
-                fn from(err: PacketError<'a, $name>) -> VariablePacketError<'a> {
+            impl From<PacketError<$name>> for VariablePacketError {
+                fn from(err: PacketError<$name>) -> VariablePacketError {
                     VariablePacketError::$errname(err)
                 }
             }
         )+
 
-        impl<'a> fmt::Display for VariablePacketError<'a> {
+        impl fmt::Display for VariablePacketError {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 match self {
                     &VariablePacketError::FixedHeaderError(ref err) => err.fmt(f),
@@ -302,7 +347,7 @@ macro_rules! impl_variable_packet {
             }
         }
 
-        impl<'a> Error for VariablePacketError<'a> {
+        impl Error for VariablePacketError {
             fn description(&self) -> &str {
                 match self {
                     &VariablePacketError::FixedHeaderError(ref err) => err.description(),

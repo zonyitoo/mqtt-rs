@@ -10,7 +10,7 @@ use control::variable_header::VariableHeaderError;
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct PacketIdentifier(pub u16);
 
-impl<'a> Encodable<'a> for PacketIdentifier {
+impl Encodable for PacketIdentifier {
     type Err = VariableHeaderError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
@@ -22,7 +22,7 @@ impl<'a> Encodable<'a> for PacketIdentifier {
     }
 }
 
-impl<'a> Decodable<'a> for PacketIdentifier {
+impl Decodable for PacketIdentifier {
     type Err = VariableHeaderError;
     type Cond = ();
 

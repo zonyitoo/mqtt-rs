@@ -6,6 +6,7 @@ extern crate clap;
 extern crate uuid;
 extern crate time;
 
+use std::env;
 use std::io::Write;
 use std::net::TcpStream;
 use std::str;
@@ -27,6 +28,11 @@ fn generate_client_id() -> String {
 }
 
 fn main() {
+    // configure logging
+    env::set_var(
+        "RUST_LOG",
+        env::var_os("RUST_LOG").unwrap_or_else(|| "info".into()),
+    );
     env_logger::init().unwrap();
 
     let matches = App::new("sub-client")
@@ -73,11 +79,11 @@ fn main() {
 
     let keep_alive = 10;
 
-    print!("Connecting to {:?} ... ", server_addr);
+    info!("Connecting to {:?} ... ", server_addr);
     let mut stream = TcpStream::connect(server_addr).unwrap();
-    println!("Connected!");
+    info!("Connected!");
 
-    println!("Client identifier {:?}", client_id);
+    info!("Client identifier {:?}", client_id);
     let mut conn = ConnectPacket::new("MQTT", client_id);
     conn.set_clean_session(true);
     conn.set_keep_alive(keep_alive);
@@ -93,7 +99,7 @@ fn main() {
     }
 
     // const CHANNEL_FILTER: &'static str = "typing-speed-test.aoeu.eu";
-    println!("Applying channel filters {:?} ...", channel_filters);
+    info!("Applying channel filters {:?} ...", channel_filters);
     let sub = SubscribePacket::new(10, channel_filters);
     let mut buf = Vec::new();
     sub.encode(&mut buf).unwrap();
@@ -114,7 +120,7 @@ fn main() {
                 panic!("SUBACK packet identifier not match");
             }
 
-            println!("Subscribed!");
+            info!("Subscribed!");
             break;
         }
     }
@@ -126,7 +132,7 @@ fn main() {
         loop {
             let current_timestamp = time::get_time().sec;
             if keep_alive > 0 && current_timestamp >= next_ping_time {
-                println!("Sending PINGREQ to broker");
+                info!("Sending PINGREQ to broker");
 
                 let pingreq_packet = PingreqPacket::new();
 
@@ -153,7 +159,7 @@ fn main() {
 
         match packet {
             VariablePacket::PingrespPacket(..) => {
-                println!("Receiving PINGRESP from broker ..");
+                info!("Receiving PINGRESP from broker ..");
             }
             VariablePacket::PublishPacket(ref publ) => {
                 let msg = match str::from_utf8(&publ.payload_ref()[..]) {
@@ -163,7 +169,7 @@ fn main() {
                         continue;
                     }
                 };
-                println!("PUBLISH ({}): {}", publ.topic_name(), msg);
+                info!("PUBLISH ({}): {}", publ.topic_name(), msg);
             }
             _ => {}
         }

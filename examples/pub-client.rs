@@ -5,6 +5,7 @@ extern crate env_logger;
 extern crate clap;
 extern crate uuid;
 
+use std::env;
 use std::io::{self, Write};
 use std::net::TcpStream;
 use std::thread;
@@ -23,6 +24,11 @@ fn generate_client_id() -> String {
 }
 
 fn main() {
+    // configure logging
+    env::set_var(
+        "RUST_LOG",
+        env::var_os("RUST_LOG").unwrap_or_else(|| "info".into()),
+    );
     env_logger::init().unwrap();
 
     let matches = App::new("sub-client")
@@ -67,11 +73,11 @@ fn main() {
                .map(|c| (TopicFilter::new(c.to_string()).unwrap(), QualityOfService::Level0))
                .collect();
 
-    print!("Connecting to {:?} ... ", server_addr);
+    info!("Connecting to {:?} ... ", server_addr);
     let mut stream = TcpStream::connect(server_addr).unwrap();
-    println!("Connected!");
+    info!("Connected!");
 
-    println!("Client identifier {:?}", client_id);
+    info!("Client identifier {:?}", client_id);
     let mut conn = ConnectPacket::new("MQTT", client_id);
     conn.set_clean_session(true);
     let mut buf = Vec::new();
@@ -85,7 +91,7 @@ fn main() {
         panic!("Failed to connect to server, return code {:?}", connack.connect_return_code());
     }
 
-    println!("Applying channel filters {:?} ...", channel_filters);
+    info!("Applying channel filters {:?} ...", channel_filters);
     let sub = SubscribePacket::new(10, channel_filters);
     let mut buf = Vec::new();
     sub.encode(&mut buf).unwrap();

@@ -5,9 +5,9 @@
 
 MQTT protocol library for Rust
 
-```rust
+```toml
 [dependencies]
-mqtt-protocol = "0.4"
+mqtt-protocol = "0.5"
 ```
 
 ## Usage

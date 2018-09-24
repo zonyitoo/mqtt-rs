@@ -47,18 +47,17 @@ impl FixedHeader {
 
     /// Asynchronously parse a single fixed header from an AsyncRead type, such as a network
     /// socket.
-    pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self, [u8; 2]), Error = FixedHeaderError> {
+    pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self, Vec<u8>), Error = FixedHeaderError> {
         async_io::read_exact(rdr, [0u8])
             .from_err()
             .and_then(|(rdr, [type_val])| {
-                let mut data: [u8; 2] = [type_val, 0xff];
-                future::loop_fn((rdr, 0, 0), move |(rdr, mut cur, i)| {
+                let mut data: Vec<u8> = Vec::new();
+                data.push(type_val);
+                future::loop_fn((rdr, 0, 0, data), move |(rdr, mut cur, i, mut data)| {
                     async_io::read_exact(rdr, [0u8])
                         .from_err()
                         .and_then(move |(rdr, [byte])| {
-                            if i == 0 {
-                                data[1] = byte;
-                            }
+                            data.push(byte);
 
                             cur |= (u32::from(byte) & 0x7F) << (7 * i);
 
@@ -69,7 +68,7 @@ impl FixedHeader {
                             if byte & 0x80 == 0 {
                                 Ok(future::Loop::Break((rdr, cur, data)))
                             } else {
-                                Ok(future::Loop::Continue((rdr, cur, i + 1)))
+                                Ok(future::Loop::Continue((rdr, cur, i + 1, data)))
                             }
                         })
                 }).and_then(move |(rdr, remaining_len, data)| match PacketType::from_u8(type_val) {

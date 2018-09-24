@@ -192,7 +192,7 @@ macro_rules! impl_variable_packet {
         }
 
         impl VariablePacket {
-            pub fn peek<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, FixedHeader, [u8; 2]), Error = VariablePacketError> {
+            pub fn peek<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, FixedHeader, Vec<u8>), Error = VariablePacketError> {
                 FixedHeader::parse(rdr).then(|result| {
                     let (rdr, fixed_header, data) = match result {
                         Ok((rdr, header, data)) => (rdr, header, data),
@@ -228,7 +228,7 @@ macro_rules! impl_variable_packet {
                                 )+
                             };
                             let mut result = Vec::new();
-                            result.extend(header_buffer.iter());
+                            result.extend(header_buffer);
                             result.extend(packet);
                             Ok((result, output))
                         })

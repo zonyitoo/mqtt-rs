@@ -212,12 +212,12 @@ macro_rules! impl_variable_packet {
                     Ok((rdr, fixed_header, data))
                 })
             }
-            pub fn peek_finalize<A: AsyncRead>(rdr: A) -> impl Future<Item = (Vec<u8>, Self), Error = VariablePacketError> {
+            pub fn peek_finalize<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Vec<u8>, Self), Error = VariablePacketError> {
                 Self::peek(rdr).and_then(|(rdr, fixed_header, header_buffer)| {
                     let packet = vec![0u8; fixed_header.remaining_length as usize];
                     async_io::read_exact(rdr, packet)
                         .from_err()
-                        .and_then(move |(_rdr, packet)| {
+                        .and_then(move |(rdr, packet)| {
                             let mut buff_rdr = Cursor::new(packet.clone());
                             let output = match fixed_header.packet_type.control_type {
                                 $(
@@ -230,7 +230,7 @@ macro_rules! impl_variable_packet {
                             let mut result = Vec::new();
                             result.extend(header_buffer);
                             result.extend(packet);
-                            Ok((result, output))
+                            Ok((rdr, result, output))
                         })
                 })
             }
@@ -499,7 +499,7 @@ mod test {
         // Read the rest
         match VariablePacket::peek_finalize(async_buf).wait() {
             Err(_) => assert!(false),
-            Ok((peeked_buffer, peeked_packet)) => {
+            Ok((_, peeked_buffer, peeked_packet)) => {
                 assert_eq!(peeked_buffer, buf);
                 assert_eq!(peeked_packet, var_packet);
             }

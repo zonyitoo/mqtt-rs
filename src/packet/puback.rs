@@ -8,7 +8,7 @@ use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
 
 /// `PUBACK` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct PubackPacket {
     fixed_header: FixedHeader,
     packet_identifier: PacketIdentifier,

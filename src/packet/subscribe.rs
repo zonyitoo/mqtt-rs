@@ -16,7 +16,7 @@ use packet::{Packet, PacketError};
 use topic_filter::{TopicFilter, TopicFilterError};
 
 /// `SUBSCRIBE` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct SubscribePacket {
     fixed_header: FixedHeader,
     packet_identifier: PacketIdentifier,
@@ -84,7 +84,7 @@ impl Packet for SubscribePacket {
 }
 
 /// Payload of subscribe packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct SubscribePacketPayload {
     subscribes: Vec<(TopicFilter, QualityOfService)>,
 }

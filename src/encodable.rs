@@ -147,7 +147,7 @@ impl Decodable for () {
 }
 
 /// Bytes that encoded with length
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct VarBytes(pub Vec<u8>);
 
 impl Encodable for VarBytes {

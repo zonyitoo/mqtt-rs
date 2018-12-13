@@ -52,7 +52,7 @@ impl From<QualityOfService> for SubscribeReturnCode {
 }
 
 /// `SUBACK` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct SubackPacket {
     fixed_header: FixedHeader,
     packet_identifier: PacketIdentifier,
@@ -118,7 +118,7 @@ impl Packet for SubackPacket {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct SubackPacketPayload {
     subscribes: Vec<SubscribeReturnCode>,
 }

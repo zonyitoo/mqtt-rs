@@ -14,7 +14,7 @@ use packet::{Packet, PacketError};
 use topic_filter::{TopicFilter, TopicFilterError};
 
 /// `UNSUBSCRIBE` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct UnsubscribePacket {
     fixed_header: FixedHeader,
     packet_identifier: PacketIdentifier,
@@ -81,7 +81,7 @@ impl Packet for UnsubscribePacket {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct UnsubscribePacketPayload {
     subscribes: Vec<TopicFilter>,
 }

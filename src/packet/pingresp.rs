@@ -6,7 +6,7 @@ use control::{ControlType, FixedHeader, PacketType};
 use packet::{Packet, PacketError};
 
 /// `PINGRESP` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct PingrespPacket {
     fixed_header: FixedHeader,
     payload: (),

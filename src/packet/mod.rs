@@ -184,7 +184,7 @@ impl<T: Packet> From<TopicNameError> for PacketError<T> {
 macro_rules! impl_variable_packet {
     ($($name:ident & $errname:ident => $hdr:ident,)+) => {
         /// Variable packet
-        #[derive(Debug, Eq, PartialEq)]
+        #[derive(Debug, Eq, PartialEq, Clone)]
         pub enum VariablePacket {
             $(
                 $name($name),

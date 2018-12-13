@@ -28,7 +28,7 @@ impl QoSWithPacketIdentifier {
 }
 
 /// `PUBLISH` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct PublishPacket {
     fixed_header: FixedHeader,
     topic_name: TopicName,

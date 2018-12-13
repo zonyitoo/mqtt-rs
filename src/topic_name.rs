@@ -26,7 +26,7 @@ fn is_invalid_topic_name(topic_name: &str) -> bool {
 /// Topic name
 ///
 /// http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106
-#[derive(Debug, Eq, PartialEq, Clone, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash, Ord, PartialOrd)]
 pub struct TopicName(String);
 
 impl TopicName {
@@ -119,7 +119,7 @@ impl Error for TopicNameError {
 }
 
 /// Reference to a topic name
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct TopicNameRef(str);
 
 impl TopicNameRef {

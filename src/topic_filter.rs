@@ -35,7 +35,7 @@ fn is_invalid_topic_filter(topic: &str) -> bool {
 /// let matcher = topic_filter.get_matcher();
 /// assert!(matcher.is_match(TopicNameRef::new("sport/abc/player1").unwrap()));
 /// ```
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash, Ord, PartialOrd)]
 pub struct TopicFilter(String);
 
 impl TopicFilter {
@@ -90,7 +90,7 @@ impl Deref for TopicFilter {
 }
 
 /// Reference to a `TopicFilter`
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct TopicFilterRef(str);
 
 impl TopicFilterRef {

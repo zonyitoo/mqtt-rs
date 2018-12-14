@@ -8,7 +8,7 @@ use control::variable_header::PacketIdentifier;
 use packet::{Packet, PacketError};
 
 /// `PUBCOMP` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct PubcompPacket {
     fixed_header: FixedHeader,
     packet_identifier: PacketIdentifier,

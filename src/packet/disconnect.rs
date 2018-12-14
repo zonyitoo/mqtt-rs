@@ -6,7 +6,7 @@ use control::{ControlType, FixedHeader, PacketType};
 use packet::{Packet, PacketError};
 
 /// `DISCONNECT` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct DisconnectPacket {
     fixed_header: FixedHeader,
     payload: (),

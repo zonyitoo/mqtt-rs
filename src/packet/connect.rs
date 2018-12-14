@@ -13,7 +13,7 @@ use packet::{Packet, PacketError};
 use topic_name::{TopicName, TopicNameError};
 
 /// `CONNECT` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ConnectPacket {
     fixed_header: FixedHeader,
     protocol_name: ProtocolName,
@@ -196,7 +196,7 @@ impl Packet for ConnectPacket {
 }
 
 /// Payloads for connect packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ConnectPacketPayload {
     client_identifier: String,
     will_topic: Option<TopicName>,

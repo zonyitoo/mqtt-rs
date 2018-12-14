@@ -6,7 +6,7 @@ use control::{ControlType, FixedHeader, PacketType};
 use packet::{Packet, PacketError};
 
 /// `PINGREQ` packet
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct PingreqPacket {
     fixed_header: FixedHeader,
     payload: (),

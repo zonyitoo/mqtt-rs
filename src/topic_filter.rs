@@ -148,7 +148,7 @@ impl Error for TopicFilterError {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &TopicFilterError::StringEncodeError(ref err) => Some(err),
             &TopicFilterError::InvalidTopicFilter(..) => None,

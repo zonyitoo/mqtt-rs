@@ -177,7 +177,7 @@ impl Error for SubscribePacketPayloadError {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &SubscribePacketPayloadError::IoError(ref err) => Some(err),
             &SubscribePacketPayloadError::FromUtf8Error(ref err) => Some(err),

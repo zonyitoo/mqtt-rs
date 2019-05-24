@@ -84,7 +84,7 @@ impl Error for VariableHeaderError {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &VariableHeaderError::IoError(ref err) => Some(err),
             &VariableHeaderError::StringEncodeError(ref err) => Some(err),

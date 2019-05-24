@@ -222,7 +222,7 @@ impl Error for StringEncodeError {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &StringEncodeError::IoError(ref err) => Some(err),
             &StringEncodeError::FromUtf8Error(ref err) => Some(err),

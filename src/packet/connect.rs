@@ -340,7 +340,7 @@ impl Error for ConnectPacketPayloadError {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &ConnectPacketPayloadError::IoError(ref err) => Some(err),
             &ConnectPacketPayloadError::StringEncodeError(ref err) => Some(err),

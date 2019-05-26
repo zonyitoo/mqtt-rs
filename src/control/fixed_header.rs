@@ -199,7 +199,7 @@ impl Error for FixedHeaderError {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &FixedHeaderError::MalformedRemainingLength => None,
             &FixedHeaderError::Unrecognized(..) => None,

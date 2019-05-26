@@ -163,7 +163,7 @@ impl Error for UnsubscribePacketPayloadError {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &UnsubscribePacketPayloadError::IoError(ref err) => Some(err),
             &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => Some(err),

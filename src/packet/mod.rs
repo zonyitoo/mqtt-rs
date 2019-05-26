@@ -67,7 +67,7 @@ pub trait Packet: Sized {
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>>;
 }
 
-impl<T: Packet + fmt::Debug> Encodable for T {
+impl<T: Packet + fmt::Debug + 'static> Encodable for T {
     type Err = PacketError<T>;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<T>> {
@@ -84,7 +84,7 @@ impl<T: Packet + fmt::Debug> Encodable for T {
     }
 }
 
-impl<T: Packet + fmt::Debug> Decodable for T {
+impl<T: Packet + fmt::Debug + 'static> Decodable for T {
     type Err = PacketError<T>;
     type Cond = FixedHeader;
 
@@ -101,7 +101,7 @@ impl<T: Packet + fmt::Debug> Decodable for T {
 
 /// Parsing errors for packet
 #[derive(Debug)]
-pub enum PacketError<T: Packet> {
+pub enum PacketError<T: Packet + 'static> {
     FixedHeaderError(FixedHeaderError),
     VariableHeaderError(VariableHeaderError),
     PayloadError(<<T as Packet>::Payload as Encodable>::Err),
@@ -138,7 +138,7 @@ impl<T: Packet + fmt::Debug> Error for PacketError<T> {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &PacketError::FixedHeaderError(ref err) => Some(err),
             &PacketError::VariableHeaderError(ref err) => Some(err),
@@ -385,7 +385,7 @@ macro_rules! impl_variable_packet {
                 }
             }
 
-            fn cause(&self) -> Option<&Error> {
+            fn source(&self) -> Option<&(dyn Error + 'static)> {
                 match self {
                     &VariablePacketError::FixedHeaderError(ref err) => Some(err),
                     &VariablePacketError::UnrecognizedPacket(..) => None,

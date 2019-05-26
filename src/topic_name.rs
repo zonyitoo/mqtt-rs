@@ -110,7 +110,7 @@ impl Error for TopicNameError {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &TopicNameError::StringEncodeError(ref err) => Some(err),
             &TopicNameError::InvalidTopicName(..) => None,

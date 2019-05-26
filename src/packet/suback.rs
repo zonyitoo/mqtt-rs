@@ -200,7 +200,7 @@ impl Error for SubackPacketPayloadError {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &SubackPacketPayloadError::IoError(ref err) => Some(err),
             &SubackPacketPayloadError::InvalidSubscribeReturnCode(..) => None,

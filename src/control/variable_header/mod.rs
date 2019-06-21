@@ -18,13 +18,13 @@ pub use self::protocol_level::ProtocolLevel;
 pub use self::protocol_name::ProtocolName;
 pub use self::topic_name::TopicNameHeader;
 
-mod packet_identifier;
-mod protocol_name;
-pub mod protocol_level;
-mod connect_flags;
-mod keep_alive;
 mod connect_ack_flags;
+mod connect_flags;
 mod connect_ret_code;
+mod keep_alive;
+mod packet_identifier;
+pub mod protocol_level;
+mod protocol_name;
 mod topic_name;
 
 /// Errors while decoding variable header

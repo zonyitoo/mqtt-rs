@@ -2,15 +2,17 @@ extern crate mqtt;
 
 use std::io::Cursor;
 
-use mqtt::{Decodable, Encodable};
-use mqtt::TopicName;
 use mqtt::packet::{PublishPacket, QoSWithPacketIdentifier, VariablePacket};
+use mqtt::TopicName;
+use mqtt::{Decodable, Encodable};
 
 fn main() {
     // Create a new Publish packet
-    let packet = PublishPacket::new(TopicName::new("mqtt/learning").unwrap(),
-                                    QoSWithPacketIdentifier::Level2(10),
-                                    "Hello MQTT!");
+    let packet = PublishPacket::new(
+        TopicName::new("mqtt/learning").unwrap(),
+        QoSWithPacketIdentifier::Level2(10),
+        "Hello MQTT!",
+    );
 
     // Encode
     let mut buf = Vec::new();

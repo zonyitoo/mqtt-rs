@@ -9,9 +9,9 @@ use std::ops::Deref;
 
 use regex::Regex;
 
-use {Decodable, Encodable};
 use encodable::StringEncodeError;
 use topic_name::TopicNameRef;
+use {Decodable, Encodable};
 
 const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(([^+#]*|\+)(/([^+#]*|\+))*(/#)?|#)$";
 
@@ -75,8 +75,7 @@ impl Decodable for TopicFilter {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicFilter, TopicFilterError> {
-        let topic_filter: String = Decodable::decode(reader)
-            .map_err(TopicFilterError::StringEncodeError)?;
+        let topic_filter: String = Decodable::decode(reader).map_err(TopicFilterError::StringEncodeError)?;
         TopicFilter::new(topic_filter)
     }
 }
@@ -197,17 +196,15 @@ impl<'a> TopicFilterMatcher<'a> {
 
         loop {
             match (ft_itr.next(), tn_itr.next()) {
-                (Some(ft), Some(tn)) => {
-                    match ft {
-                        "#" => break,
-                        "+" => {}
-                        _ => {
-                            if ft != tn {
-                                return false;
-                            }
+                (Some(ft), Some(tn)) => match ft {
+                    "#" => break,
+                    "+" => {}
+                    _ => {
+                        if ft != tn {
+                            return false;
                         }
                     }
-                }
+                },
                 (Some(ft), None) => {
                     if ft != "#" {
                         return false;

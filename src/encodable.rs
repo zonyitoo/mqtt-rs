@@ -39,10 +39,11 @@ impl<'a> Encodable for &'a str {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
         assert!(self.as_bytes().len() <= u16::max_value() as usize);
 
-        writer.write_u16::<BigEndian>(self.as_bytes().len() as u16)
-              .map_err(From::from)
-              .and_then(|_| writer.write_all(self.as_bytes()))
-              .map_err(StringEncodeError::IoError)
+        writer
+            .write_u16::<BigEndian>(self.as_bytes().len() as u16)
+            .map_err(From::from)
+            .and_then(|_| writer.write_all(self.as_bytes()))
+            .map_err(StringEncodeError::IoError)
     }
 
     fn encoded_length(&self) -> u32 {

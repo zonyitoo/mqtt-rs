@@ -9,8 +9,8 @@ use std::ops::Deref;
 
 use regex::Regex;
 
-use {Decodable, Encodable};
 use encodable::StringEncodeError;
+use {Decodable, Encodable};
 
 const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^[^#+]+$";
 
@@ -65,9 +65,7 @@ impl Encodable for TopicName {
     type Err = TopicNameError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicNameError> {
-        (&self.0[..])
-            .encode(writer)
-            .map_err(TopicNameError::StringEncodeError)
+        (&self.0[..]).encode(writer).map_err(TopicNameError::StringEncodeError)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -80,8 +78,7 @@ impl Decodable for TopicName {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicName, TopicNameError> {
-        let topic_name: String = Decodable::decode(reader)
-            .map_err(TopicNameError::StringEncodeError)?;
+        let topic_name: String = Decodable::decode(reader).map_err(TopicNameError::StringEncodeError)?;
         TopicName::new(topic_name)
     }
 }

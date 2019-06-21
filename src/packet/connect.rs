@@ -4,13 +4,13 @@ use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
-use control::variable_header::{ConnectFlags, KeepAlive, ProtocolLevel, ProtocolName};
 use control::variable_header::protocol_level::SPEC_3_1_1;
+use control::variable_header::{ConnectFlags, KeepAlive, ProtocolLevel, ProtocolName};
+use control::{ControlType, FixedHeader, PacketType};
 use encodable::{StringEncodeError, VarBytes};
 use packet::{Packet, PacketError};
 use topic_name::{TopicName, TopicNameError};
+use {Decodable, Encodable};
 
 /// `CONNECT` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -122,12 +122,7 @@ impl ConnectPacket {
             .will_topic
             .as_ref()
             .map(|x| &x[..])
-            .and_then(|topic| {
-                          self.payload
-                              .will_message
-                              .as_ref()
-                              .map(|msg| (topic, &msg.0))
-                      })
+            .and_then(|topic| self.payload.will_message.as_ref().map(|msg| (topic, &msg.0)))
     }
 
     pub fn will_retain(&self) -> bool {
@@ -172,8 +167,10 @@ impl Packet for ConnectPacket {
     }
 
     fn encoded_variable_headers_length(&self) -> u32 {
-        self.protocol_name.encoded_length() + self.protocol_level.encoded_length() + self.flags.encoded_length() +
-            self.keep_alive.encoded_length()
+        self.protocol_name.encoded_length()
+            + self.protocol_level.encoded_length()
+            + self.flags.encoded_length()
+            + self.keep_alive.encoded_length()
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
@@ -181,17 +178,17 @@ impl Packet for ConnectPacket {
         let protocol_level: ProtocolLevel = Decodable::decode(reader)?;
         let flags: ConnectFlags = Decodable::decode(reader)?;
         let keep_alive: KeepAlive = Decodable::decode(reader)?;
-        let payload: ConnectPacketPayload = Decodable::decode_with(reader, Some(flags))
-            .map_err(PacketError::PayloadError)?;
+        let payload: ConnectPacketPayload =
+            Decodable::decode_with(reader, Some(flags)).map_err(PacketError::PayloadError)?;
 
         Ok(ConnectPacket {
-               fixed_header: fixed_header,
-               protocol_name: protoname,
-               protocol_level: protocol_level,
-               flags: flags,
-               keep_alive: keep_alive,
-               payload: payload,
-           })
+            fixed_header: fixed_header,
+            protocol_name: protoname,
+            protocol_level: protocol_level,
+            flags: flags,
+            keep_alive: keep_alive,
+            payload: payload,
+        })
     }
 }
 
@@ -243,23 +240,11 @@ impl Encodable for ConnectPacketPayload {
     }
 
     fn encoded_length(&self) -> u32 {
-        self.client_identifier.encoded_length() +
-            self.will_topic
-                .as_ref()
-                .map(|t| t.encoded_length())
-                .unwrap_or(0) +
-            self.will_message
-                .as_ref()
-                .map(|t| t.encoded_length())
-                .unwrap_or(0) +
-            self.user_name
-                .as_ref()
-                .map(|t| t.encoded_length())
-                .unwrap_or(0) +
-            self.password
-                .as_ref()
-                .map(|t| t.encoded_length())
-                .unwrap_or(0)
+        self.client_identifier.encoded_length()
+            + self.will_topic.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
+            + self.will_message.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
+            + self.user_name.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
+            + self.password.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
     }
 }
 
@@ -267,9 +252,10 @@ impl Decodable for ConnectPacketPayload {
     type Err = ConnectPacketPayloadError;
     type Cond = ConnectFlags;
 
-    fn decode_with<R: Read>(reader: &mut R,
-                            rest: Option<ConnectFlags>)
-                            -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        rest: Option<ConnectFlags>,
+    ) -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
         let mut need_will_topic = false;
         let mut need_will_message = false;
         let mut need_user_name = false;
@@ -305,12 +291,12 @@ impl Decodable for ConnectPacketPayload {
         };
 
         Ok(ConnectPacketPayload {
-               client_identifier: ident,
-               will_topic: topic,
-               will_message: msg,
-               user_name: uname,
-               password: pwd,
-           })
+            client_identifier: ident,
+            will_topic: topic,
+            will_message: msg,
+            user_name: uname,
+            password: pwd,
+        })
     }
 }
 
@@ -359,7 +345,7 @@ impl From<StringEncodeError> for ConnectPacketPayloadError {
     fn from(err: StringEncodeError) -> ConnectPacketPayloadError {
         match err {
             StringEncodeError::IoError(io) => ConnectPacketPayloadError::IoError(io),
-            _ => ConnectPacketPayloadError::StringEncodeError(err)
+            _ => ConnectPacketPayloadError::StringEncodeError(err),
         }
     }
 }
@@ -368,7 +354,7 @@ impl From<TopicNameError> for ConnectPacketPayloadError {
     fn from(err: TopicNameError) -> ConnectPacketPayloadError {
         match err {
             TopicNameError::StringEncodeError(e) => e.into(),
-            _ => ConnectPacketPayloadError::TopicNameError(err)
+            _ => ConnectPacketPayloadError::TopicNameError(err),
         }
     }
 }

@@ -8,11 +8,11 @@ use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::PacketIdentifier;
+use control::{ControlType, FixedHeader, PacketType};
 use packet::{Packet, PacketError};
 use qos::QualityOfService;
+use {Decodable, Encodable};
 
 /// Subscribe code
 #[repr(u8)]
@@ -106,15 +106,16 @@ impl Packet for SubackPacket {
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
-        let payload: SubackPacketPayload =
-            SubackPacketPayload::decode_with(reader,
-                                             Some(fixed_header.remaining_length - packet_identifier.encoded_length()))
-            .map_err(PacketError::PayloadError)?;
+        let payload: SubackPacketPayload = SubackPacketPayload::decode_with(
+            reader,
+            Some(fixed_header.remaining_length - packet_identifier.encoded_length()),
+        )
+        .map_err(PacketError::PayloadError)?;
         Ok(SubackPacket {
-               fixed_header: fixed_header,
-               packet_identifier: packet_identifier,
-               payload: payload,
-           })
+            fixed_header: fixed_header,
+            packet_identifier: packet_identifier,
+            payload: payload,
+        })
     }
 }
 
@@ -153,9 +154,10 @@ impl Decodable for SubackPacketPayload {
     type Err = SubackPacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R,
-                            payload_len: Option<u32>)
-                            -> Result<SubackPacketPayload, SubackPacketPayloadError> {
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        payload_len: Option<u32>,
+    ) -> Result<SubackPacketPayload, SubackPacketPayloadError> {
         let payload_len = payload_len.expect("Must provide payload length");
         let mut subs = Vec::new();
 

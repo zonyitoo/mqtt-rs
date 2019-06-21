@@ -10,8 +10,8 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use futures::{future, Future};
 use tokio_io::{io as async_io, AsyncRead};
 
-use {Decodable, Encodable};
 use control::packet_type::{PacketType, PacketTypeError};
+use {Decodable, Encodable};
 
 /// Fixed header for each MQTT control packet
 ///
@@ -71,7 +71,8 @@ impl FixedHeader {
                                 Ok(future::Loop::Continue((rdr, cur, i + 1, data)))
                             }
                         })
-                }).and_then(move |(rdr, remaining_len, data)| match PacketType::from_u8(type_val) {
+                })
+                .and_then(move |(rdr, remaining_len, data)| match PacketType::from_u8(type_val) {
                     Ok(packet_type) => Ok((rdr, FixedHeader::new(packet_type, remaining_len), data)),
                     Err(PacketTypeError::UndefinedType(ty, _)) => {
                         Err(FixedHeaderError::Unrecognized(ty, remaining_len))
@@ -214,9 +215,9 @@ impl Error for FixedHeaderError {
 mod test {
     use super::*;
 
-    use {Decodable, Encodable};
     use control::packet_type::{ControlType, PacketType};
     use std::io::Cursor;
+    use {Decodable, Encodable};
 
     #[test]
     fn test_encode_fixed_header() {

@@ -2,12 +2,12 @@
 
 use std::io::{Read, Write};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::PacketIdentifier;
+use control::{ControlType, FixedHeader, PacketType};
 use packet::{Packet, PacketError};
 use qos::QualityOfService;
 use topic_name::TopicName;
+use {Decodable, Encodable};
 
 /// QoS with identifier pairs
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -136,11 +136,7 @@ impl Packet for PublishPacket {
     }
 
     fn encoded_variable_headers_length(&self) -> u32 {
-        self.topic_name.encoded_length() +
-            self.packet_identifier
-                .as_ref()
-                .map(|x| x.encoded_length())
-                .unwrap_or(0)
+        self.topic_name.encoded_length() + self.packet_identifier.as_ref().map(|x| x.encoded_length()).unwrap_or(0)
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
@@ -152,20 +148,18 @@ impl Packet for PublishPacket {
             None
         };
 
-        let vhead_len = topic_name.encoded_length() +
-            packet_identifier.as_ref()
-                             .map(|x| x.encoded_length())
-                             .unwrap_or(0);
+        let vhead_len =
+            topic_name.encoded_length() + packet_identifier.as_ref().map(|x| x.encoded_length()).unwrap_or(0);
         let payload_len = fixed_header.remaining_length - vhead_len;
 
         let payload: Vec<u8> = Decodable::decode_with(reader, Some(payload_len))?;
 
         Ok(PublishPacket {
-               fixed_header: fixed_header,
-               topic_name: topic_name,
-               packet_identifier: packet_identifier,
-               payload: payload,
-           })
+            fixed_header: fixed_header,
+            topic_name: topic_name,
+            packet_identifier: packet_identifier,
+            payload: payload,
+        })
     }
 }
 
@@ -175,14 +169,16 @@ mod test {
 
     use std::io::Cursor;
 
-    use {Decodable, Encodable};
     use topic_name::TopicName;
+    use {Decodable, Encodable};
 
     #[test]
     fn test_publish_packet_basic() {
-        let packet = PublishPacket::new(TopicName::new("a/b".to_owned()).unwrap(),
-                                        QoSWithPacketIdentifier::Level2(10),
-                                        b"Hello world!".to_vec());
+        let packet = PublishPacket::new(
+            TopicName::new("a/b".to_owned()).unwrap(),
+            QoSWithPacketIdentifier::Level2(10),
+            b"Hello world!".to_vec(),
+        );
 
         let mut buf = Vec::new();
         packet.encode(&mut buf).unwrap();

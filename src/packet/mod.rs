@@ -3,18 +3,18 @@
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
-use std::io::{self, Read, Write, Cursor};
+use std::io::{self, Cursor, Read, Write};
 
 use futures::Future;
 use tokio_io::{io as async_io, AsyncRead};
 
-use {Decodable, Encodable};
-use control::ControlType;
-use control::FixedHeader;
 use control::fixed_header::FixedHeaderError;
 use control::variable_header::VariableHeaderError;
+use control::ControlType;
+use control::FixedHeader;
 use encodable::StringEncodeError;
 use topic_name::TopicNameError;
+use {Decodable, Encodable};
 
 pub use self::connack::ConnackPacket;
 pub use self::connect::ConnectPacket;
@@ -33,18 +33,18 @@ pub use self::unsubscribe::UnsubscribePacket;
 
 pub use self::publish::QoSWithPacketIdentifier;
 
-pub mod connect;
 pub mod connack;
-pub mod publish;
-pub mod puback;
-pub mod pubrec;
-pub mod pubrel;
-pub mod pubcomp;
+pub mod connect;
+pub mod disconnect;
 pub mod pingreq;
 pub mod pingresp;
-pub mod disconnect;
-pub mod subscribe;
+pub mod puback;
+pub mod pubcomp;
+pub mod publish;
+pub mod pubrec;
+pub mod pubrel;
 pub mod suback;
+pub mod subscribe;
 pub mod unsuback;
 pub mod unsubscribe;
 
@@ -74,13 +74,13 @@ impl<T: Packet + fmt::Debug + 'static> Encodable for T {
         self.fixed_header().encode(writer)?;
         self.encode_variable_headers(writer)?;
 
-        self.payload_ref()
-            .encode(writer)
-            .map_err(PacketError::PayloadError)
+        self.payload_ref().encode(writer).map_err(PacketError::PayloadError)
     }
 
     fn encoded_length(&self) -> u32 {
-        self.fixed_header().encoded_length() + self.encoded_variable_headers_length() + self.payload_ref().encoded_length()
+        self.fixed_header().encoded_length()
+            + self.encoded_variable_headers_length()
+            + self.payload_ref().encoded_length()
     }
 }
 
@@ -445,7 +445,7 @@ mod test {
 
     use {
         super::*, control::variable_header::ConnectReturnCode, packet::suback::SubscribeReturnCode,
-        qos::QualityOfService, Decodable, Encodable, TopicName, TopicFilter
+        qos::QualityOfService, Decodable, Encodable, TopicFilter, TopicName,
     };
 
     #[test]

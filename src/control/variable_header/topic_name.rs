@@ -1,9 +1,9 @@
 use std::convert::{From, Into};
 use std::io::{Read, Write};
 
-use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
 use topic_name::TopicName;
+use {Decodable, Encodable};
 
 /// Topic name wrapper
 #[derive(Debug, Eq, PartialEq, Clone)]

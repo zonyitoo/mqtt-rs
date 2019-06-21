@@ -2,10 +2,10 @@
 
 use std::io::{Read, Write};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::{ConnackFlags, ConnectReturnCode};
+use control::{ControlType, FixedHeader, PacketType};
 use packet::{Packet, PacketError};
+use {Decodable, Encodable};
 
 /// `CONNACK` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -20,7 +20,9 @@ impl ConnackPacket {
     pub fn new(session_present: bool, ret_code: ConnectReturnCode) -> ConnackPacket {
         ConnackPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
-            flags: ConnackFlags { session_present: session_present },
+            flags: ConnackFlags {
+                session_present: session_present,
+            },
             ret_code: ret_code,
             payload: (),
         }
@@ -65,11 +67,11 @@ impl Packet for ConnackPacket {
         let code: ConnectReturnCode = Decodable::decode(reader)?;
 
         Ok(ConnackPacket {
-               fixed_header: fixed_header,
-               flags: flags,
-               ret_code: code,
-               payload: (),
-           })
+            fixed_header: fixed_header,
+            flags: flags,
+            ret_code: code,
+            payload: (),
+        })
     }
 }
 
@@ -79,8 +81,8 @@ mod test {
 
     use std::io::Cursor;
 
-    use {Decodable, Encodable};
     use control::variable_header::ConnectReturnCode;
+    use {Decodable, Encodable};
 
     #[test]
     pub fn test_connack_packet_basic() {

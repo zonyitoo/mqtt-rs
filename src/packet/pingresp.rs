@@ -46,8 +46,8 @@ impl Packet for PingrespPacket {
 
     fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         Ok(PingrespPacket {
-               fixed_header: fixed_header,
-               payload: (),
-           })
+            fixed_header: fixed_header,
+            payload: (),
+        })
     }
 }

@@ -7,14 +7,16 @@
 //! ```rust
 //! use std::io::Cursor;
 //!
-//! use mqtt::{Encodable, Decodable};
-//! use mqtt::packet::{VariablePacket, PublishPacket, QoSWithPacketIdentifier};
+//! use mqtt::packet::{PublishPacket, QoSWithPacketIdentifier, VariablePacket};
 //! use mqtt::TopicName;
+//! use mqtt::{Decodable, Encodable};
 //!
 //! // Create a new Publish packet
-//! let packet = PublishPacket::new(TopicName::new("mqtt/learning").unwrap(),
-//!                                 QoSWithPacketIdentifier::Level2(10),
-//!                                 b"Hello MQTT!".to_vec());
+//! let packet = PublishPacket::new(
+//!     TopicName::new("mqtt/learning").unwrap(),
+//!     QoSWithPacketIdentifier::Level2(10),
+//!     b"Hello MQTT!".to_vec(),
+//! );
 //!
 //! // Encode
 //! let mut buf = Vec::new();
@@ -34,15 +36,15 @@
 //! assert_eq!(VariablePacket::PublishPacket(packet), auto_decode);
 //! ```
 
-extern crate log;
 extern crate byteorder;
+extern crate log;
 extern crate regex;
 #[macro_use]
 extern crate lazy_static;
 extern crate futures;
-extern crate tokio_io;
 #[cfg(test)]
 extern crate proptest;
+extern crate tokio_io;
 
 pub use self::encodable::{Decodable, Encodable};
 pub use self::qos::QualityOfService;
@@ -50,8 +52,8 @@ pub use self::topic_filter::{TopicFilter, TopicFilterRef};
 pub use self::topic_name::{TopicName, TopicNameRef};
 
 pub mod control;
-pub mod packet;
 pub mod encodable;
+pub mod packet;
 pub mod qos;
 pub mod topic_filter;
 pub mod topic_name;

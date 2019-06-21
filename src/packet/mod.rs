@@ -151,17 +151,21 @@ impl<T: Packet + fmt::Debug> Error for PacketError<T> {
     }
 }
 
-impl<T: Packet> From<FixedHeaderError> for PacketError<T> {
-    fn from(err: FixedHeaderError) -> PacketError<T> {
-        PacketError::FixedHeaderError(err)
-    }
+macro_rules! impl_from_error_maybe_io {
+    ($from:ident, $to:ident) => {
+        impl<T: Packet> From<$from> for $to<T> {
+            fn from(err: $from) -> $to<T> {
+                match err {
+                    $from::IoError(io) => $to::IoError(io),
+                    _ => $to::$from(err),
+                }
+            }
+        }
+    };
 }
-
-impl<T: Packet> From<VariableHeaderError> for PacketError<T> {
-    fn from(err: VariableHeaderError) -> PacketError<T> {
-        PacketError::VariableHeaderError(err)
-    }
-}
+impl_from_error_maybe_io!(FixedHeaderError, PacketError);
+impl_from_error_maybe_io!(VariableHeaderError, PacketError);
+impl_from_error_maybe_io!(StringEncodeError, PacketError);
 
 impl<T: Packet> From<io::Error> for PacketError<T> {
     fn from(err: io::Error) -> PacketError<T> {
@@ -169,15 +173,12 @@ impl<T: Packet> From<io::Error> for PacketError<T> {
     }
 }
 
-impl<T: Packet> From<StringEncodeError> for PacketError<T> {
-    fn from(err: StringEncodeError) -> PacketError<T> {
-        PacketError::StringEncodeError(err)
-    }
-}
-
 impl<T: Packet> From<TopicNameError> for PacketError<T> {
     fn from(err: TopicNameError) -> PacketError<T> {
-        PacketError::TopicNameError(err)
+        match err {
+            TopicNameError::StringEncodeError(StringEncodeError::IoError(io)) => PacketError::IoError(io),
+            _ => PacketError::TopicNameError(err),
+        }
     }
 }
 
@@ -338,7 +339,10 @@ macro_rules! impl_variable_packet {
 
         impl From<FixedHeaderError> for VariablePacketError {
             fn from(err: FixedHeaderError) -> VariablePacketError {
-                VariablePacketError::FixedHeaderError(err)
+                match err {
+                    FixedHeaderError::IoError(io) => VariablePacketError::IoError(io),
+                    _ => VariablePacketError::FixedHeaderError(err),
+                }
             }
         }
 
@@ -351,7 +355,10 @@ macro_rules! impl_variable_packet {
         $(
             impl From<PacketError<$name>> for VariablePacketError {
                 fn from(err: PacketError<$name>) -> VariablePacketError {
-                    VariablePacketError::$errname(err)
+                    match err {
+                        PacketError::IoError(io) => VariablePacketError::IoError(io),
+                        _ => VariablePacketError::$errname(err)
+                    }
                 }
             }
         )+

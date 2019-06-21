@@ -357,13 +357,19 @@ impl From<io::Error> for ConnectPacketPayloadError {
 
 impl From<StringEncodeError> for ConnectPacketPayloadError {
     fn from(err: StringEncodeError) -> ConnectPacketPayloadError {
-        ConnectPacketPayloadError::StringEncodeError(err)
+        match err {
+            StringEncodeError::IoError(io) => ConnectPacketPayloadError::IoError(io),
+            _ => ConnectPacketPayloadError::StringEncodeError(err)
+        }
     }
 }
 
 impl From<TopicNameError> for ConnectPacketPayloadError {
     fn from(err: TopicNameError) -> ConnectPacketPayloadError {
-        ConnectPacketPayloadError::TopicNameError(err)
+        match err {
+            TopicNameError::StringEncodeError(e) => e.into(),
+            _ => ConnectPacketPayloadError::TopicNameError(err)
+        }
     }
 }
 

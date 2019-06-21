@@ -41,6 +41,8 @@ extern crate regex;
 extern crate lazy_static;
 extern crate futures;
 extern crate tokio_io;
+#[cfg(test)]
+extern crate proptest;
 
 pub use self::encodable::{Decodable, Encodable};
 pub use self::qos::QualityOfService;

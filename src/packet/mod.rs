@@ -67,7 +67,7 @@ pub trait Packet: Sized {
     fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError>;
     /// Length of bytes after encoding variable header
     fn encoded_variable_headers_length(&self) -> u32;
-    /// Deocde packet with a `FixedHeader`
+    /// Decode packet with a `FixedHeader`
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError>;
 }
 
@@ -230,27 +230,17 @@ macro_rules! impl_variable_packet {
         }
 
         impl VariablePacket {
-            pub fn peek<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, FixedHeader, Vec<u8>), Error = VariablePacketError> {
+            pub fn peek<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, FixedHeader, Vec<u8>), Error = PacketError> {
                 FixedHeader::parse(rdr).then(|result| {
                     let (rdr, fixed_header, data) = match result {
                         Ok((rdr, header, data)) => (rdr, header, data),
-                        Err(FixedHeaderError::Unrecognized(code, _length)) => {
-                            // can't read excess bytes from rdr as it was dropped when an error
-                            // occurred
-                            return Err(VariablePacketError::UnrecognizedPacket(code, Vec::new()));
-                        },
-                        Err(FixedHeaderError::ReservedType(code, _length)) => {
-                            // can't read excess bytes from rdr as it was dropped when an error
-                            // occurred
-                            return Err(VariablePacketError::ReservedPacket(code, Vec::new()));
-                        },
                         Err(err) => return Err(From::from(err))
                     };
 
                     Ok((rdr, fixed_header, data))
                 })
             }
-            pub fn peek_finalize<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Vec<u8>, Self), Error = VariablePacketError> {
+            pub fn peek_finalize<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Vec<u8>, Self), Error = PacketError> {
                 Self::peek(rdr).and_then(|(rdr, fixed_header, header_buffer)| {
                     let packet = vec![0u8; fixed_header.remaining_length as usize];
                     async_io::read_exact(rdr, packet)
@@ -272,7 +262,7 @@ macro_rules! impl_variable_packet {
                         })
                 })
             }
-            pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self), Error = VariablePacketError> {
+            pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self), Error = PacketError> {
                 Self::peek(rdr).and_then(|(rdr, fixed_header, _)| {
                     let buffer = vec![0u8; fixed_header.remaining_length as usize];
                     async_io::read_exact(rdr, buffer)
@@ -340,7 +330,7 @@ macro_rules! impl_variable_packet {
         )+
 
         impl Decodable for VariablePacket {
-            type Err = VariablePacketError;
+            type Err = PacketError;
             type Cond = FixedHeader;
 
             fn decode_with<R: Read>(reader: &mut R, fixed_header: Option<FixedHeader>)
@@ -350,17 +340,17 @@ macro_rules! impl_variable_packet {
                     None => {
                         match FixedHeader::decode(reader) {
                             Ok(header) => header,
-                            Err(FixedHeaderError::Unrecognized(code, length)) => {
+                            // FIXME The "read remaining bytes" behavior seem to not be implemented thoroughly and lacks a unit test
+                            // FIXME Dont convert FixedHeaderError to IoError
+                            Err(FixedHeaderError::Unrecognized(code, length, mut buf) ) => {
                                 let reader = &mut reader.take(length as u64);
-                                let mut buf = Vec::with_capacity(length as usize);
-                                try!(reader.read_to_end(&mut buf));
-                                return Err(VariablePacketError::UnrecognizedPacket(code, buf));
+                                reader.read_to_end(&mut buf)?;
+                                return Err(PacketError::FixedHeaderError(FixedHeaderError::Unrecognized(code, length, buf)));
                             },
-                            Err(FixedHeaderError::ReservedType(code, length)) => {
+                            Err(FixedHeaderError::ReservedType(code, length, mut buf) ) => {
                                 let reader = &mut reader.take(length as u64);
-                                let mut buf = Vec::with_capacity(length as usize);
-                                try!(reader.read_to_end(&mut buf));
-                                return Err(VariablePacketError::ReservedPacket(code, buf));
+                                reader.read_to_end(&mut buf)?;
+                                return Err(PacketError::FixedHeaderError(FixedHeaderError::ReservedType(code, length, buf)));
                             },
                             Err(err) => return Err(From::from(err))
                         }
@@ -375,112 +365,6 @@ macro_rules! impl_variable_packet {
                             Ok(VariablePacket::$name(pk))
                         }
                     )+
-                }
-            }
-        }
-
-        /// Parsing errors for variable packet
-        #[derive(Debug)]
-        pub enum VariablePacketError {
-            FixedHeaderError(FixedHeaderError),
-            UnrecognizedPacket(u8, Vec<u8>),
-            ReservedPacket(u8, Vec<u8>),
-            IoError(io::Error),
-            PacketError(PacketError),
-        }
-
-        impl From<FixedHeaderError> for VariablePacketError {
-            fn from(err: FixedHeaderError) -> VariablePacketError {
-                match err {
-                    FixedHeaderError::IoError(io) => VariablePacketError::IoError(io),
-                    _ => VariablePacketError::FixedHeaderError(err),
-                }
-            }
-        }
-
-        impl From<UnsubscribePacketPayloadError> for VariablePacketError {
-            fn from(err: UnsubscribePacketPayloadError) -> VariablePacketError {
-                match err {
-                    UnsubscribePacketPayloadError::IoError(io) => VariablePacketError::IoError(io),
-                    _ => VariablePacketError::PacketError(PacketError::UnsubscribePacketPayloadError(err)),
-                }
-            }
-        }
-
-        impl From<SubackPacketPayloadError> for VariablePacketError {
-            fn from(err: SubackPacketPayloadError) -> VariablePacketError {
-                match err {
-                    SubackPacketPayloadError::IoError(io) => VariablePacketError::IoError(io),
-                    _ => VariablePacketError::PacketError(PacketError::SubackPacketPayloadError(err)),
-                }
-            }
-        }
-
-        impl From<SubscribePacketPayloadError> for VariablePacketError {
-            fn from(err: SubscribePacketPayloadError) -> VariablePacketError {
-                match err {
-                    SubscribePacketPayloadError::IoError(io) => VariablePacketError::IoError(io),
-                    _ => VariablePacketError::PacketError(PacketError::SubscribePacketPayloadError(err)),
-                }
-            }
-        }
-
-        impl From<ConnectPacketPayloadError> for VariablePacketError {
-            fn from(err: ConnectPacketPayloadError) -> VariablePacketError {
-                match err {
-                    ConnectPacketPayloadError::IoError(io) => VariablePacketError::IoError(io),
-                    _ => VariablePacketError::PacketError(PacketError::ConnectPacketPayloadError(err)),
-                }
-            }
-        }
-
-        impl From<io::Error> for VariablePacketError {
-            fn from(err: io::Error) -> VariablePacketError {
-                VariablePacketError::IoError(err)
-            }
-        }
-
-        impl From<PacketError> for VariablePacketError {
-            fn from(err: PacketError) -> VariablePacketError {
-                match err {
-                    PacketError::IoError(io) => VariablePacketError::IoError(io),
-                    _ => VariablePacketError::PacketError(err)
-                }
-            }
-        }
-
-        impl fmt::Display for VariablePacketError {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                match self {
-                    &VariablePacketError::FixedHeaderError(ref err) => err.fmt(f),
-                    &VariablePacketError::UnrecognizedPacket(ref code, ref v) =>
-                        write!(f, "Unrecognized type ({}), [u8, ..{}]", code, v.len()),
-                    &VariablePacketError::ReservedPacket(ref code, ref v) =>
-                        write!(f, "Reserved type ({}), [u8, ..{}]", code, v.len()),
-                    &VariablePacketError::IoError(ref err) => err.fmt(f),
-                    &VariablePacketError::PacketError(ref err) => err.fmt(f),
-                }
-            }
-        }
-
-        impl Error for VariablePacketError {
-            fn description(&self) -> &str {
-                match self {
-                    &VariablePacketError::FixedHeaderError(ref err) => err.description(),
-                    &VariablePacketError::UnrecognizedPacket(..) => "Unrecognized packet",
-                    &VariablePacketError::ReservedPacket(..) => "Reserved packet",
-                    &VariablePacketError::IoError(ref err) => err.description(),
-                    &VariablePacketError::PacketError(ref err) => err.description(),
-                }
-            }
-
-            fn source(&self) -> Option<&(dyn Error + 'static)> {
-                match self {
-                    &VariablePacketError::FixedHeaderError(ref err) => Some(err),
-                    &VariablePacketError::UnrecognizedPacket(..) => None,
-                    &VariablePacketError::ReservedPacket(..) => None,
-                    &VariablePacketError::IoError(ref err) => Some(err),
-                    &VariablePacketError::PacketError(ref err) => Some(err),
                 }
             }
         }

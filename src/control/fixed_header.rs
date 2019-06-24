@@ -74,10 +74,16 @@ impl FixedHeader {
                 })
                 .and_then(move |(rdr, remaining_len, data)| match PacketType::from_u8(type_val) {
                     Ok(packet_type) => Ok((rdr, FixedHeader::new(packet_type, remaining_len), data)),
-                    Err(PacketTypeError::UndefinedType(ty, _)) => {
-                        Err(FixedHeaderError::Unrecognized(ty, remaining_len))
-                    }
-                    Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
+                    Err(PacketTypeError::UndefinedType(ty, _)) => Err(FixedHeaderError::Unrecognized(
+                        ty,
+                        remaining_len,
+                        Vec::with_capacity(remaining_len as usize),
+                    )),
+                    Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(
+                        ty,
+                        remaining_len,
+                        Vec::with_capacity(remaining_len as usize),
+                    )),
                     Err(err) => Err(From::from(err)),
                 })
             })
@@ -149,8 +155,16 @@ impl Decodable for FixedHeader {
 
         match PacketType::from_u8(type_val) {
             Ok(packet_type) => Ok(FixedHeader::new(packet_type, remaining_len)),
-            Err(PacketTypeError::UndefinedType(ty, _)) => Err(FixedHeaderError::Unrecognized(ty, remaining_len)),
-            Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
+            Err(PacketTypeError::UndefinedType(ty, _)) => Err(FixedHeaderError::Unrecognized(
+                ty,
+                remaining_len,
+                Vec::with_capacity(remaining_len as usize),
+            )),
+            Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(
+                ty,
+                remaining_len,
+                Vec::with_capacity(remaining_len as usize),
+            )),
             Err(err) => Err(From::from(err)),
         }
     }
@@ -159,9 +173,9 @@ impl Decodable for FixedHeader {
 #[derive(Debug)]
 pub enum FixedHeaderError {
     MalformedRemainingLength,
-    Unrecognized(u8, u32),
-    ReservedType(u8, u32),
-    PacketTypeError(PacketTypeError),
+    Unrecognized(u8, u32, Vec<u8>),
+    ReservedType(u8, u32, Vec<u8>),
+    PacketTypeError(PacketTypeError), // TODO fold PacketTypeError variants into FixedHeaderError ?
     IoError(io::Error),
 }
 
@@ -181,8 +195,8 @@ impl fmt::Display for FixedHeaderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &FixedHeaderError::MalformedRemainingLength => write!(f, "Malformed remaining length"),
-            &FixedHeaderError::Unrecognized(code, length) => write!(f, "Unrecognized header ({}, {})", code, length),
-            &FixedHeaderError::ReservedType(code, length) => write!(f, "Reserved header ({}, {})", code, length),
+            &FixedHeaderError::Unrecognized(code, length, _) => write!(f, "Unrecognized header ({}, {})", code, length),
+            &FixedHeaderError::ReservedType(code, length, _) => write!(f, "Reserved header ({}, {})", code, length),
             &FixedHeaderError::PacketTypeError(ref err) => write!(f, "{}", err),
             &FixedHeaderError::IoError(ref err) => write!(f, "{}", err),
         }

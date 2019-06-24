@@ -58,7 +58,7 @@ impl Packet for SubscribePacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError> {
         self.packet_identifier.encode(writer)?;
 
         Ok(())
@@ -68,13 +68,13 @@ impl Packet for SubscribePacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         let payload: SubscribePacketPayload = SubscribePacketPayload::decode_with(
             reader,
             Some(fixed_header.remaining_length - packet_identifier.encoded_length()),
         )
-        .map_err(PacketError::PayloadError)?;
+        .map_err(PacketError::SubscribePacketPayloadError)?;
         Ok(SubscribePacket {
             fixed_header: fixed_header,
             packet_identifier: packet_identifier,

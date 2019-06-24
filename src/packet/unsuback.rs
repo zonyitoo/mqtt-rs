@@ -48,7 +48,7 @@ impl Packet for UnsubackPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError> {
         self.packet_identifier.encode(writer)?;
 
         Ok(())
@@ -58,7 +58,7 @@ impl Packet for UnsubackPacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         Ok(UnsubackPacket {
             fixed_header: fixed_header,

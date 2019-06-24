@@ -52,7 +52,7 @@ impl Packet for ConnackPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError> {
         self.flags.encode(writer)?;
         self.ret_code.encode(writer)?;
         Ok(())
@@ -62,7 +62,7 @@ impl Packet for ConnackPacket {
         self.flags.encoded_length() + self.ret_code.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError> {
         let flags: ConnackFlags = Decodable::decode(reader)?;
         let code: ConnectReturnCode = Decodable::decode(reader)?;
 

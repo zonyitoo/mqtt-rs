@@ -157,7 +157,7 @@ impl Packet for ConnectPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError> {
         self.protocol_name.encode(writer)?;
         self.protocol_level.encode(writer)?;
         self.flags.encode(writer)?;
@@ -173,13 +173,13 @@ impl Packet for ConnectPacket {
             + self.keep_alive.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError> {
         let protoname: ProtocolName = Decodable::decode(reader)?;
         let protocol_level: ProtocolLevel = Decodable::decode(reader)?;
         let flags: ConnectFlags = Decodable::decode(reader)?;
         let keep_alive: KeepAlive = Decodable::decode(reader)?;
         let payload: ConnectPacketPayload =
-            Decodable::decode_with(reader, Some(flags)).map_err(PacketError::PayloadError)?;
+            Decodable::decode_with(reader, Some(flags)).map_err(PacketError::ConnectPacketPayloadError)?;
 
         Ok(ConnectPacket {
             fixed_header: fixed_header,

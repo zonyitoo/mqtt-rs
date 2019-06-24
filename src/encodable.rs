@@ -129,7 +129,7 @@ impl Decodable for Vec<u8> {
 impl Encodable for () {
     type Err = NoError;
 
-    fn encode<W: Write>(&self, _: &mut W) -> Result<(), NoError> {
+    fn encode<W: Write>(&self, _: &mut W) -> Result<(), Self::Err> {
         Ok(())
     }
 
@@ -142,7 +142,7 @@ impl Decodable for () {
     type Err = NoError;
     type Cond = ();
 
-    fn decode_with<R: Read>(_: &mut R, _: Option<()>) -> Result<(), NoError> {
+    fn decode_with<R: Read>(_: &mut R, _: Option<()>) -> Result<(), Self::Err> {
         Ok(())
     }
 }
@@ -181,6 +181,7 @@ impl Decodable for VarBytes {
 }
 
 /// Error that indicates we won't have any errors
+// TODO replace with https://doc.rust-lang.org/std/primitive.never.html
 #[derive(Debug)]
 pub struct NoError;
 

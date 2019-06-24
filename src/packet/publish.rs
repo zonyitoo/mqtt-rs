@@ -125,7 +125,7 @@ impl Packet for PublishPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError> {
         self.topic_name.encode(writer)?;
 
         if let Some(pkid) = self.packet_identifier.as_ref() {
@@ -139,7 +139,7 @@ impl Packet for PublishPacket {
         self.topic_name.encoded_length() + self.packet_identifier.as_ref().map(|x| x.encoded_length()).unwrap_or(0)
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError> {
         let topic_name: TopicName = TopicName::decode(reader)?;
 
         let packet_identifier = if fixed_header.packet_type.flags & 0x06 != 0 {

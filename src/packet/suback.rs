@@ -195,13 +195,6 @@ impl fmt::Display for SubackPacketPayloadError {
 }
 
 impl Error for SubackPacketPayloadError {
-    fn description(&self) -> &str {
-        match self {
-            &SubackPacketPayloadError::IoError(ref err) => err.description(),
-            &SubackPacketPayloadError::InvalidSubscribeReturnCode(..) => "Invalid subscribe return code",
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &SubackPacketPayloadError::IoError(ref err) => Some(err),

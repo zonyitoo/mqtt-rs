@@ -140,13 +140,6 @@ impl fmt::Display for TopicFilterError {
 }
 
 impl Error for TopicFilterError {
-    fn description(&self) -> &str {
-        match self {
-            &TopicFilterError::StringEncodeError(ref err) => err.description(),
-            &TopicFilterError::InvalidTopicFilter(..) => "Invalid topic filter",
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &TopicFilterError::StringEncodeError(ref err) => Some(err),

@@ -204,16 +204,6 @@ impl fmt::Display for FixedHeaderError {
 }
 
 impl Error for FixedHeaderError {
-    fn description(&self) -> &str {
-        match self {
-            &FixedHeaderError::MalformedRemainingLength => "Malformed remaining length",
-            &FixedHeaderError::Unrecognized(..) => "Unrecognized header",
-            &FixedHeaderError::ReservedType(..) => "Unrecognized header",
-            &FixedHeaderError::PacketTypeError(ref err) => err.description(),
-            &FixedHeaderError::IoError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &FixedHeaderError::MalformedRemainingLength => None,

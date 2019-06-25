@@ -166,16 +166,6 @@ impl fmt::Display for SubscribePacketPayloadError {
 }
 
 impl Error for SubscribePacketPayloadError {
-    fn description(&self) -> &str {
-        match self {
-            &SubscribePacketPayloadError::IoError(ref err) => err.description(),
-            &SubscribePacketPayloadError::FromUtf8Error(ref err) => err.description(),
-            &SubscribePacketPayloadError::StringEncodeError(ref err) => err.description(),
-            &SubscribePacketPayloadError::InvalidQualityOfService => "Invalid quality of service",
-            &SubscribePacketPayloadError::TopicFilterError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &SubscribePacketPayloadError::IoError(ref err) => Some(err),

@@ -318,14 +318,6 @@ impl fmt::Display for ConnectPacketPayloadError {
 }
 
 impl Error for ConnectPacketPayloadError {
-    fn description(&self) -> &str {
-        match self {
-            &ConnectPacketPayloadError::IoError(ref err) => err.description(),
-            &ConnectPacketPayloadError::StringEncodeError(ref err) => err.description(),
-            &ConnectPacketPayloadError::TopicNameError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &ConnectPacketPayloadError::IoError(ref err) => Some(err),

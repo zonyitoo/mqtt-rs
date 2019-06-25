@@ -164,15 +164,7 @@ impl fmt::Display for PacketTypeError {
     }
 }
 
-impl Error for PacketTypeError {
-    fn description(&self) -> &str {
-        match self {
-            &PacketTypeError::ReservedType(..) => "Reserved type",
-            &PacketTypeError::UndefinedType(..) => "Undefined type",
-            &PacketTypeError::InvalidFlag(..) => "Invalid flag",
-        }
-    }
-}
+impl Error for PacketTypeError {}
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 mod value {

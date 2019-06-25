@@ -153,15 +153,6 @@ impl fmt::Display for UnsubscribePacketPayloadError {
 }
 
 impl Error for UnsubscribePacketPayloadError {
-    fn description(&self) -> &str {
-        match self {
-            &UnsubscribePacketPayloadError::IoError(ref err) => err.description(),
-            &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => err.description(),
-            &UnsubscribePacketPayloadError::StringEncodeError(ref err) => err.description(),
-            &UnsubscribePacketPayloadError::TopicFilterError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &UnsubscribePacketPayloadError::IoError(ref err) => Some(err),

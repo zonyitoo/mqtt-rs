@@ -117,20 +117,6 @@ impl fmt::Display for PacketError {
 }
 
 impl Error for PacketError {
-    fn description(&self) -> &str {
-        match self {
-            &PacketError::FixedHeaderError(ref err) => err.description(),
-            &PacketError::VariableHeaderError(ref err) => err.description(),
-            &PacketError::SubackPacketPayloadError(ref err) => err.description(),
-            &PacketError::SubscribePacketPayloadError(ref err) => err.description(),
-            &PacketError::ConnectPacketPayloadError(ref err) => err.description(),
-            &PacketError::UnsubscribePacketPayloadError(ref err) => err.description(),
-            &PacketError::StringEncodeError(ref err) => err.description(),
-            &PacketError::IoError(ref err) => err.description(),
-            &PacketError::TopicNameError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &PacketError::FixedHeaderError(ref err) => Some(err),

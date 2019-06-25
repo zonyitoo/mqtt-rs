@@ -191,11 +191,7 @@ impl fmt::Display for NoError {
     }
 }
 
-impl Error for NoError {
-    fn description(&self) -> &str {
-        "No error"
-    }
-}
+impl Error for NoError {}
 
 /// Errors while parsing to a string
 #[derive(Debug)]
@@ -216,14 +212,6 @@ impl fmt::Display for StringEncodeError {
 }
 
 impl Error for StringEncodeError {
-    fn description(&self) -> &str {
-        match self {
-            &StringEncodeError::IoError(ref err) => err.description(),
-            &StringEncodeError::FromUtf8Error(ref err) => err.description(),
-            &StringEncodeError::MalformedData => "Malformed data",
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &StringEncodeError::IoError(ref err) => Some(err),

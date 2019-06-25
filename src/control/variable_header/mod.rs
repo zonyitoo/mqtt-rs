@@ -74,16 +74,6 @@ impl fmt::Display for VariableHeaderError {
 }
 
 impl Error for VariableHeaderError {
-    fn description(&self) -> &str {
-        match self {
-            &VariableHeaderError::IoError(ref err) => err.description(),
-            &VariableHeaderError::StringEncodeError(ref err) => err.description(),
-            &VariableHeaderError::InvalidReservedFlag => "Invalid reserved flags",
-            &VariableHeaderError::FromUtf8Error(ref err) => err.description(),
-            &VariableHeaderError::TopicNameError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &VariableHeaderError::IoError(ref err) => Some(err),

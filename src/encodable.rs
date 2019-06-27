@@ -41,9 +41,8 @@ impl<'a> Encodable for &'a str {
 
         writer
             .write_u16::<BigEndian>(self.as_bytes().len() as u16)
-            .map_err(From::from)
             .and_then(|_| writer.write_all(self.as_bytes()))
-            .map_err(StringEncodeError::IoError)
+            .map_err(From::from)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -87,7 +86,7 @@ impl Decodable for String {
         }
         reader.read_exact(&mut buf)?;
 
-        String::from_utf8(buf).map_err(StringEncodeError::FromUtf8Error)
+        String::from_utf8(buf).map_err(From::from)
     }
 }
 
@@ -198,7 +197,6 @@ impl Error for NoError {}
 pub enum StringEncodeError {
     IoError(io::Error),
     FromUtf8Error(FromUtf8Error),
-    MalformedData,
 }
 
 impl fmt::Display for StringEncodeError {
@@ -206,7 +204,6 @@ impl fmt::Display for StringEncodeError {
         match self {
             &StringEncodeError::IoError(ref err) => err.fmt(f),
             &StringEncodeError::FromUtf8Error(ref err) => err.fmt(f),
-            &StringEncodeError::MalformedData => write!(f, "Malformed data"),
         }
     }
 }
@@ -216,7 +213,6 @@ impl Error for StringEncodeError {
         match self {
             &StringEncodeError::IoError(ref err) => Some(err),
             &StringEncodeError::FromUtf8Error(ref err) => Some(err),
-            &StringEncodeError::MalformedData => None,
         }
     }
 }

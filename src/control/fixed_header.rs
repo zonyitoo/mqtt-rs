@@ -170,13 +170,16 @@ impl Decodable for FixedHeader {
     }
 }
 
+/// Error while decoding the mandatory "Fixed Header" (MQTT 3.1.1 section 2.2)
 #[derive(Debug)]
 pub enum FixedHeaderError {
-    MalformedRemainingLength,
-    Unrecognized(u8, u32, Vec<u8>),
-    ReservedType(u8, u32, Vec<u8>),
-    PacketTypeError(PacketTypeError), // TODO fold PacketTypeError variants into FixedHeaderError ?
     IoError(io::Error),
+    /// Illegal remaining length value. This is a fatal error if you are reading packets from a
+    /// stream.
+    MalformedRemainingLength,
+    Unrecognized(u8, u32, Vec<u8>), // TODO use PacketTypeError
+    ReservedType(u8, u32, Vec<u8>),
+    PacketTypeError(PacketTypeError),
 }
 
 impl From<io::Error> for FixedHeaderError {

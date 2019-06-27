@@ -1,11 +1,10 @@
 //! Specific packets
 
+use futures::Future;
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Cursor, Read, Write};
-
-use futures::Future;
 use tokio_io::{io as async_io, AsyncRead};
 
 use control::fixed_header::FixedHeaderError;
@@ -13,10 +12,10 @@ use control::variable_header::VariableHeaderError;
 use control::ControlType;
 use control::FixedHeader;
 use encodable::{NoError, StringEncodeError};
-use packet::connect::ConnectPacketPayloadError;
 use packet::suback::SubackPacketPayloadError;
 use packet::subscribe::SubscribePacketPayloadError;
 use packet::unsubscribe::UnsubscribePacketPayloadError;
+use topic_filter::TopicFilterError;
 use topic_name::TopicNameError;
 use {Decodable, Encodable};
 
@@ -71,7 +70,6 @@ pub trait Packet: Sized {
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError>;
 }
 
-
 impl<T: Packet + fmt::Debug + 'static> Decodable for T {
     type Err = PacketError;
     type Cond = FixedHeader;
@@ -87,19 +85,33 @@ impl<T: Packet + fmt::Debug + 'static> Decodable for T {
     }
 }
 
-/// Parsing errors for packet
+/// Errors while encoding or decoding a whole packet. Basic error types like `IoError` or
+/// `TopicNameError` that may exist in lower error types (for example `SubscribePacketPayloadError`)
+/// will get promoted to a `PacketError` variant.
 #[derive(Debug)]
 pub enum PacketError {
-    FixedHeaderError(FixedHeaderError),
-    VariableHeaderError(VariableHeaderError),
-    SubackPacketPayloadError(SubackPacketPayloadError),
-    SubscribePacketPayloadError(SubscribePacketPayloadError),
-    ConnectPacketPayloadError(ConnectPacketPayloadError),
-    UnsubscribePacketPayloadError(UnsubscribePacketPayloadError),
-    StringEncodeError(StringEncodeError),
+    /// Low-level `std::io::Error` while reading or writing. Check `.kind()` to see if the error is
+    /// fatal or not, for example you probably want to retry later if you get an
+    /// `ErrorKind::UnexpectedEof`.
     IoError(io::Error),
+    /// Error in the mandatory "Fixed Header" (MQTT 3.1.1 section 2.2)
+    FixedHeaderError(FixedHeaderError),
+    /// Error in the optional "Variable Header" (MQTT 3.1.1 section 2.3)
+    VariableHeaderError(VariableHeaderError),
+    /// Error in a SUBSCRIBE packet (MQTT 3.1.1 section 3.8)
+    SubscribePacketPayloadError(SubscribePacketPayloadError),
+    /// Error in a SUBACK packet (MQTT 3.1.1 section 3.9)
+    SubackPacketPayloadError(SubackPacketPayloadError),
+    /// Error in a UNSUBSCRIBE packet (MQTT 3.1.1 section 3.10)
+    UnsubscribePacketPayloadError(UnsubscribePacketPayloadError),
+    /// Error in a string (MQTT 3.1.1 section 1.5.3)
+    StringEncodeError(StringEncodeError),
+    /// Error in a topic name (MQTT 3.1.1 section 4.7)
     TopicNameError(TopicNameError),
+    /// Error in a topic filter (MQTT 3.1.1 section 4.7)
+    TopicFilterError(TopicFilterError),
 }
+
 impl fmt::Display for PacketError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -107,11 +119,11 @@ impl fmt::Display for PacketError {
             &PacketError::VariableHeaderError(ref err) => err.fmt(f),
             &PacketError::SubackPacketPayloadError(ref err) => err.fmt(f),
             &PacketError::SubscribePacketPayloadError(ref err) => err.fmt(f),
-            &PacketError::ConnectPacketPayloadError(ref err) => err.fmt(f),
             &PacketError::UnsubscribePacketPayloadError(ref err) => err.fmt(f),
             &PacketError::StringEncodeError(ref err) => err.fmt(f),
             &PacketError::IoError(ref err) => err.fmt(f),
             &PacketError::TopicNameError(ref err) => err.fmt(f),
+            &PacketError::TopicFilterError(ref err) => err.fmt(f),
         }
     }
 }
@@ -123,36 +135,45 @@ impl Error for PacketError {
             &PacketError::VariableHeaderError(ref err) => Some(err),
             &PacketError::SubackPacketPayloadError(ref err) => Some(err),
             &PacketError::SubscribePacketPayloadError(ref err) => Some(err),
-            &PacketError::ConnectPacketPayloadError(ref err) => Some(err),
             &PacketError::UnsubscribePacketPayloadError(ref err) => Some(err),
             &PacketError::StringEncodeError(ref err) => Some(err),
             &PacketError::IoError(ref err) => Some(err),
             &PacketError::TopicNameError(ref err) => Some(err),
+            &PacketError::TopicFilterError(ref err) => Some(err),
         }
     }
 }
 
-macro_rules! impl_from_error_maybe_io {
-    ($from:ident, $to:ident) => {
+/// Implements `From<FooErr> for BarError` by mapping given `FooErr` variants to corresponding
+/// `BarError` ones and the rest to the `BarError::FooErr` variant. The idea is that we want to
+/// "bubble up" common error variants from the child error to the parent error.
+macro_rules! impl_from_error {
+    ($from:ident, $to:ident, $($variant:ident),+) => {
         impl From<$from> for $to {
             fn from(err: $from) -> $to {
                 match err {
-                    $from::IoError(io) => $to::IoError(io),
+                    $(
+                        $from::$variant(e) => $to::from(e),
+                    )+
                     _ => $to::$from(err),
                 }
             }
         }
     };
 }
-impl_from_error_maybe_io!(FixedHeaderError, PacketError);
-impl_from_error_maybe_io!(VariableHeaderError, PacketError);
-impl_from_error_maybe_io!(StringEncodeError, PacketError);
+impl_from_error!(FixedHeaderError, PacketError, IoError);
+impl_from_error!(VariableHeaderError, PacketError, IoError, StringEncodeError, TopicNameError);
+impl_from_error!(StringEncodeError, PacketError, IoError);
+impl_from_error!(TopicNameError, PacketError, StringEncodeError);
+impl_from_error!(UnsubscribePacketPayloadError, PacketError, IoError);
+impl_from_error!(SubackPacketPayloadError, PacketError, IoError);
+impl_from_error!(SubscribePacketPayloadError, PacketError, IoError);
 
-impl From<io::Error> for PacketError {
-    fn from(err: io::Error) -> PacketError {
-        PacketError::IoError(err)
-    }
-}
+impl_from_error!(TopicFilterError, UnsubscribePacketPayloadError, StringEncodeError);
+impl_from_error!(StringEncodeError, UnsubscribePacketPayloadError, IoError);
+
+impl_from_error!(TopicFilterError, SubscribePacketPayloadError, StringEncodeError);
+impl_from_error!(StringEncodeError, SubscribePacketPayloadError, IoError);
 
 impl From<NoError> for PacketError {
     fn from(_err: NoError) -> PacketError {
@@ -160,53 +181,14 @@ impl From<NoError> for PacketError {
     }
 }
 
-impl From<TopicNameError> for PacketError {
-    fn from(err: TopicNameError) -> PacketError {
-        match err {
-            TopicNameError::StringEncodeError(StringEncodeError::IoError(io)) => PacketError::IoError(io),
-            _ => PacketError::TopicNameError(err),
-        }
-    }
-}
-
-impl From<UnsubscribePacketPayloadError> for PacketError {
-    fn from(err: UnsubscribePacketPayloadError) -> PacketError {
-        match err {
-            UnsubscribePacketPayloadError::IoError(io) => PacketError::IoError(io),
-            _ => PacketError::UnsubscribePacketPayloadError(err),
-        }
-    }
-}
-
-impl From<SubackPacketPayloadError> for PacketError {
-    fn from(err: SubackPacketPayloadError) -> PacketError {
-        match err {
-            SubackPacketPayloadError::IoError(io) => PacketError::IoError(io),
-            _ => PacketError::SubackPacketPayloadError(err),
-        }
-    }
-}
-
-impl From<SubscribePacketPayloadError> for PacketError {
-    fn from(err: SubscribePacketPayloadError) -> PacketError {
-        match err {
-            SubscribePacketPayloadError::IoError(io) => PacketError::IoError(io),
-            _ => PacketError::SubscribePacketPayloadError(err),
-        }
-    }
-}
-
-impl From<ConnectPacketPayloadError> for PacketError {
-    fn from(err: ConnectPacketPayloadError) -> PacketError {
-        match err {
-            ConnectPacketPayloadError::IoError(io) => PacketError::IoError(io),
-            _ => PacketError::ConnectPacketPayloadError(err),
-        }
+impl From<io::Error> for PacketError {
+    fn from(err: io::Error) -> PacketError {
+        PacketError::IoError(err)
     }
 }
 
 macro_rules! impl_variable_packet {
-    ($($name:ident & $errname:ident => $hdr:ident,)+) => {
+    ($($name:ident => $hdr:ident,)+) => {
         /// Variable packet
         #[derive(Debug, Eq, PartialEq, Clone)]
         pub enum VariablePacket {
@@ -358,25 +340,25 @@ macro_rules! impl_variable_packet {
 }
 
 impl_variable_packet! {
-    ConnectPacket       & ConnectPacketError        => Connect,
-    ConnackPacket       & ConnackPacketError        => ConnectAcknowledgement,
+    ConnectPacket      => Connect,
+    ConnackPacket      => ConnectAcknowledgement,
 
-    PublishPacket       & PublishPacketError        => Publish,
-    PubackPacket        & PubackPacketError         => PublishAcknowledgement,
-    PubrecPacket        & PubrecPacketError         => PublishReceived,
-    PubrelPacket        & PubrelPacketError         => PublishRelease,
-    PubcompPacket       & PubcompPacketError        => PublishComplete,
+    PublishPacket      => Publish,
+    PubackPacket       => PublishAcknowledgement,
+    PubrecPacket       => PublishReceived,
+    PubrelPacket       => PublishRelease,
+    PubcompPacket      => PublishComplete,
 
-    PingreqPacket       & PingreqPacketError        => PingRequest,
-    PingrespPacket      & PingrespPacketError       => PingResponse,
+    PingreqPacket      => PingRequest,
+    PingrespPacket     => PingResponse,
 
-    SubscribePacket     & SubscribePacketError      => Subscribe,
-    SubackPacket        & SubackPacketError         => SubscribeAcknowledgement,
+    SubscribePacket    => Subscribe,
+    SubackPacket       => SubscribeAcknowledgement,
 
-    UnsubscribePacket   & UnsubscribePacketError    => Unsubscribe,
-    UnsubackPacket      & UnsubackPacketError       => UnsubscribeAcknowledgement,
+    UnsubscribePacket  => Unsubscribe,
+    UnsubackPacket     => UnsubscribeAcknowledgement,
 
-    DisconnectPacket    & DisconnectPacketError     => Disconnect,
+    DisconnectPacket   => Disconnect,
 }
 
 impl VariablePacket {
@@ -559,7 +541,7 @@ mod test {
         }
     }
     prop_compose! {
-        fn stg_subscribe()(pkid in num::u16::ANY, subs in vec((stg_topicfilter(),stg_qos()), 0..50)) -> SubscribePacket {
+        fn stg_subscribe()(pkid in num::u16::ANY, subs in vec((stg_topicfilter(),stg_qos()), 0..20)) -> SubscribePacket {
             SubscribePacket::new(pkid, subs)
         }
     }
@@ -569,12 +551,12 @@ mod test {
         }
     }
     prop_compose! {
-        fn stg_unsubscribe()(pkid in num::u16::ANY, subs in vec(stg_topicfilter(), 0..50)) -> UnsubscribePacket {
+        fn stg_unsubscribe()(pkid in num::u16::ANY, subs in vec(stg_topicfilter(), 0..20)) -> UnsubscribePacket {
             UnsubscribePacket::new(pkid, subs)
         }
     }
     macro_rules! impl_proptests {
-        ($name_rr:ident, $name_eof:ident, $stg:ident, $decodeas:ident, $error:ident) => {
+        ($name_rr:ident, $name_eof:ident, $stg:ident, $decodeas:ident) => {
             proptest! {
                 /// Encodes packet generated by $stg and checks that `$decodeas::decode()`ing it
                 /// yields the original packet back.
@@ -599,7 +581,7 @@ mod test {
                     let origlen = buf.len();
                     while buf.pop().is_some() {
                         match $decodeas::decode(&mut Cursor::new(&buf)) {
-                            Err($error::IoError(ref i)) if i.kind() == ErrorKind::UnexpectedEof => (),
+                            Err(PacketError::IoError(ref i)) if i.kind() == ErrorKind::UnexpectedEof => (),
                             o => prop_assert!(false, "decode {} out of {} bytes => {:?}", buf.len(), origlen, o),
                         }
                     }
@@ -607,18 +589,18 @@ mod test {
             }
         };
     }
-    impl_proptests! {roundtrip_connack,     eof_connack,     stg_connack,     ConnackPacket,     PacketError}
-    impl_proptests! {roundtrip_connect,     eof_connect,     stg_connect,     ConnectPacket,     PacketError}
-    impl_proptests! {roundtrip_disconnect,  eof_disconnect,  stg_disconnect,  DisconnectPacket,  PacketError}
-    impl_proptests! {roundtrip_pingreq,     eof_pingreq,     stg_pingreq,     PingreqPacket,     PacketError}
-    impl_proptests! {roundtrip_pingresp,    eof_pingresp,    stg_pingresp,    PingrespPacket,    PacketError}
-    impl_proptests! {roundtrip_puback,      eof_puback,      stg_puback,      PubackPacket,      PacketError}
-    impl_proptests! {roundtrip_pubcomp,     eof_pubcomp,     stg_pubcomp,     PubcompPacket,     PacketError}
-    impl_proptests! {roundtrip_publish,     eof_publish,     stg_publish,     PublishPacket,     PacketError}
-    impl_proptests! {roundtrip_pubrec,      eof_pubrec,      stg_pubrec,      PubrecPacket,      PacketError}
-    impl_proptests! {roundtrip_pubrel,      eof_pubrel,      stg_pubrel,      PubrelPacket,      PacketError}
-    impl_proptests! {roundtrip_suback,      eof_suback,      stg_suback,      SubackPacket,      PacketError}
-    impl_proptests! {roundtrip_subscribe,   eof_subscribe,   stg_subscribe,   SubscribePacket,   PacketError}
-    impl_proptests! {roundtrip_unsuback,    eof_unsuback,    stg_unsuback,    UnsubackPacket,    PacketError}
-    impl_proptests! {roundtrip_unsubscribe, eof_unsubscribe, stg_unsubscribe, UnsubscribePacket, PacketError}
+    impl_proptests! {roundtrip_connack,     eof_connack,     stg_connack,     ConnackPacket}
+    impl_proptests! {roundtrip_connect,     eof_connect,     stg_connect,     ConnectPacket}
+    impl_proptests! {roundtrip_disconnect,  eof_disconnect,  stg_disconnect,  DisconnectPacket}
+    impl_proptests! {roundtrip_pingreq,     eof_pingreq,     stg_pingreq,     PingreqPacket}
+    impl_proptests! {roundtrip_pingresp,    eof_pingresp,    stg_pingresp,    PingrespPacket}
+    impl_proptests! {roundtrip_puback,      eof_puback,      stg_puback,      PubackPacket}
+    impl_proptests! {roundtrip_pubcomp,     eof_pubcomp,     stg_pubcomp,     PubcompPacket}
+    impl_proptests! {roundtrip_publish,     eof_publish,     stg_publish,     PublishPacket}
+    impl_proptests! {roundtrip_pubrec,      eof_pubrec,      stg_pubrec,      PubrecPacket}
+    impl_proptests! {roundtrip_pubrel,      eof_pubrel,      stg_pubrel,      PubrelPacket}
+    impl_proptests! {roundtrip_suback,      eof_suback,      stg_suback,      SubackPacket}
+    impl_proptests! {roundtrip_subscribe,   eof_subscribe,   stg_subscribe,   SubscribePacket}
+    impl_proptests! {roundtrip_unsuback,    eof_unsuback,    stg_unsuback,    UnsubackPacket}
+    impl_proptests! {roundtrip_unsubscribe, eof_unsubscribe, stg_unsubscribe, UnsubscribePacket}
 }

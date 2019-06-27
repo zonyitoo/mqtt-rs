@@ -1,0 +1,60 @@
+// Generated using the following shell command and some manual tinkering.
+// rg enum.*Error -A20 -I|sed -n /enum.*Error/,/}/p|rg -v //|sed 's/[(,].*//'
+
+digraph errors {
+  TopicFilterError [shape=box]
+  TopicFilterError -> StringEncodeError;
+  TopicFilterError -> InvalidTopicFilter;
+
+  TopicNameError [shape=box]
+  TopicNameError -> StringEncodeError;
+  TopicNameError -> InvalidTopicName;
+
+  StringEncodeError [shape=box]
+  StringEncodeError -> IoError;
+  StringEncodeError -> FromUtf8Error;
+
+  PacketTypeError [shape=box]
+  PacketTypeError -> ReservedType;
+  PacketTypeError -> UndefinedType;
+  PacketTypeError -> InvalidFlag;
+
+  FixedHeaderError [shape=box]
+  FixedHeaderError -> IoError;
+  FixedHeaderError -> MalformedRemainingLength;
+  FixedHeaderError -> Unrecognized;
+  FixedHeaderError -> ReservedType;
+  FixedHeaderError -> PacketTypeError;
+
+  SubscribePacketPayloadError [shape=box]
+  SubscribePacketPayloadError -> IoError;
+  SubscribePacketPayloadError -> StringEncodeError;
+  SubscribePacketPayloadError -> InvalidQualityOfService;
+  SubscribePacketPayloadError -> TopicFilterError;
+
+  SubackPacketPayloadError [shape=box]
+  SubackPacketPayloadError -> IoError;
+  SubackPacketPayloadError -> InvalidSubscribeReturnCode;
+
+  UnsubscribePacketPayloadError [shape=box]
+  UnsubscribePacketPayloadError -> IoError;
+  UnsubscribePacketPayloadError -> StringEncodeError;
+  UnsubscribePacketPayloadError -> TopicFilterError;
+
+  PacketError [shape=box]
+  PacketError -> IoError;
+  PacketError -> FixedHeaderError;
+  PacketError -> VariableHeaderError;
+  PacketError -> SubackPacketPayloadError;
+  PacketError -> SubscribePacketPayloadError;
+  PacketError -> UnsubscribePacketPayloadError;
+  PacketError -> StringEncodeError;
+  PacketError -> TopicNameError;
+  PacketError -> TopicFilterError;
+
+  VariableHeaderError [shape=box]
+  VariableHeaderError -> IoError;
+  VariableHeaderError -> StringEncodeError;
+  VariableHeaderError -> InvalidReservedFlag;
+  VariableHeaderError -> TopicNameError;
+}

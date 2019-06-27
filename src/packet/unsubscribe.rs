@@ -4,7 +4,6 @@ use std::convert::From;
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write};
-use std::string::FromUtf8Error;
 
 use control::variable_header::PacketIdentifier;
 use control::{ControlType, FixedHeader, PacketType};
@@ -71,8 +70,7 @@ impl Packet for UnsubscribePacket {
         let payload: UnsubscribePacketPayload = UnsubscribePacketPayload::decode_with(
             reader,
             Some(fixed_header.remaining_length - packet_identifier.encoded_length()),
-        )
-        .map_err(PacketError::UnsubscribePacketPayloadError)?;
+        )?;
         Ok(UnsubscribePacket {
             fixed_header: fixed_header,
             packet_identifier: packet_identifier,
@@ -136,7 +134,6 @@ impl Decodable for UnsubscribePacketPayload {
 #[derive(Debug)]
 pub enum UnsubscribePacketPayloadError {
     IoError(io::Error),
-    FromUtf8Error(FromUtf8Error),
     StringEncodeError(StringEncodeError),
     TopicFilterError(TopicFilterError),
 }
@@ -145,7 +142,6 @@ impl fmt::Display for UnsubscribePacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &UnsubscribePacketPayloadError::IoError(ref err) => err.fmt(f),
-            &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => err.fmt(f),
             &UnsubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
             &UnsubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
         }
@@ -156,27 +152,14 @@ impl Error for UnsubscribePacketPayloadError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &UnsubscribePacketPayloadError::IoError(ref err) => Some(err),
-            &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => Some(err),
             &UnsubscribePacketPayloadError::StringEncodeError(ref err) => Some(err),
             &UnsubscribePacketPayloadError::TopicFilterError(ref err) => Some(err),
         }
     }
 }
 
-impl From<StringEncodeError> for UnsubscribePacketPayloadError {
-    fn from(err: StringEncodeError) -> UnsubscribePacketPayloadError {
-        UnsubscribePacketPayloadError::StringEncodeError(err)
-    }
-}
-
 impl From<io::Error> for UnsubscribePacketPayloadError {
     fn from(err: io::Error) -> UnsubscribePacketPayloadError {
         UnsubscribePacketPayloadError::IoError(err)
-    }
-}
-
-impl From<TopicFilterError> for UnsubscribePacketPayloadError {
-    fn from(err: TopicFilterError) -> UnsubscribePacketPayloadError {
-        UnsubscribePacketPayloadError::TopicFilterError(err)
     }
 }

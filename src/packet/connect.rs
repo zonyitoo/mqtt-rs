@@ -1,15 +1,13 @@
 //! CONNECT
 
-use std::error::Error;
-use std::fmt;
-use std::io::{self, Read, Write};
+use std::io::{Read, Write};
 
 use control::variable_header::protocol_level::SPEC_3_1_1;
 use control::variable_header::{ConnectFlags, KeepAlive, ProtocolLevel, ProtocolName};
 use control::{ControlType, FixedHeader, PacketType};
-use encodable::{StringEncodeError, VarBytes};
+use encodable::VarBytes;
 use packet::{Packet, PacketError};
-use topic_name::{TopicName, TopicNameError};
+use topic_name::TopicName;
 use {Decodable, Encodable};
 
 /// `CONNECT` packet
@@ -178,8 +176,7 @@ impl Packet for ConnectPacket {
         let protocol_level: ProtocolLevel = Decodable::decode(reader)?;
         let flags: ConnectFlags = Decodable::decode(reader)?;
         let keep_alive: KeepAlive = Decodable::decode(reader)?;
-        let payload: ConnectPacketPayload =
-            Decodable::decode_with(reader, Some(flags)).map_err(PacketError::ConnectPacketPayloadError)?;
+        let payload: ConnectPacketPayload = Decodable::decode_with(reader, Some(flags))?;
 
         Ok(ConnectPacket {
             fixed_header: fixed_header,
@@ -215,9 +212,9 @@ impl ConnectPacketPayload {
 }
 
 impl Encodable for ConnectPacketPayload {
-    type Err = ConnectPacketPayloadError;
+    type Err = PacketError;
 
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), ConnectPacketPayloadError> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), PacketError> {
         self.client_identifier.encode(writer)?;
 
         if let Some(ref will_topic) = self.will_topic {
@@ -249,13 +246,10 @@ impl Encodable for ConnectPacketPayload {
 }
 
 impl Decodable for ConnectPacketPayload {
-    type Err = ConnectPacketPayloadError;
+    type Err = PacketError;
     type Cond = ConnectFlags;
 
-    fn decode_with<R: Read>(
-        reader: &mut R,
-        rest: Option<ConnectFlags>,
-    ) -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
+    fn decode_with<R: Read>(reader: &mut R, rest: Option<ConnectFlags>) -> Result<ConnectPacketPayload, PacketError> {
         let mut need_will_topic = false;
         let mut need_will_message = false;
         let mut need_user_name = false;
@@ -300,56 +294,6 @@ impl Decodable for ConnectPacketPayload {
     }
 }
 
-#[derive(Debug)]
-pub enum ConnectPacketPayloadError {
-    IoError(io::Error),
-    StringEncodeError(StringEncodeError),
-    TopicNameError(TopicNameError),
-}
-
-impl fmt::Display for ConnectPacketPayloadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &ConnectPacketPayloadError::IoError(ref err) => err.fmt(f),
-            &ConnectPacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
-            &ConnectPacketPayloadError::TopicNameError(ref err) => err.fmt(f),
-        }
-    }
-}
-
-impl Error for ConnectPacketPayloadError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &ConnectPacketPayloadError::IoError(ref err) => Some(err),
-            &ConnectPacketPayloadError::StringEncodeError(ref err) => Some(err),
-            &ConnectPacketPayloadError::TopicNameError(ref err) => Some(err),
-        }
-    }
-}
-
-impl From<io::Error> for ConnectPacketPayloadError {
-    fn from(err: io::Error) -> ConnectPacketPayloadError {
-        ConnectPacketPayloadError::IoError(err)
-    }
-}
-
-impl From<StringEncodeError> for ConnectPacketPayloadError {
-    fn from(err: StringEncodeError) -> ConnectPacketPayloadError {
-        match err {
-            StringEncodeError::IoError(io) => ConnectPacketPayloadError::IoError(io),
-            _ => ConnectPacketPayloadError::StringEncodeError(err),
-        }
-    }
-}
-
-impl From<TopicNameError> for ConnectPacketPayloadError {
-    fn from(err: TopicNameError) -> ConnectPacketPayloadError {
-        match err {
-            TopicNameError::StringEncodeError(e) => e.into(),
-            _ => ConnectPacketPayloadError::TopicNameError(err),
-        }
-    }
-}
 
 #[cfg(test)]
 mod test {

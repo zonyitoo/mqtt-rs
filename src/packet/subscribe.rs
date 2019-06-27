@@ -4,7 +4,6 @@ use std::convert::From;
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write};
-use std::string::FromUtf8Error;
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
@@ -73,8 +72,7 @@ impl Packet for SubscribePacket {
         let payload: SubscribePacketPayload = SubscribePacketPayload::decode_with(
             reader,
             Some(fixed_header.remaining_length - packet_identifier.encoded_length()),
-        )
-        .map_err(PacketError::SubscribePacketPayloadError)?;
+        )?;
         Ok(SubscribePacket {
             fixed_header: fixed_header,
             packet_identifier: packet_identifier,
@@ -147,7 +145,6 @@ impl Decodable for SubscribePacketPayload {
 #[derive(Debug)]
 pub enum SubscribePacketPayloadError {
     IoError(io::Error),
-    FromUtf8Error(FromUtf8Error),
     StringEncodeError(StringEncodeError),
     InvalidQualityOfService,
     TopicFilterError(TopicFilterError),
@@ -157,7 +154,6 @@ impl fmt::Display for SubscribePacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &SubscribePacketPayloadError::IoError(ref err) => err.fmt(f),
-            &SubscribePacketPayloadError::FromUtf8Error(ref err) => err.fmt(f),
             &SubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
             &SubscribePacketPayloadError::InvalidQualityOfService => write!(f, "Invalid quality of service"),
             &SubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
@@ -169,23 +165,10 @@ impl Error for SubscribePacketPayloadError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &SubscribePacketPayloadError::IoError(ref err) => Some(err),
-            &SubscribePacketPayloadError::FromUtf8Error(ref err) => Some(err),
             &SubscribePacketPayloadError::StringEncodeError(ref err) => Some(err),
             &SubscribePacketPayloadError::InvalidQualityOfService => None,
             &SubscribePacketPayloadError::TopicFilterError(ref err) => Some(err),
         }
-    }
-}
-
-impl From<TopicFilterError> for SubscribePacketPayloadError {
-    fn from(err: TopicFilterError) -> SubscribePacketPayloadError {
-        SubscribePacketPayloadError::TopicFilterError(err)
-    }
-}
-
-impl From<StringEncodeError> for SubscribePacketPayloadError {
-    fn from(err: StringEncodeError) -> SubscribePacketPayloadError {
-        SubscribePacketPayloadError::StringEncodeError(err)
     }
 }
 

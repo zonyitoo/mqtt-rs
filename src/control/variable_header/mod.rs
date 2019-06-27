@@ -4,7 +4,6 @@ use std::convert::From;
 use std::error::Error;
 use std::fmt;
 use std::io;
-use std::string::FromUtf8Error;
 
 use encodable::StringEncodeError;
 use topic_name::TopicNameError;
@@ -33,19 +32,12 @@ pub enum VariableHeaderError {
     IoError(io::Error),
     StringEncodeError(StringEncodeError),
     InvalidReservedFlag,
-    FromUtf8Error(FromUtf8Error),
     TopicNameError(TopicNameError),
 }
 
 impl From<io::Error> for VariableHeaderError {
     fn from(err: io::Error) -> VariableHeaderError {
         VariableHeaderError::IoError(err)
-    }
-}
-
-impl From<FromUtf8Error> for VariableHeaderError {
-    fn from(err: FromUtf8Error) -> VariableHeaderError {
-        VariableHeaderError::FromUtf8Error(err)
     }
 }
 
@@ -67,7 +59,6 @@ impl fmt::Display for VariableHeaderError {
             &VariableHeaderError::IoError(ref err) => write!(f, "{}", err),
             &VariableHeaderError::StringEncodeError(ref err) => write!(f, "{}", err),
             &VariableHeaderError::InvalidReservedFlag => write!(f, "Invalid reserved flags"),
-            &VariableHeaderError::FromUtf8Error(ref err) => write!(f, "{}", err),
             &VariableHeaderError::TopicNameError(ref err) => write!(f, "{}", err),
         }
     }
@@ -79,7 +70,6 @@ impl Error for VariableHeaderError {
             &VariableHeaderError::IoError(ref err) => Some(err),
             &VariableHeaderError::StringEncodeError(ref err) => Some(err),
             &VariableHeaderError::InvalidReservedFlag => None,
-            &VariableHeaderError::FromUtf8Error(ref err) => Some(err),
             &VariableHeaderError::TopicNameError(ref err) => Some(err),
         }
     }

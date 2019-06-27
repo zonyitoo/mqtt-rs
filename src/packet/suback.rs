@@ -109,8 +109,7 @@ impl Packet for SubackPacket {
         let payload: SubackPacketPayload = SubackPacketPayload::decode_with(
             reader,
             Some(fixed_header.remaining_length - packet_identifier.encoded_length()),
-        )
-        .map_err(PacketError::SubackPacketPayloadError)?;
+        )?;
         Ok(SubackPacket {
             fixed_header: fixed_header,
             packet_identifier: packet_identifier,

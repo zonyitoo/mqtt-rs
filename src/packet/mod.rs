@@ -305,19 +305,7 @@ macro_rules! impl_variable_packet {
                     -> Result<VariablePacket, Self::Err> {
                 let fixed_header = match fixed_header {
                     Some(fh) => fh,
-                    None => {
-                        match FixedHeader::decode(reader) {
-                            Ok(header) => header,
-                            // FIXME The "read remaining bytes" behavior seem to not be implemented thoroughly and lacks a unit test
-                            // FIXME Dont convert FixedHeaderError to IoError
-                            Err(FixedHeaderError::ReservedType(code, length, mut buf) ) => {
-                                let reader = &mut reader.take(length as u64);
-                                reader.read_to_end(&mut buf)?;
-                                return Err(PacketError::FixedHeaderError(FixedHeaderError::ReservedType(code, length, buf)));
-                            },
-                            Err(err) => return Err(From::from(err))
-                        }
-                    }
+                    None => FixedHeader::decode(reader)?,
                 };
                 let reader = &mut reader.take(fixed_header.remaining_length as u64);
 

@@ -10,7 +10,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use futures::{future, Future};
 use tokio_io::{io as async_io, AsyncRead};
 
-use control::packet_type::{PacketType, PacketTypeError};
+use control::packet_type::{ControlType, PacketType, PacketTypeError};
 use {Decodable, Encodable};
 
 /// Fixed header for each MQTT control packet
@@ -72,14 +72,10 @@ impl FixedHeader {
                             }
                         })
                 })
-                .and_then(move |(rdr, remaining_len, data)| match PacketType::from_u8(type_val) {
-                    Ok(packet_type) => Ok((rdr, FixedHeader::new(packet_type, remaining_len), data)),
-                    Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(
-                        ty,
-                        remaining_len,
-                        Vec::with_capacity(remaining_len as usize),
-                    )),
-                    Err(err) => Err(From::from(err)),
+                .and_then(move |(rdr, len, data)| match PacketType::from_u8(type_val) {
+                    Ok(packet_type) => Ok((rdr, FixedHeader::new(packet_type, len), data)),
+                    Err(PacketTypeError::ReservedType(ty, fl)) => Err(FixedHeaderError::ReservedType(ty, fl, len)),
+                    Err(PacketTypeError::InvalidFlag(ty, fl)) => Err(FixedHeaderError::InvalidFlag(ty, fl, len)),
                 })
             })
     }
@@ -130,7 +126,7 @@ impl Decodable for FixedHeader {
 
     fn decode_with<R: Read>(rdr: &mut R, _rest: Option<()>) -> Result<FixedHeader, FixedHeaderError> {
         let type_val = rdr.read_u8()?;
-        let remaining_len = {
+        let len = {
             let mut cur = 0u32;
             for i in 0.. {
                 let byte = rdr.read_u8()?;
@@ -149,26 +145,30 @@ impl Decodable for FixedHeader {
         };
 
         match PacketType::from_u8(type_val) {
-            Ok(packet_type) => Ok(FixedHeader::new(packet_type, remaining_len)),
-            Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(
-                ty,
-                remaining_len,
-                Vec::with_capacity(remaining_len as usize),
-            )),
-            Err(err) => Err(From::from(err)),
+            Ok(packet_type) => Ok(FixedHeader::new(packet_type, len)),
+            Err(PacketTypeError::ReservedType(ty, fl)) => Err(FixedHeaderError::ReservedType(ty, fl, len)),
+            Err(PacketTypeError::InvalidFlag(ty, fl)) => Err(FixedHeaderError::InvalidFlag(ty, fl, len)),
         }
     }
 }
 
-/// Error while decoding the mandatory "Fixed Header" (MQTT 3.1.1 section 2.2)
+/// Error while decoding the "Fixed Header" (MQTT [section 2.2]).
+///
+/// The spec mandates that you close the connection in this case ([section 4.8]), but there's enough
+/// information here (parsed type, flag, lenght) should you want to read and parse the rest of the
+/// packet manually.
+///
+/// [section 2.2]: http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/errata01/os/mqtt-v3.1.1-errata01-os-complete.html#_Toc442180833
+/// [section 4.8]: http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/errata01/os/mqtt-v3.1.1-errata01-os-complete.html#_Toc442180923
 #[derive(Debug)]
 pub enum FixedHeaderError {
     IoError(io::Error),
-    /// Illegal remaining length value. This is a fatal error if you are reading packets from a
-    /// stream.
+    /// Illegal remaining length value. In practice meaning the 4th byte's msb is set.
     MalformedRemainingLength,
-    ReservedType(u8, u32, Vec<u8>),
-    PacketTypeError(PacketTypeError), // TODO fold into FixedHeaderError
+    /// Packet types 0 and 15 are reserved by spec.
+    ReservedType(u8, u8, u32),
+    /// Invalid flag for this packet type. In practice, only PUBLISH packets can have varying flags.
+    InvalidFlag(ControlType, u8, u32),
 }
 
 impl From<io::Error> for FixedHeaderError {
@@ -177,19 +177,13 @@ impl From<io::Error> for FixedHeaderError {
     }
 }
 
-impl From<PacketTypeError> for FixedHeaderError {
-    fn from(err: PacketTypeError) -> FixedHeaderError {
-        FixedHeaderError::PacketTypeError(err)
-    }
-}
-
 impl fmt::Display for FixedHeaderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &FixedHeaderError::MalformedRemainingLength => write!(f, "Malformed remaining length"),
-            &FixedHeaderError::ReservedType(code, length, _) => write!(f, "Reserved header ({}, {})", code, length),
-            &FixedHeaderError::PacketTypeError(ref err) => write!(f, "{}", err),
             &FixedHeaderError::IoError(ref err) => write!(f, "{}", err),
+            &FixedHeaderError::MalformedRemainingLength => write!(f, "Malformed remaining length"),
+            &FixedHeaderError::ReservedType(ty, fl, len) => write!(f, "Reserved type ({}, {}, {})", ty, fl, len),
+            &FixedHeaderError::InvalidFlag(ty, fl, len) => write!(f, "Invalid flag ({:?}, {}, {})", ty, fl, len),
         }
     }
 }
@@ -197,10 +191,10 @@ impl fmt::Display for FixedHeaderError {
 impl Error for FixedHeaderError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            &FixedHeaderError::IoError(ref err) => Some(err),
             &FixedHeaderError::MalformedRemainingLength => None,
             &FixedHeaderError::ReservedType(..) => None,
-            &FixedHeaderError::PacketTypeError(ref err) => Some(err),
-            &FixedHeaderError::IoError(ref err) => Some(err),
+            &FixedHeaderError::InvalidFlag(..) => None,
         }
     }
 }

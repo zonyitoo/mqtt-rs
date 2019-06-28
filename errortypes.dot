@@ -22,7 +22,7 @@ digraph errors {
   FixedHeaderError -> IoError;
   FixedHeaderError -> MalformedRemainingLength;
   FixedHeaderError -> ReservedType;
-  FixedHeaderError -> PacketTypeError;
+  FixedHeaderError -> InvalidFlag;
 
   SubscribePacketPayloadError [shape=box]
   SubscribePacketPayloadError -> IoError;

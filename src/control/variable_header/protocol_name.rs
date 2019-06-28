@@ -1,8 +1,8 @@
 use std::convert::From;
 use std::io::{Read, Write};
 
-use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
+use {Decodable, Encodable};
 
 /// Protocol name in variable header
 ///

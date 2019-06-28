@@ -34,15 +34,15 @@ pub trait Decodable: Sized {
 }
 
 impl<'a> Encodable for &'a str {
-    type Err = StringEncodeError;
+    type Err = StringCodecError;
 
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringCodecError> {
         assert!(self.as_bytes().len() <= u16::max_value() as usize);
 
-        writer.write_u16::<BigEndian>(self.as_bytes().len() as u16)
-              .map_err(From::from)
-              .and_then(|_| writer.write_all(self.as_bytes()))
-              .map_err(StringEncodeError::IoError)
+        writer
+            .write_u16::<BigEndian>(self.as_bytes().len() as u16)
+            .and_then(|_| writer.write_all(self.as_bytes()))
+            .map_err(From::from)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -63,9 +63,9 @@ impl<'a> Encodable for &'a [u8] {
 }
 
 impl Encodable for String {
-    type Err = StringEncodeError;
+    type Err = StringCodecError;
 
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringCodecError> {
         (&self[..]).encode(writer)
     }
 
@@ -75,10 +75,10 @@ impl Encodable for String {
 }
 
 impl Decodable for String {
-    type Err = StringEncodeError;
+    type Err = StringCodecError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<String, StringEncodeError> {
+    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<String, StringCodecError> {
         let len = reader.read_u16::<BigEndian>()? as usize;
         let mut buf = Vec::with_capacity(len);
         unsafe {
@@ -86,7 +86,7 @@ impl Decodable for String {
         }
         reader.read_exact(&mut buf)?;
 
-        String::from_utf8(buf).map_err(StringEncodeError::FromUtf8Error)
+        String::from_utf8(buf).map_err(From::from)
     }
 }
 
@@ -128,7 +128,7 @@ impl Decodable for Vec<u8> {
 impl Encodable for () {
     type Err = NoError;
 
-    fn encode<W: Write>(&self, _: &mut W) -> Result<(), NoError> {
+    fn encode<W: Write>(&self, _: &mut W) -> Result<(), Self::Err> {
         Ok(())
     }
 
@@ -141,7 +141,7 @@ impl Decodable for () {
     type Err = NoError;
     type Cond = ();
 
-    fn decode_with<R: Read>(_: &mut R, _: Option<()>) -> Result<(), NoError> {
+    fn decode_with<R: Read>(_: &mut R, _: Option<()>) -> Result<(), Self::Err> {
         Ok(())
     }
 }
@@ -180,6 +180,7 @@ impl Decodable for VarBytes {
 }
 
 /// Error that indicates we won't have any errors
+// TODO replace with https://doc.rust-lang.org/std/primitive.never.html
 #[derive(Debug)]
 pub struct NoError;
 
@@ -189,57 +190,42 @@ impl fmt::Display for NoError {
     }
 }
 
-impl Error for NoError {
-    fn description(&self) -> &str {
-        "No error"
-    }
-}
+impl Error for NoError {}
 
-/// Errors while parsing to a string
+/// Errors while encoding/decoding a string
 #[derive(Debug)]
-pub enum StringEncodeError {
+pub enum StringCodecError {
     IoError(io::Error),
     FromUtf8Error(FromUtf8Error),
-    MalformedData,
 }
 
-impl fmt::Display for StringEncodeError {
+impl fmt::Display for StringCodecError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &StringEncodeError::IoError(ref err) => err.fmt(f),
-            &StringEncodeError::FromUtf8Error(ref err) => err.fmt(f),
-            &StringEncodeError::MalformedData => write!(f, "Malformed data"),
+            &StringCodecError::IoError(ref err) => err.fmt(f),
+            &StringCodecError::FromUtf8Error(ref err) => err.fmt(f),
         }
     }
 }
 
-impl Error for StringEncodeError {
-    fn description(&self) -> &str {
-        match self {
-            &StringEncodeError::IoError(ref err) => err.description(),
-            &StringEncodeError::FromUtf8Error(ref err) => err.description(),
-            &StringEncodeError::MalformedData => "Malformed data",
-        }
-    }
-
+impl Error for StringCodecError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            &StringEncodeError::IoError(ref err) => Some(err),
-            &StringEncodeError::FromUtf8Error(ref err) => Some(err),
-            &StringEncodeError::MalformedData => None,
+            &StringCodecError::IoError(ref err) => Some(err),
+            &StringCodecError::FromUtf8Error(ref err) => Some(err),
         }
     }
 }
 
-impl From<io::Error> for StringEncodeError {
-    fn from(err: io::Error) -> StringEncodeError {
-        StringEncodeError::IoError(err)
+impl From<io::Error> for StringCodecError {
+    fn from(err: io::Error) -> StringCodecError {
+        StringCodecError::IoError(err)
     }
 }
 
-impl From<FromUtf8Error> for StringEncodeError {
-    fn from(err: FromUtf8Error) -> StringEncodeError {
-        StringEncodeError::FromUtf8Error(err)
+impl From<FromUtf8Error> for StringCodecError {
+    fn from(err: FromUtf8Error) -> StringCodecError {
+        StringCodecError::FromUtf8Error(err)
     }
 }
 

@@ -19,6 +19,7 @@ futures = "0.1"
 [dev-dependencies]
 clap = "2"
 env_logger = "0.5"
+proptest = "0.9"
 uuid = { version = "0.7", features = ["v4"] }
 time = "0.1"
 tokio = "0.1"

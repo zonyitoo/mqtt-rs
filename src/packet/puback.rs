@@ -2,10 +2,10 @@
 
 use std::io::{Read, Write};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::PacketIdentifier;
+use control::{ControlType, FixedHeader, PacketType};
 use packet::{Packet, PacketError};
+use {Decodable, Encodable};
 
 /// `PUBACK` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -48,7 +48,7 @@ impl Packet for PubackPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError> {
         self.packet_identifier.encode(writer)?;
 
         Ok(())
@@ -58,12 +58,12 @@ impl Packet for PubackPacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         Ok(PubackPacket {
-               fixed_header: fixed_header,
-               packet_identifier: packet_identifier,
-               payload: (),
-           })
+            fixed_header: fixed_header,
+            packet_identifier: packet_identifier,
+            payload: (),
+        })
     }
 }

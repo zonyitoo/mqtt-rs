@@ -2,10 +2,10 @@
 
 use std::io::{Read, Write};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::{ConnackFlags, ConnectReturnCode};
+use control::{ControlType, FixedHeader, PacketType};
 use packet::{Packet, PacketError};
+use {Decodable, Encodable};
 
 /// `CONNACK` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -20,7 +20,9 @@ impl ConnackPacket {
     pub fn new(session_present: bool, ret_code: ConnectReturnCode) -> ConnackPacket {
         ConnackPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
-            flags: ConnackFlags { session_present: session_present },
+            flags: ConnackFlags {
+                session_present: session_present,
+            },
             ret_code: ret_code,
             payload: (),
         }
@@ -50,7 +52,7 @@ impl Packet for ConnackPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError> {
         self.flags.encode(writer)?;
         self.ret_code.encode(writer)?;
         Ok(())
@@ -60,16 +62,16 @@ impl Packet for ConnackPacket {
         self.flags.encoded_length() + self.ret_code.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError> {
         let flags: ConnackFlags = Decodable::decode(reader)?;
         let code: ConnectReturnCode = Decodable::decode(reader)?;
 
         Ok(ConnackPacket {
-               fixed_header: fixed_header,
-               flags: flags,
-               ret_code: code,
-               payload: (),
-           })
+            fixed_header: fixed_header,
+            flags: flags,
+            ret_code: code,
+            payload: (),
+        })
     }
 }
 
@@ -79,8 +81,8 @@ mod test {
 
     use std::io::Cursor;
 
-    use {Decodable, Encodable};
     use control::variable_header::ConnectReturnCode;
+    use {Decodable, Encodable};
 
     #[test]
     pub fn test_connack_packet_basic() {

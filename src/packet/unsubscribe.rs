@@ -4,14 +4,13 @@ use std::convert::From;
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write};
-use std::string::FromUtf8Error;
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
 use control::variable_header::PacketIdentifier;
-use encodable::StringEncodeError;
+use control::{ControlType, FixedHeader, PacketType};
+use encodable::StringCodecError;
 use packet::{Packet, PacketError};
 use topic_filter::{TopicFilter, TopicFilterError};
+use {Decodable, Encodable};
 
 /// `UNSUBSCRIBE` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -56,7 +55,7 @@ impl Packet for UnsubscribePacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
+    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError> {
         self.packet_identifier.encode(writer)?;
 
         Ok(())
@@ -66,18 +65,17 @@ impl Packet for UnsubscribePacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
-        let payload: UnsubscribePacketPayload =
-            UnsubscribePacketPayload::decode_with(reader,
-                                                  Some(fixed_header.remaining_length -
-                                                           packet_identifier.encoded_length()))
-            .map_err(PacketError::PayloadError)?;
+        let payload: UnsubscribePacketPayload = UnsubscribePacketPayload::decode_with(
+            reader,
+            Some(fixed_header.remaining_length - packet_identifier.encoded_length()),
+        )?;
         Ok(UnsubscribePacket {
-               fixed_header: fixed_header,
-               packet_identifier: packet_identifier,
-               payload: payload,
-           })
+            fixed_header: fixed_header,
+            packet_identifier: packet_identifier,
+            payload: payload,
+        })
     }
 }
 
@@ -108,9 +106,7 @@ impl Encodable for UnsubscribePacketPayload {
     }
 
     fn encoded_length(&self) -> u32 {
-        self.subscribes
-            .iter()
-            .fold(0, |b, a| b + a.encoded_length())
+        self.subscribes.iter().fold(0, |b, a| b + a.encoded_length())
     }
 }
 
@@ -118,9 +114,10 @@ impl Decodable for UnsubscribePacketPayload {
     type Err = UnsubscribePacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R,
-                            payload_len: Option<u32>)
-                            -> Result<UnsubscribePacketPayload, UnsubscribePacketPayloadError> {
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        payload_len: Option<u32>,
+    ) -> Result<UnsubscribePacketPayload, UnsubscribePacketPayloadError> {
         let mut payload_len = payload_len.expect("Must provide payload length");
         let mut subs = Vec::new();
 
@@ -137,8 +134,7 @@ impl Decodable for UnsubscribePacketPayload {
 #[derive(Debug)]
 pub enum UnsubscribePacketPayloadError {
     IoError(io::Error),
-    FromUtf8Error(FromUtf8Error),
-    StringEncodeError(StringEncodeError),
+    StringCodecError(StringCodecError),
     TopicFilterError(TopicFilterError),
 }
 
@@ -146,47 +142,24 @@ impl fmt::Display for UnsubscribePacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &UnsubscribePacketPayloadError::IoError(ref err) => err.fmt(f),
-            &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => err.fmt(f),
-            &UnsubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
+            &UnsubscribePacketPayloadError::StringCodecError(ref err) => err.fmt(f),
             &UnsubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
         }
     }
 }
 
 impl Error for UnsubscribePacketPayloadError {
-    fn description(&self) -> &str {
-        match self {
-            &UnsubscribePacketPayloadError::IoError(ref err) => err.description(),
-            &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => err.description(),
-            &UnsubscribePacketPayloadError::StringEncodeError(ref err) => err.description(),
-            &UnsubscribePacketPayloadError::TopicFilterError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &UnsubscribePacketPayloadError::IoError(ref err) => Some(err),
-            &UnsubscribePacketPayloadError::FromUtf8Error(ref err) => Some(err),
-            &UnsubscribePacketPayloadError::StringEncodeError(ref err) => Some(err),
+            &UnsubscribePacketPayloadError::StringCodecError(ref err) => Some(err),
             &UnsubscribePacketPayloadError::TopicFilterError(ref err) => Some(err),
         }
-    }
-}
-
-impl From<StringEncodeError> for UnsubscribePacketPayloadError {
-    fn from(err: StringEncodeError) -> UnsubscribePacketPayloadError {
-        UnsubscribePacketPayloadError::StringEncodeError(err)
     }
 }
 
 impl From<io::Error> for UnsubscribePacketPayloadError {
     fn from(err: io::Error) -> UnsubscribePacketPayloadError {
         UnsubscribePacketPayloadError::IoError(err)
-    }
-}
-
-impl From<TopicFilterError> for UnsubscribePacketPayloadError {
-    fn from(err: TopicFilterError) -> UnsubscribePacketPayloadError {
-        UnsubscribePacketPayloadError::TopicFilterError(err)
     }
 }

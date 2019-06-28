@@ -1,0 +1,58 @@
+// Generated using the following shell command and some manual tinkering.
+// rg enum.*Error -A20 -I|sed -n /enum.*Error/,/}/p|rg -v //|sed 's/[(,].*//'
+
+digraph errors {
+  TopicFilterError [shape=box]
+  TopicFilterError -> StringCodecError;
+  TopicFilterError -> InvalidTopicFilter;
+
+  TopicNameError [shape=box]
+  TopicNameError -> StringCodecError;
+  TopicNameError -> InvalidTopicName;
+
+  StringCodecError [shape=box]
+  StringCodecError -> IoError;
+  StringCodecError -> FromUtf8Error;
+
+  PacketTypeError [shape=box]
+  PacketTypeError -> ReservedType;
+  PacketTypeError -> InvalidFlag;
+
+  FixedHeaderError [shape=box]
+  FixedHeaderError -> IoError;
+  FixedHeaderError -> MalformedRemainingLength;
+  FixedHeaderError -> ReservedType;
+  FixedHeaderError -> InvalidFlag;
+
+  SubscribePacketPayloadError [shape=box]
+  SubscribePacketPayloadError -> IoError;
+  SubscribePacketPayloadError -> StringCodecError;
+  SubscribePacketPayloadError -> InvalidQualityOfService;
+  SubscribePacketPayloadError -> TopicFilterError;
+
+  SubackPacketPayloadError [shape=box]
+  SubackPacketPayloadError -> IoError;
+  SubackPacketPayloadError -> InvalidSubscribeReturnCode;
+
+  UnsubscribePacketPayloadError [shape=box]
+  UnsubscribePacketPayloadError -> IoError;
+  UnsubscribePacketPayloadError -> StringCodecError;
+  UnsubscribePacketPayloadError -> TopicFilterError;
+
+  PacketError [shape=box]
+  PacketError -> IoError;
+  PacketError -> FixedHeaderError;
+  PacketError -> VariableHeaderError;
+  PacketError -> SubackPacketPayloadError;
+  PacketError -> SubscribePacketPayloadError;
+  PacketError -> UnsubscribePacketPayloadError;
+  PacketError -> StringCodecError;
+  PacketError -> TopicNameError;
+  PacketError -> TopicFilterError;
+
+  VariableHeaderError [shape=box]
+  VariableHeaderError -> IoError;
+  VariableHeaderError -> StringCodecError;
+  VariableHeaderError -> InvalidReservedFlag;
+  VariableHeaderError -> TopicNameError;
+}

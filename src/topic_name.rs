@@ -9,8 +9,8 @@ use std::ops::Deref;
 
 use regex::Regex;
 
+use encodable::StringCodecError;
 use {Decodable, Encodable};
-use encodable::StringEncodeError;
 
 const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^[^#+]+$";
 
@@ -65,9 +65,7 @@ impl Encodable for TopicName {
     type Err = TopicNameError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicNameError> {
-        (&self.0[..])
-            .encode(writer)
-            .map_err(TopicNameError::StringEncodeError)
+        (&self.0[..]).encode(writer).map_err(TopicNameError::StringCodecError)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -80,8 +78,7 @@ impl Decodable for TopicName {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicName, TopicNameError> {
-        let topic_name: String = Decodable::decode(reader)
-            .map_err(TopicNameError::StringEncodeError)?;
+        let topic_name: String = Decodable::decode(reader).map_err(TopicNameError::StringCodecError)?;
         TopicName::new(topic_name)
     }
 }
@@ -89,30 +86,23 @@ impl Decodable for TopicName {
 /// Errors while parsing topic names
 #[derive(Debug)]
 pub enum TopicNameError {
-    StringEncodeError(StringEncodeError),
+    StringCodecError(StringCodecError),
     InvalidTopicName(String),
 }
 
 impl fmt::Display for TopicNameError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &TopicNameError::StringEncodeError(ref err) => err.fmt(f),
+            &TopicNameError::StringCodecError(ref err) => err.fmt(f),
             &TopicNameError::InvalidTopicName(ref topic) => write!(f, "Invalid topic filter ({})", topic),
         }
     }
 }
 
 impl Error for TopicNameError {
-    fn description(&self) -> &str {
-        match self {
-            &TopicNameError::StringEncodeError(ref err) => err.description(),
-            &TopicNameError::InvalidTopicName(..) => "Invalid topic filter",
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            &TopicNameError::StringEncodeError(ref err) => Some(err),
+            &TopicNameError::StringCodecError(ref err) => Some(err),
             &TopicNameError::InvalidTopicName(..) => None,
         }
     }

@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
+use {Decodable, Encodable};
 
 /// Flags for `CONNECT` packet
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -61,12 +61,12 @@ impl Decodable for ConnectFlags {
         }
 
         Ok(ConnectFlags {
-               user_name: (code & 0b1000_0000) != 0,
-               password: (code & 0b0100_0000) != 0,
-               will_retain: (code & 0b0010_0000) != 0,
-               will_qos: (code & 0b0001_1000) >> 3,
-               will_flag: (code & 0b0000_0100) != 0,
-               clean_session: (code & 0b0000_0010) != 0,
-           })
+            user_name: (code & 0b1000_0000) != 0,
+            password: (code & 0b0100_0000) != 0,
+            will_retain: (code & 0b0010_0000) != 0,
+            will_qos: (code & 0b0001_1000) >> 3,
+            will_flag: (code & 0b0000_0100) != 0,
+            clean_session: (code & 0b0000_0010) != 0,
+        })
     }
 }

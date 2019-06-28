@@ -9,9 +9,9 @@ use std::ops::Deref;
 
 use regex::Regex;
 
-use {Decodable, Encodable};
-use encodable::StringEncodeError;
+use encodable::StringCodecError;
 use topic_name::TopicNameRef;
+use {Decodable, Encodable};
 
 const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(([^+#]*|\+)(/([^+#]*|\+))*(/#)?|#)$";
 
@@ -60,9 +60,7 @@ impl Encodable for TopicFilter {
     type Err = TopicFilterError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicFilterError> {
-        (&self.0[..])
-            .encode(writer)
-            .map_err(TopicFilterError::StringEncodeError)
+        (&self.0[..]).encode(writer).map_err(TopicFilterError::StringCodecError)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -75,8 +73,7 @@ impl Decodable for TopicFilter {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicFilter, TopicFilterError> {
-        let topic_filter: String = Decodable::decode(reader)
-            .map_err(TopicFilterError::StringEncodeError)?;
+        let topic_filter: String = Decodable::decode(reader).map_err(TopicFilterError::StringCodecError)?;
         TopicFilter::new(topic_filter)
     }
 }
@@ -127,30 +124,23 @@ impl Deref for TopicFilterRef {
 /// Errors while parsing topic filters
 #[derive(Debug)]
 pub enum TopicFilterError {
-    StringEncodeError(StringEncodeError),
+    StringCodecError(StringCodecError),
     InvalidTopicFilter(String),
 }
 
 impl fmt::Display for TopicFilterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &TopicFilterError::StringEncodeError(ref err) => err.fmt(f),
+            &TopicFilterError::StringCodecError(ref err) => err.fmt(f),
             &TopicFilterError::InvalidTopicFilter(ref topic) => write!(f, "Invalid topic filter ({})", topic),
         }
     }
 }
 
 impl Error for TopicFilterError {
-    fn description(&self) -> &str {
-        match self {
-            &TopicFilterError::StringEncodeError(ref err) => err.description(),
-            &TopicFilterError::InvalidTopicFilter(..) => "Invalid topic filter",
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            &TopicFilterError::StringEncodeError(ref err) => Some(err),
+            &TopicFilterError::StringCodecError(ref err) => Some(err),
             &TopicFilterError::InvalidTopicFilter(..) => None,
         }
     }
@@ -197,17 +187,15 @@ impl<'a> TopicFilterMatcher<'a> {
 
         loop {
             match (ft_itr.next(), tn_itr.next()) {
-                (Some(ft), Some(tn)) => {
-                    match ft {
-                        "#" => break,
-                        "+" => {}
-                        _ => {
-                            if ft != tn {
-                                return false;
-                            }
+                (Some(ft), Some(tn)) => match ft {
+                    "#" => break,
+                    "+" => {}
+                    _ => {
+                        if ft != tn {
+                            return false;
                         }
                     }
-                }
+                },
                 (Some(ft), None) => {
                     if ft != "#" {
                         return false;

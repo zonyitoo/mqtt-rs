@@ -141,16 +141,19 @@ impl PacketType {
             value::DISCONNECT   => vconst!(0x00, ControlType::Disconnect),
 
             0 | 15              => Err(PacketTypeError::ReservedType(type_val, flag)),
-            _                   => Err(PacketTypeError::UndefinedType(type_val, flag)),
+            _                   => unreachable!() //TODO rust >= 1.33: use explicit 16..=255 instead of _
         }
     }
 }
 
-/// Parsing packet type errors
+/// Error when parsing packet type and flags. See [FixedHeaderError] for more info.
+///
+/// [FixedHeaderError]: ../fixed_header/enum.FixedHeaderError.html
 #[derive(Debug)]
 pub enum PacketTypeError {
+    /// Packet types 0 and 15 are reserved by spec.
     ReservedType(u8, u8),
-    UndefinedType(u8, u8),
+    /// Invalid flag for this packet type. In practice, only PUBLISH packets can have varying flags.
     InvalidFlag(ControlType, u8),
 }
 
@@ -159,20 +162,11 @@ impl fmt::Display for PacketTypeError {
         match self {
             &PacketTypeError::ReservedType(t, flag) => write!(f, "Reserved type {:?} ({:#X})", t, flag),
             &PacketTypeError::InvalidFlag(t, flag) => write!(f, "Invalid flag for {:?} ({:#X})", t, flag),
-            &PacketTypeError::UndefinedType(t, flag) => write!(f, "Undefined type {:?} ({:#X})", t, flag),
         }
     }
 }
 
-impl Error for PacketTypeError {
-    fn description(&self) -> &str {
-        match self {
-            &PacketTypeError::ReservedType(..) => "Reserved type",
-            &PacketTypeError::UndefinedType(..) => "Undefined type",
-            &PacketTypeError::InvalidFlag(..) => "Invalid flag",
-        }
-    }
-}
+impl Error for PacketTypeError {}
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 mod value {

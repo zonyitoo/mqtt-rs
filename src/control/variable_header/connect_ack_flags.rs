@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use {Decodable, Encodable};
 use control::variable_header::VariableHeaderError;
+use {Decodable, Encodable};
 
 /// Flags in `CONNACK` packet
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -41,6 +41,8 @@ impl Decodable for ConnackFlags {
             return Err(VariableHeaderError::InvalidReservedFlag);
         }
 
-        Ok(ConnackFlags { session_present: code == 1 })
+        Ok(ConnackFlags {
+            session_present: code == 1,
+        })
     }
 }

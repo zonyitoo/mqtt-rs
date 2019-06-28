@@ -294,7 +294,6 @@ impl Decodable for ConnectPacketPayload {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;

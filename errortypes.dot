@@ -3,16 +3,16 @@
 
 digraph errors {
   TopicFilterError [shape=box]
-  TopicFilterError -> StringEncodeError;
+  TopicFilterError -> StringCodecError;
   TopicFilterError -> InvalidTopicFilter;
 
   TopicNameError [shape=box]
-  TopicNameError -> StringEncodeError;
+  TopicNameError -> StringCodecError;
   TopicNameError -> InvalidTopicName;
 
-  StringEncodeError [shape=box]
-  StringEncodeError -> IoError;
-  StringEncodeError -> FromUtf8Error;
+  StringCodecError [shape=box]
+  StringCodecError -> IoError;
+  StringCodecError -> FromUtf8Error;
 
   PacketTypeError [shape=box]
   PacketTypeError -> ReservedType;
@@ -26,7 +26,7 @@ digraph errors {
 
   SubscribePacketPayloadError [shape=box]
   SubscribePacketPayloadError -> IoError;
-  SubscribePacketPayloadError -> StringEncodeError;
+  SubscribePacketPayloadError -> StringCodecError;
   SubscribePacketPayloadError -> InvalidQualityOfService;
   SubscribePacketPayloadError -> TopicFilterError;
 
@@ -36,7 +36,7 @@ digraph errors {
 
   UnsubscribePacketPayloadError [shape=box]
   UnsubscribePacketPayloadError -> IoError;
-  UnsubscribePacketPayloadError -> StringEncodeError;
+  UnsubscribePacketPayloadError -> StringCodecError;
   UnsubscribePacketPayloadError -> TopicFilterError;
 
   PacketError [shape=box]
@@ -46,13 +46,13 @@ digraph errors {
   PacketError -> SubackPacketPayloadError;
   PacketError -> SubscribePacketPayloadError;
   PacketError -> UnsubscribePacketPayloadError;
-  PacketError -> StringEncodeError;
+  PacketError -> StringCodecError;
   PacketError -> TopicNameError;
   PacketError -> TopicFilterError;
 
   VariableHeaderError [shape=box]
   VariableHeaderError -> IoError;
-  VariableHeaderError -> StringEncodeError;
+  VariableHeaderError -> StringCodecError;
   VariableHeaderError -> InvalidReservedFlag;
   VariableHeaderError -> TopicNameError;
 }

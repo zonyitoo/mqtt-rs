@@ -11,7 +11,7 @@ use control::fixed_header::FixedHeaderError;
 use control::variable_header::VariableHeaderError;
 use control::ControlType;
 use control::FixedHeader;
-use encodable::{NoError, StringEncodeError};
+use encodable::{NoError, StringCodecError};
 use packet::suback::SubackPacketPayloadError;
 use packet::subscribe::SubscribePacketPayloadError;
 use packet::unsubscribe::UnsubscribePacketPayloadError;
@@ -105,7 +105,7 @@ pub enum PacketError {
     /// Error in a UNSUBSCRIBE packet (MQTT 3.1.1 section 3.10)
     UnsubscribePacketPayloadError(UnsubscribePacketPayloadError),
     /// Error in a string (MQTT 3.1.1 section 1.5.3)
-    StringEncodeError(StringEncodeError),
+    StringCodecError(StringCodecError),
     /// Error in a topic name (MQTT 3.1.1 section 4.7)
     TopicNameError(TopicNameError),
     /// Error in a topic filter (MQTT 3.1.1 section 4.7)
@@ -120,7 +120,7 @@ impl fmt::Display for PacketError {
             &PacketError::SubackPacketPayloadError(ref err) => err.fmt(f),
             &PacketError::SubscribePacketPayloadError(ref err) => err.fmt(f),
             &PacketError::UnsubscribePacketPayloadError(ref err) => err.fmt(f),
-            &PacketError::StringEncodeError(ref err) => err.fmt(f),
+            &PacketError::StringCodecError(ref err) => err.fmt(f),
             &PacketError::IoError(ref err) => err.fmt(f),
             &PacketError::TopicNameError(ref err) => err.fmt(f),
             &PacketError::TopicFilterError(ref err) => err.fmt(f),
@@ -136,7 +136,7 @@ impl Error for PacketError {
             &PacketError::SubackPacketPayloadError(ref err) => Some(err),
             &PacketError::SubscribePacketPayloadError(ref err) => Some(err),
             &PacketError::UnsubscribePacketPayloadError(ref err) => Some(err),
-            &PacketError::StringEncodeError(ref err) => Some(err),
+            &PacketError::StringCodecError(ref err) => Some(err),
             &PacketError::IoError(ref err) => Some(err),
             &PacketError::TopicNameError(ref err) => Some(err),
             &PacketError::TopicFilterError(ref err) => Some(err),
@@ -162,22 +162,28 @@ macro_rules! impl_from_error {
     };
 }
 impl_from_error!(FixedHeaderError, PacketError, IoError);
-impl_from_error!(VariableHeaderError, PacketError, IoError, StringEncodeError, TopicNameError);
-impl_from_error!(StringEncodeError, PacketError, IoError);
-impl_from_error!(TopicNameError, PacketError, StringEncodeError);
+impl_from_error!(
+    VariableHeaderError,
+    PacketError,
+    IoError,
+    StringCodecError,
+    TopicNameError
+);
+impl_from_error!(StringCodecError, PacketError, IoError);
+impl_from_error!(TopicNameError, PacketError, StringCodecError);
 impl_from_error!(UnsubscribePacketPayloadError, PacketError, IoError);
 impl_from_error!(SubackPacketPayloadError, PacketError, IoError);
 impl_from_error!(SubscribePacketPayloadError, PacketError, IoError);
 
-impl_from_error!(TopicFilterError, UnsubscribePacketPayloadError, StringEncodeError);
-impl_from_error!(StringEncodeError, UnsubscribePacketPayloadError, IoError);
+impl_from_error!(TopicFilterError, UnsubscribePacketPayloadError, StringCodecError);
+impl_from_error!(StringCodecError, UnsubscribePacketPayloadError, IoError);
 
-impl_from_error!(TopicFilterError, SubscribePacketPayloadError, StringEncodeError);
-impl_from_error!(StringEncodeError, SubscribePacketPayloadError, IoError);
+impl_from_error!(TopicFilterError, SubscribePacketPayloadError, StringCodecError);
+impl_from_error!(StringCodecError, SubscribePacketPayloadError, IoError);
 
 impl From<NoError> for PacketError {
     fn from(_err: NoError) -> PacketError {
-        PacketError::IoError(std::io::Error::new(std::io::ErrorKind::Other, "No Error"))
+        PacketError::IoError(io::Error::new(io::ErrorKind::Other, "No Error"))
     }
 }
 

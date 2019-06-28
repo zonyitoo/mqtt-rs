@@ -9,7 +9,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use control::variable_header::PacketIdentifier;
 use control::{ControlType, FixedHeader, PacketType};
-use encodable::StringEncodeError;
+use encodable::StringCodecError;
 use packet::{Packet, PacketError};
 use topic_filter::{TopicFilter, TopicFilterError};
 use {Decodable, Encodable, QualityOfService};
@@ -145,7 +145,7 @@ impl Decodable for SubscribePacketPayload {
 #[derive(Debug)]
 pub enum SubscribePacketPayloadError {
     IoError(io::Error),
-    StringEncodeError(StringEncodeError),
+    StringCodecError(StringCodecError),
     InvalidQualityOfService,
     TopicFilterError(TopicFilterError),
 }
@@ -154,7 +154,7 @@ impl fmt::Display for SubscribePacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &SubscribePacketPayloadError::IoError(ref err) => err.fmt(f),
-            &SubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
+            &SubscribePacketPayloadError::StringCodecError(ref err) => err.fmt(f),
             &SubscribePacketPayloadError::InvalidQualityOfService => write!(f, "Invalid quality of service"),
             &SubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
         }
@@ -165,7 +165,7 @@ impl Error for SubscribePacketPayloadError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &SubscribePacketPayloadError::IoError(ref err) => Some(err),
-            &SubscribePacketPayloadError::StringEncodeError(ref err) => Some(err),
+            &SubscribePacketPayloadError::StringCodecError(ref err) => Some(err),
             &SubscribePacketPayloadError::InvalidQualityOfService => None,
             &SubscribePacketPayloadError::TopicFilterError(ref err) => Some(err),
         }

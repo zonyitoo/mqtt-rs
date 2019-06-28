@@ -5,7 +5,7 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 
-use encodable::StringEncodeError;
+use encodable::StringCodecError;
 use topic_name::TopicNameError;
 
 pub use self::connect_ack_flags::ConnackFlags;
@@ -30,7 +30,7 @@ mod topic_name;
 #[derive(Debug)]
 pub enum VariableHeaderError {
     IoError(io::Error),
-    StringEncodeError(StringEncodeError),
+    StringCodecError(StringCodecError),
     InvalidReservedFlag,
     TopicNameError(TopicNameError),
 }
@@ -41,9 +41,9 @@ impl From<io::Error> for VariableHeaderError {
     }
 }
 
-impl From<StringEncodeError> for VariableHeaderError {
-    fn from(err: StringEncodeError) -> VariableHeaderError {
-        VariableHeaderError::StringEncodeError(err)
+impl From<StringCodecError> for VariableHeaderError {
+    fn from(err: StringCodecError) -> VariableHeaderError {
+        VariableHeaderError::StringCodecError(err)
     }
 }
 
@@ -57,7 +57,7 @@ impl fmt::Display for VariableHeaderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &VariableHeaderError::IoError(ref err) => write!(f, "{}", err),
-            &VariableHeaderError::StringEncodeError(ref err) => write!(f, "{}", err),
+            &VariableHeaderError::StringCodecError(ref err) => write!(f, "{}", err),
             &VariableHeaderError::InvalidReservedFlag => write!(f, "Invalid reserved flags"),
             &VariableHeaderError::TopicNameError(ref err) => write!(f, "{}", err),
         }
@@ -68,7 +68,7 @@ impl Error for VariableHeaderError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &VariableHeaderError::IoError(ref err) => Some(err),
-            &VariableHeaderError::StringEncodeError(ref err) => Some(err),
+            &VariableHeaderError::StringCodecError(ref err) => Some(err),
             &VariableHeaderError::InvalidReservedFlag => None,
             &VariableHeaderError::TopicNameError(ref err) => Some(err),
         }

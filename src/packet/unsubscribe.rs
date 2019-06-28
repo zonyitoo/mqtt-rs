@@ -7,7 +7,7 @@ use std::io::{self, Read, Write};
 
 use control::variable_header::PacketIdentifier;
 use control::{ControlType, FixedHeader, PacketType};
-use encodable::StringEncodeError;
+use encodable::StringCodecError;
 use packet::{Packet, PacketError};
 use topic_filter::{TopicFilter, TopicFilterError};
 use {Decodable, Encodable};
@@ -134,7 +134,7 @@ impl Decodable for UnsubscribePacketPayload {
 #[derive(Debug)]
 pub enum UnsubscribePacketPayloadError {
     IoError(io::Error),
-    StringEncodeError(StringEncodeError),
+    StringCodecError(StringCodecError),
     TopicFilterError(TopicFilterError),
 }
 
@@ -142,7 +142,7 @@ impl fmt::Display for UnsubscribePacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &UnsubscribePacketPayloadError::IoError(ref err) => err.fmt(f),
-            &UnsubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
+            &UnsubscribePacketPayloadError::StringCodecError(ref err) => err.fmt(f),
             &UnsubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
         }
     }
@@ -152,7 +152,7 @@ impl Error for UnsubscribePacketPayloadError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             &UnsubscribePacketPayloadError::IoError(ref err) => Some(err),
-            &UnsubscribePacketPayloadError::StringEncodeError(ref err) => Some(err),
+            &UnsubscribePacketPayloadError::StringCodecError(ref err) => Some(err),
             &UnsubscribePacketPayloadError::TopicFilterError(ref err) => Some(err),
         }
     }

@@ -15,17 +15,17 @@
 <polygon fill="none" stroke="#000000" points="202.7945,-180 96.7945,-180 96.7945,-144 202.7945,-144 202.7945,-180"/>
 <text text-anchor="middle" x="149.7945" y="-158.3" font-family="Times,serif" font-size="14.00" fill="#000000">TopicFilterError</text>
 </g>
-<!-- StringEncodeError -->
+<!-- StringCodecError -->
 <g id="node2" class="node">
-<title>StringEncodeError</title>
-<polygon fill="none" stroke="#000000" points="354.2945,-108 235.2945,-108 235.2945,-72 354.2945,-72 354.2945,-108"/>
-<text text-anchor="middle" x="294.7945" y="-86.3" font-family="Times,serif" font-size="14.00" fill="#000000">StringEncodeError</text>
+<title>StringCodecError</title>
+<polygon fill="none" stroke="#000000" points="348.2945,-108 235.2945,-108 235.2945,-72 348.2945,-72 348.2945,-108"/>
+<text text-anchor="middle" x="291.7945" y="-86.3" font-family="Times,serif" font-size="14.00" fill="#000000">StringCodecError</text>
 </g>
-<!-- TopicFilterError&#45;&gt;StringEncodeError -->
+<!-- TopicFilterError&#45;&gt;StringCodecError -->
 <g id="edge1" class="edge">
-<title>TopicFilterError&#45;&gt;StringEncodeError</title>
-<path fill="none" stroke="#000000" d="M186.3841,-143.8314C205.5185,-134.3302 229.1174,-122.6121 249.4067,-112.5374"/>
-<polygon fill="#000000" stroke="#000000" points="251.068,-115.6203 258.468,-108.038 247.9548,-109.3506 251.068,-115.6203"/>
+<title>TopicFilterError&#45;&gt;StringCodecError</title>
+<path fill="none" stroke="#000000" d="M185.6271,-143.8314C204.2102,-134.4089 227.0934,-122.8062 246.851,-112.7883"/>
+<polygon fill="#000000" stroke="#000000" points="248.6372,-115.8069 255.9734,-108.1628 245.4715,-109.5635 248.6372,-115.8069"/>
 </g>
 <!-- InvalidTopicFilter -->
 <g id="node3" class="node">
@@ -45,23 +45,23 @@
 <ellipse fill="none" stroke="#000000" cx="870.7945" cy="-18" rx="36.2938" ry="18"/>
 <text text-anchor="middle" x="870.7945" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">IoError</text>
 </g>
-<!-- StringEncodeError&#45;&gt;IoError -->
+<!-- StringCodecError&#45;&gt;IoError -->
 <g id="edge5" class="edge">
-<title>StringEncodeError&#45;&gt;IoError</title>
-<path fill="none" stroke="#000000" d="M354.5366,-82.5322C470.1425,-68.0815 722.134,-36.5826 825.338,-23.6821"/>
-<polygon fill="#000000" stroke="#000000" points="825.9445,-27.1336 835.4331,-22.4202 825.0761,-20.1876 825.9445,-27.1336"/>
+<title>StringCodecError&#45;&gt;IoError</title>
+<path fill="none" stroke="#000000" d="M348.3657,-82.9652C462.9471,-68.7168 720.4374,-36.6973 825.1784,-23.6725"/>
+<polygon fill="#000000" stroke="#000000" points="825.9258,-27.1066 835.4174,-22.3992 825.0619,-20.1601 825.9258,-27.1066"/>
 </g>
 <!-- FromUtf8Error -->
 <g id="node7" class="node">
 <title>FromUtf8Error</title>
-<ellipse fill="none" stroke="#000000" cx="294.7945" cy="-18" rx="64.9885" ry="18"/>
-<text text-anchor="middle" x="294.7945" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">FromUtf8Error</text>
+<ellipse fill="none" stroke="#000000" cx="291.7945" cy="-18" rx="64.9885" ry="18"/>
+<text text-anchor="middle" x="291.7945" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">FromUtf8Error</text>
 </g>
-<!-- StringEncodeError&#45;&gt;FromUtf8Error -->
+<!-- StringCodecError&#45;&gt;FromUtf8Error -->
 <g id="edge6" class="edge">
-<title>StringEncodeError&#45;&gt;FromUtf8Error</title>
-<path fill="none" stroke="#000000" d="M294.7945,-71.8314C294.7945,-64.131 294.7945,-54.9743 294.7945,-46.4166"/>
-<polygon fill="#000000" stroke="#000000" points="298.2946,-46.4132 294.7945,-36.4133 291.2946,-46.4133 298.2946,-46.4132"/>
+<title>StringCodecError&#45;&gt;FromUtf8Error</title>
+<path fill="none" stroke="#000000" d="M291.7945,-71.8314C291.7945,-64.131 291.7945,-54.9743 291.7945,-46.4166"/>
+<polygon fill="#000000" stroke="#000000" points="295.2946,-46.4132 291.7945,-36.4133 288.2946,-46.4133 295.2946,-46.4132"/>
 </g>
 <!-- TopicNameError -->
 <g id="node4" class="node">
@@ -69,11 +69,11 @@
 <polygon fill="none" stroke="#000000" points="618.7945,-180 508.7945,-180 508.7945,-144 618.7945,-144 618.7945,-180"/>
 <text text-anchor="middle" x="563.7945" y="-158.3" font-family="Times,serif" font-size="14.00" fill="#000000">TopicNameError</text>
 </g>
-<!-- TopicNameError&#45;&gt;StringEncodeError -->
+<!-- TopicNameError&#45;&gt;StringCodecError -->
 <g id="edge3" class="edge">
-<title>TopicNameError&#45;&gt;StringEncodeError</title>
-<path fill="none" stroke="#000000" d="M508.7092,-147.256C466.8941,-136.0638 409.1242,-120.6013 364.1586,-108.5659"/>
-<polygon fill="#000000" stroke="#000000" points="365.0436,-105.1796 354.4787,-105.9749 363.2337,-111.9416 365.0436,-105.1796"/>
+<title>TopicNameError&#45;&gt;StringCodecError</title>
+<path fill="none" stroke="#000000" d="M508.7512,-147.4297C465.3649,-135.9451 404.6957,-119.8856 358.5411,-107.6682"/>
+<polygon fill="#000000" stroke="#000000" points="359.191,-104.2198 348.6283,-105.0442 357.3997,-110.9867 359.191,-104.2198"/>
 </g>
 <!-- InvalidTopicName -->
 <g id="node5" class="node">
@@ -165,11 +165,11 @@
 <path fill="none" stroke="#000000" d="M305.5758,-215.9243C277.0174,-206.0387 241.465,-193.7321 211.5377,-183.3726"/>
 <polygon fill="#000000" stroke="#000000" points="212.6295,-180.0469 202.0347,-180.0831 210.3396,-186.6618 212.6295,-180.0469"/>
 </g>
-<!-- SubscribePacketPayloadError&#45;&gt;StringEncodeError -->
+<!-- SubscribePacketPayloadError&#45;&gt;StringCodecError -->
 <g id="edge14" class="edge">
-<title>SubscribePacketPayloadError&#45;&gt;StringEncodeError</title>
-<path fill="none" stroke="#000000" d="M293.8144,-215.9759C276.5513,-207.8679 259.8787,-196.3166 249.7945,-180 236.8563,-159.0656 251.7847,-133.9173 267.8281,-115.5323"/>
-<polygon fill="#000000" stroke="#000000" points="270.4799,-117.8197 274.6941,-108.099 265.3378,-113.07 270.4799,-117.8197"/>
+<title>SubscribePacketPayloadError&#45;&gt;StringCodecError</title>
+<path fill="none" stroke="#000000" d="M293.8144,-215.9759C276.5513,-207.8679 259.8787,-196.3166 249.7945,-180 237.1382,-159.5217 250.7793,-134.6108 265.7982,-116.1932"/>
+<polygon fill="#000000" stroke="#000000" points="268.7988,-118.0753 272.7062,-108.2273 263.5103,-113.4892 268.7988,-118.0753"/>
 </g>
 <!-- SubscribePacketPayloadError&#45;&gt;IoError -->
 <g id="edge13" class="edge">
@@ -225,11 +225,11 @@
 <path fill="none" stroke="#000000" d="M125.1218,-215.8314C128.7675,-207.8771 133.1254,-198.369 137.1572,-189.5723"/>
 <polygon fill="#000000" stroke="#000000" points="140.3702,-190.9622 141.3551,-180.4133 134.0068,-188.0456 140.3702,-190.9622"/>
 </g>
-<!-- UnsubscribePacketPayloadError&#45;&gt;StringEncodeError -->
+<!-- UnsubscribePacketPayloadError&#45;&gt;StringCodecError -->
 <g id="edge20" class="edge">
-<title>UnsubscribePacketPayloadError&#45;&gt;StringEncodeError</title>
-<path fill="none" stroke="#000000" d="M101.873,-215.7383C87.8656,-196.2488 71.3346,-165.3047 87.7945,-144 87.7945,-144 165.1902,-123.8098 225.3317,-108.1207"/>
-<polygon fill="#000000" stroke="#000000" points="226.4066,-111.4575 235.1992,-105.5466 224.6396,-104.6842 226.4066,-111.4575"/>
+<title>UnsubscribePacketPayloadError&#45;&gt;StringCodecError</title>
+<path fill="none" stroke="#000000" d="M101.873,-215.7383C87.8656,-196.2488 71.3346,-165.3047 87.7945,-144 124.731,-96.1917 160.9862,-121.6572 225.5459,-107.8004"/>
+<polygon fill="#000000" stroke="#000000" points="226.3768,-111.2004 235.28,-105.4572 224.7385,-104.3948 226.3768,-111.2004"/>
 </g>
 <!-- UnsubscribePacketPayloadError&#45;&gt;IoError -->
 <g id="edge19" class="edge">
@@ -249,11 +249,11 @@
 <path fill="none" stroke="#000000" d="M517.1924,-301.5509C446.5469,-293.3331 304.2961,-274.5393 259.7945,-252 239.0402,-241.4883 239.5741,-231.0041 221.7945,-216 209.6667,-205.7654 195.8295,-195.1523 183.548,-186.0718"/>
 <polygon fill="#000000" stroke="#000000" points="185.4693,-183.1406 175.3341,-180.0537 181.3321,-188.7872 185.4693,-183.1406"/>
 </g>
-<!-- PacketError&#45;&gt;StringEncodeError -->
+<!-- PacketError&#45;&gt;StringCodecError -->
 <g id="edge28" class="edge">
-<title>PacketError&#45;&gt;StringEncodeError</title>
-<path fill="none" stroke="#000000" d="M517.1014,-305.0557C396.2286,-301.8346 45.6104,-289.3253 11.7945,-252 -30.9303,-204.8412 59.0631,-154.5507 76.7945,-144 132.7114,-110.7277 157.4607,-123.3137 225.1312,-108.0263"/>
-<polygon fill="#000000" stroke="#000000" points="226.0587,-111.4033 234.9724,-105.6765 224.4329,-104.5947 226.0587,-111.4033"/>
+<title>PacketError&#45;&gt;StringCodecError</title>
+<path fill="none" stroke="#000000" d="M517.1014,-305.0557C396.2286,-301.8346 45.6104,-289.3253 11.7945,-252 -30.9303,-204.8412 59.0631,-154.5507 76.7945,-144 132.7114,-110.7277 157.5454,-123.6471 225.1151,-108.0208"/>
+<polygon fill="#000000" stroke="#000000" points="226.0581,-111.3934 234.9408,-105.6187 224.3956,-104.5937 226.0581,-111.3934"/>
 </g>
 <!-- PacketError&#45;&gt;TopicNameError -->
 <g id="edge29" class="edge">
@@ -303,11 +303,11 @@
 <path fill="none" stroke="#000000" d="M581.5147,-287.8314C593.2039,-278.8779 607.4633,-267.9558 620.0754,-258.2955"/>
 <polygon fill="#000000" stroke="#000000" points="622.2714,-261.0222 628.0819,-252.1628 618.0148,-255.4651 622.2714,-261.0222"/>
 </g>
-<!-- VariableHeaderError&#45;&gt;StringEncodeError -->
+<!-- VariableHeaderError&#45;&gt;StringCodecError -->
 <g id="edge32" class="edge">
-<title>VariableHeaderError&#45;&gt;StringEncodeError</title>
-<path fill="none" stroke="#000000" d="M652.3776,-215.8687C651.98,-195.2913 647.9393,-162.2277 627.7945,-144 608.5654,-126.6009 456.556,-107.4299 364.6951,-97.2667"/>
-<polygon fill="#000000" stroke="#000000" points="364.95,-93.7738 354.6279,-96.1623 364.1866,-100.732 364.95,-93.7738"/>
+<title>VariableHeaderError&#45;&gt;StringCodecError</title>
+<path fill="none" stroke="#000000" d="M652.3821,-215.8636C651.9889,-195.2815 647.9522,-162.2135 627.7945,-144 608.1201,-126.2232 450.8101,-106.8237 358.5736,-96.8192"/>
+<polygon fill="#000000" stroke="#000000" points="358.8025,-93.3237 348.4855,-95.7342 358.0539,-100.2836 358.8025,-93.3237"/>
 </g>
 <!-- VariableHeaderError&#45;&gt;TopicNameError -->
 <g id="edge34" class="edge">

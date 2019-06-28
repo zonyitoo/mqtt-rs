@@ -16,13 +16,11 @@ digraph errors {
 
   PacketTypeError [shape=box]
   PacketTypeError -> ReservedType;
-  PacketTypeError -> UndefinedType;
   PacketTypeError -> InvalidFlag;
 
   FixedHeaderError [shape=box]
   FixedHeaderError -> IoError;
   FixedHeaderError -> MalformedRemainingLength;
-  FixedHeaderError -> Unrecognized;
   FixedHeaderError -> ReservedType;
   FixedHeaderError -> PacketTypeError;
 

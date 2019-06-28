@@ -141,16 +141,18 @@ impl PacketType {
             value::DISCONNECT   => vconst!(0x00, ControlType::Disconnect),
 
             0 | 15              => Err(PacketTypeError::ReservedType(type_val, flag)),
-            _                   => Err(PacketTypeError::UndefinedType(type_val, flag)),
+            _                   => unreachable!() //TODO rust >= 1.33: use explicit 16..=255 instead of _
         }
     }
 }
 
-/// Parsing packet type errors
+/// Error when parsing packet type and flags. The spec mandates closing the connection for these errors.
+/// http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/errata01/os/mqtt-v3.1.1-errata01-os-complete.html#_Toc442180833
 #[derive(Debug)]
 pub enum PacketTypeError {
+    /// Packet types 0 and 15 are reserved by spec.
     ReservedType(u8, u8),
-    UndefinedType(u8, u8),
+    /// Invalid flag for this packet type. In practice, only PUBLISH packets can have varying flags.
     InvalidFlag(ControlType, u8),
 }
 
@@ -158,7 +160,6 @@ impl fmt::Display for PacketTypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &PacketTypeError::ReservedType(t, flag) => write!(f, "Reserved type {:?} ({:#X})", t, flag),
-            &PacketTypeError::UndefinedType(t, flag) => write!(f, "Undefined type {:?} ({:#X})", t, flag),
             &PacketTypeError::InvalidFlag(t, flag) => write!(f, "Invalid flag for {:?} ({:#X})", t, flag),
         }
     }

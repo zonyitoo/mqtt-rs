@@ -310,11 +310,6 @@ macro_rules! impl_variable_packet {
                             Ok(header) => header,
                             // FIXME The "read remaining bytes" behavior seem to not be implemented thoroughly and lacks a unit test
                             // FIXME Dont convert FixedHeaderError to IoError
-                            Err(FixedHeaderError::Unrecognized(code, length, mut buf) ) => {
-                                let reader = &mut reader.take(length as u64);
-                                reader.read_to_end(&mut buf)?;
-                                return Err(PacketError::FixedHeaderError(FixedHeaderError::Unrecognized(code, length, buf)));
-                            },
                             Err(FixedHeaderError::ReservedType(code, length, mut buf) ) => {
                                 let reader = &mut reader.take(length as u64);
                                 reader.read_to_end(&mut buf)?;

@@ -459,7 +459,6 @@ mod test {
         Runtime::new().unwrap().block_on(async_test_variable_packet_async_parse());
     }
     async fn async_test_variable_packet_async_parse() {
-        use std::io::Cursor;
         let packet = ConnectPacket::new("MQTT".to_owned(), "1234".to_owned());
 
         // Wrap it
@@ -482,7 +481,6 @@ mod test {
         Runtime::new().unwrap().block_on(async_test_variable_packet_async_peek());
     }
     async fn async_test_variable_packet_async_peek() {
-        use std::io::Cursor;
         let packet = ConnectPacket::new("MQTT".to_owned(), "1234".to_owned());
 
         // Wrap it

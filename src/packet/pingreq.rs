@@ -2,8 +2,8 @@
 
 use std::io::{Read, Write};
 
-use control::{ControlType, FixedHeader, PacketType};
-use packet::{Packet, PacketError};
+use crate::control::{ControlType, FixedHeader, PacketType};
+use crate::packet::{Packet, PacketError};
 
 /// `PINGREQ` packet
 #[derive(Debug, Eq, PartialEq, Clone)]

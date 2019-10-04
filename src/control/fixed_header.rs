@@ -10,8 +10,8 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use futures::{future, Future};
 use tokio_io::{io as async_io, AsyncRead};
 
-use {Decodable, Encodable};
-use control::packet_type::{PacketType, PacketTypeError};
+use crate::{Decodable, Encodable};
+use crate::control::packet_type::{PacketType, PacketTypeError};
 
 /// Fixed header for each MQTT control packet
 ///
@@ -214,8 +214,8 @@ impl Error for FixedHeaderError {
 mod test {
     use super::*;
 
-    use {Decodable, Encodable};
-    use control::packet_type::{ControlType, PacketType};
+    use crate::{Decodable, Encodable};
+    use crate::control::packet_type::{ControlType, PacketType};
     use std::io::Cursor;
 
     #[test]

@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use {Decodable, Encodable};
-use control::variable_header::VariableHeaderError;
+use crate::{Decodable, Encodable};
+use crate::control::variable_header::VariableHeaderError;
 
 /// Keep alive time interval
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]

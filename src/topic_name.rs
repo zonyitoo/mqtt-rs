@@ -9,8 +9,8 @@ use std::ops::Deref;
 
 use regex::Regex;
 
-use {Decodable, Encodable};
-use encodable::StringEncodeError;
+use crate::{Decodable, Encodable};
+use crate::encodable::StringEncodeError;
 
 const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^[^#+]+$";
 

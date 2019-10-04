@@ -453,8 +453,12 @@ mod test {
         assert_eq!(var_packet, decoded_packet);
     }
 
+    use tokio::runtime::current_thread::Runtime;
     #[test]
     fn test_variable_packet_async_parse() {
+        Runtime::new().unwrap().block_on(async_test_variable_packet_async_parse());
+    }
+    async fn async_test_variable_packet_async_parse() {
         use std::io::Cursor;
         let packet = ConnectPacket::new("MQTT".to_owned(), "1234".to_owned());
 
@@ -467,7 +471,7 @@ mod test {
 
         // Parse
         let async_buf = Cursor::new(buf);
-        match VariablePacket::parse(async_buf).wait() {
+        match VariablePacket::parse(async_buf).await {
             Err(_) => assert!(false),
             Ok((_, decoded_packet)) => assert_eq!(var_packet, decoded_packet),
         }
@@ -475,6 +479,9 @@ mod test {
 
     #[test]
     fn test_variable_packet_async_peek() {
+        Runtime::new().unwrap().block_on(async_test_variable_packet_async_peek());
+    }
+    async fn async_test_variable_packet_async_peek() {
         use std::io::Cursor;
         let packet = ConnectPacket::new("MQTT".to_owned(), "1234".to_owned());
 
@@ -487,13 +494,13 @@ mod test {
 
         // Peek
         let async_buf = Cursor::new(buf.clone());
-        match VariablePacket::peek(async_buf.clone()).wait() {
+        match VariablePacket::peek(async_buf.clone()).await {
             Err(_) => assert!(false),
             Ok((_, fixed_header, _)) => assert_eq!(fixed_header.packet_type.control_type, ControlType::Connect),
         }
 
         // Read the rest
-        match VariablePacket::peek_finalize(async_buf).wait() {
+        match VariablePacket::peek_finalize(async_buf).await {
             Err(_) => assert!(false),
             Ok((_, peeked_buffer, peeked_packet)) => {
                 assert_eq!(peeked_buffer, buf);

@@ -7,8 +7,7 @@ use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use futures::{future, Future};
-use tokio_io::{io as async_io, AsyncRead};
+use tokio::io::{AsyncRead, AsyncReadExt};
 
 use crate::{Decodable, Encodable};
 use crate::control::packet_type::{PacketType, PacketTypeError};
@@ -47,39 +46,46 @@ impl FixedHeader {
 
     /// Asynchronously parse a single fixed header from an AsyncRead type, such as a network
     /// socket.
-    pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self, Vec<u8>), Error = FixedHeaderError> {
-        async_io::read_exact(rdr, [0u8])
-            .from_err()
-            .and_then(|(rdr, [type_val])| {
-                let mut data: Vec<u8> = Vec::new();
-                data.push(type_val);
-                future::loop_fn((rdr, 0, 0, data), move |(rdr, mut cur, i, mut data)| {
-                    async_io::read_exact(rdr, [0u8])
-                        .from_err()
-                        .and_then(move |(rdr, [byte])| {
-                            data.push(byte);
+    pub async fn parse<A: AsyncRead + Unpin>(mut rdr: A) -> Result<(A, Self, Vec<u8>), FixedHeaderError> {
+        let mut type_val_arr = vec![0u8; 1];
+        rdr.read_exact(&mut type_val_arr).await?;
+        let type_val = type_val_arr[0];
 
-                            cur |= (u32::from(byte) & 0x7F) << (7 * i);
+        let mut data: Vec<u8> = Vec::new();
+        data.push(type_val);
 
-                            if i >= 4 {
-                                return Err(FixedHeaderError::MalformedRemainingLength);
-                            }
+        let mut cur = 0;
+        let mut i = 0;
+        loop {
+            let mut byte_arr = vec![0u8; 1];
+            rdr.read_exact(&mut byte_arr).await?;
+            let byte = byte_arr[0];
 
-                            if byte & 0x80 == 0 {
-                                Ok(future::Loop::Break((rdr, cur, data)))
-                            } else {
-                                Ok(future::Loop::Continue((rdr, cur, i + 1, data)))
-                            }
-                        })
-                }).and_then(move |(rdr, remaining_len, data)| match PacketType::from_u8(type_val) {
-                    Ok(packet_type) => Ok((rdr, FixedHeader::new(packet_type, remaining_len), data)),
-                    Err(PacketTypeError::UndefinedType(ty, _)) => {
-                        Err(FixedHeaderError::Unrecognized(ty, remaining_len))
-                    }
-                    Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
-                    Err(err) => Err(From::from(err)),
-                })
-            })
+            data.push(byte);
+
+            cur |= (u32::from(byte) & 0x7F) << (7 * i);
+
+            if i >= 4 {
+                return Err(FixedHeaderError::MalformedRemainingLength);
+            }
+
+            if byte & 0x80 == 0 {
+                break;
+            } else {
+                i=i+1;
+            }
+        }
+
+        let remaining_len = cur;
+
+        match PacketType::from_u8(type_val) {
+            Ok(packet_type) => Ok((rdr, FixedHeader::new(packet_type, remaining_len), data)),
+            Err(PacketTypeError::UndefinedType(ty, _)) => {
+                Err(FixedHeaderError::Unrecognized(ty, remaining_len))
+            }
+            Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
+            Err(err) => Err(From::from(err)),
+        }
     }
 }
 

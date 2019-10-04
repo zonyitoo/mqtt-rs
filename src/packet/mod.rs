@@ -5,8 +5,7 @@ use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write, Cursor};
 
-use futures::Future;
-use tokio_io::{io as async_io, AsyncRead};
+use tokio::io::{AsyncRead, AsyncReadExt};
 
 use crate::{Decodable, Encodable};
 use crate::control::ControlType;
@@ -192,67 +191,64 @@ macro_rules! impl_variable_packet {
         }
 
         impl VariablePacket {
-            pub fn peek<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, FixedHeader, Vec<u8>), Error = VariablePacketError> {
-                FixedHeader::parse(rdr).then(|result| {
-                    let (rdr, fixed_header, data) = match result {
-                        Ok((rdr, header, data)) => (rdr, header, data),
-                        Err(FixedHeaderError::Unrecognized(code, _length)) => {
-                            // can't read excess bytes from rdr as it was dropped when an error
-                            // occurred
-                            return Err(VariablePacketError::UnrecognizedPacket(code, Vec::new()));
-                        },
-                        Err(FixedHeaderError::ReservedType(code, _length)) => {
-                            // can't read excess bytes from rdr as it was dropped when an error
-                            // occurred
-                            return Err(VariablePacketError::ReservedPacket(code, Vec::new()));
-                        },
-                        Err(err) => return Err(From::from(err))
-                    };
+            pub async fn peek<A: AsyncRead + Unpin>(rdr: A) -> Result<(A, FixedHeader, Vec<u8>), VariablePacketError> {
+                let result = FixedHeader::parse(rdr).await;
+                let (rdr, fixed_header, data) = match result {
+                    Ok((rdr, header, data)) => (rdr, header, data),
+                    Err(FixedHeaderError::Unrecognized(code, _length)) => {
+                        // can't read excess bytes from rdr as it was dropped when an error
+                        // occurred
+                        return Err(VariablePacketError::UnrecognizedPacket(code, Vec::new()));
+                    },
+                    Err(FixedHeaderError::ReservedType(code, _length)) => {
+                        // can't read excess bytes from rdr as it was dropped when an error
+                        // occurred
+                        return Err(VariablePacketError::ReservedPacket(code, Vec::new()));
+                    },
+                    Err(err) => return Err(From::from(err))
+                };
 
-                    Ok((rdr, fixed_header, data))
-                })
+                Ok((rdr, fixed_header, data))
             }
-            pub fn peek_finalize<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Vec<u8>, Self), Error = VariablePacketError> {
-                Self::peek(rdr).and_then(|(rdr, fixed_header, header_buffer)| {
-                    let packet = vec![0u8; fixed_header.remaining_length as usize];
-                    async_io::read_exact(rdr, packet)
-                        .from_err()
-                        .and_then(move |(rdr, packet)| {
-                            let mut buff_rdr = Cursor::new(packet.clone());
-                            let output = match fixed_header.packet_type.control_type {
-                                $(
-                                    ControlType::$hdr => {
-                                        let pk = <$name as Packet>::decode_packet(&mut buff_rdr, fixed_header)?;
-                                        VariablePacket::$name(pk)
-                                    }
-                                )+
-                            };
-                            let mut result = Vec::new();
-                            result.extend(header_buffer);
-                            result.extend(packet);
-                            Ok((rdr, result, output))
-                        })
-                })
-            }
-            pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self), Error = VariablePacketError> {
-                Self::peek(rdr).and_then(|(rdr, fixed_header, _)| {
-                    let buffer = vec![0u8; fixed_header.remaining_length as usize];
-                    async_io::read_exact(rdr, buffer)
-                        .from_err()
-                        .and_then(move |(rdr, buffer)| {
-                            let mut buff_rdr = Cursor::new(buffer);
-                            let output = match fixed_header.packet_type.control_type {
-                                $(
-                                    ControlType::$hdr => {
-                                        let pk = <$name as Packet>::decode_packet(&mut buff_rdr, fixed_header)?;
-                                        VariablePacket::$name(pk)
-                                    }
-                                )+
-                            };
+            /// only used in tests. does the same as parse below, just provides a byte array too
+            #[cfg(test)]
+            pub async fn peek_finalize<A: AsyncRead + Unpin>(rdr: A) -> Result<(A, Vec<u8>, Self), VariablePacketError> {
+                let (mut rdr, fixed_header, header_buffer) = Self::peek(rdr).await?;
 
-                            Ok((rdr, output))
-                        })
-                })
+                let mut packet = vec![0u8; fixed_header.remaining_length as usize];
+                rdr.read_exact(&mut packet).await?;
+
+                let mut buff_rdr = Cursor::new(packet.clone());
+                let output = match fixed_header.packet_type.control_type {
+                    $(
+                        ControlType::$hdr => {
+                            let pk = <$name as Packet>::decode_packet(&mut buff_rdr, fixed_header)?;
+                            VariablePacket::$name(pk)
+                        }
+                    )+
+                };
+                let mut result = Vec::new();
+                result.extend(header_buffer);
+                result.extend(packet);
+                Ok((rdr, result, output))
+            }
+            pub async fn parse<A: AsyncRead + Unpin>(rdr: A) -> Result<(A, Self), VariablePacketError> {
+                let (mut rdr, fixed_header, _) = Self::peek(rdr).await?;
+
+                let mut buffer = vec![0u8; fixed_header.remaining_length as usize];
+                rdr.read_exact(&mut buffer).await?;
+
+                let mut buff_rdr = Cursor::new(buffer);
+                let output = match fixed_header.packet_type.control_type {
+                    $(
+                        ControlType::$hdr => {
+                            let pk = <$name as Packet>::decode_packet(&mut buff_rdr, fixed_header)?;
+                            VariablePacket::$name(pk)
+                        }
+                    )+
+                };
+
+                Ok((rdr, output))
             }
         }
 

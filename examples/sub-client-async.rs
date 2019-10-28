@@ -20,8 +20,8 @@ use uuid::Uuid;
 
 use futures::{future};
 use tokio::runtime::current_thread::Runtime;
-use tokio::net::tcp::split::*;
-use tokio::io::AsyncWriteExt;
+use futures::io::*;
+use futures::io::AsyncWriteExt;
 
 use tokio::net::TcpStream;
 use tokio::timer::Interval;
@@ -147,22 +147,73 @@ fn main() {
     Runtime::new().unwrap().block_on(program(stream, keep_alive));
 }
 
+// begin hack a tokio::io::AsyncRead into a futures-preview::io::AsyncRead
+// same for AsyncWrite. why? We should not force user to use tokio specifially
+// hopefully in the future, no pun intended, these traits will be the same,
+// or we will have async generators or something that renders them both
+// obsolete.
+use pin_project::*;
+#[pin_project]
+pub struct TokioAsyncReadWriteCompat<T> {
+    #[pin]
+    pub inner: T
+}
+
+use core::{
+    pin::Pin,
+    task::{self, Poll},
+};
+impl<T> futures::io::AsyncRead for TokioAsyncReadWriteCompat<T>
+where
+    T: tokio::io::AsyncRead,
+{
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut task::Context,
+        buf: &mut [u8],
+    ) -> Poll<std::io::Result<usize>> {
+        tokio::io::AsyncRead::poll_read(self.project().inner, cx, buf)
+    }
+}
+
+impl<T> futures::io::AsyncWrite for TokioAsyncReadWriteCompat<T>
+where
+    T: tokio::io::AsyncWrite, {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut task::Context,
+        buf: &[u8],
+    ) -> Poll<std::io::Result<usize>> {
+        tokio::io::AsyncWrite::poll_write(self.project().inner, cx, buf)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<std::io::Result<()>> {
+        tokio::io::AsyncWrite::poll_flush(self.project().inner, cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<std::io::Result<()>> {
+        tokio::io::AsyncWrite::poll_shutdown(self.project().inner, cx)
+    }
+}
+// end hack
+
 // test: mosquitto_pub -t "topic" -m "message" -q QOS
 async fn program(stream: net::TcpStream, keep_alive: u16) {
-    let mut stream = TcpStream::from_std(stream, &Default::default()).unwrap();
-    let (mqtt_read, mqtt_write) = stream.split();
+    let stream = TcpStream::from_std(stream, &Default::default()).unwrap();
+    let stream = TokioAsyncReadWriteCompat {inner: stream};
+    let (mut mqtt_read, mut mqtt_write) = stream.split();
 
     let ping_time = Duration::new((keep_alive / 2) as u64, 0);
     let ping_stream = Interval::new(Instant::now() + ping_time, ping_time);
 
-    let receiver = receiver(mqtt_read);
+    let receiver = receiver(&mut mqtt_read);
     let ping_sender = ping_sender(ping_stream, mqtt_write);
 
     future::join(ping_sender, receiver).await;
     ()
 }
 
-async fn ping_sender<'a>(mut ping_stream: Interval, mut mqtt_write: WriteHalf<'a>) {
+async fn ping_sender(mut ping_stream: Interval, mut mqtt_write: WriteHalf<TokioAsyncReadWriteCompat<tokio::net::TcpStream>>) {
     loop {
         let _ = ping_stream.next().await;
         let pingreq_packet = PingreqPacket::new();
@@ -178,16 +229,15 @@ async fn ping_sender<'a>(mut ping_stream: Interval, mut mqtt_write: WriteHalf<'a
     }
 }
 
-async fn receiver<'a>(mut mqtt_read: ReadHalf<'a>) {
+async fn receiver(mqtt_read: &mut ReadHalf<TokioAsyncReadWriteCompat<tokio::net::TcpStream>>) {
     loop {
-        let (a, packet) = match VariablePacket::parse(mqtt_read).await {
+        let packet = match VariablePacket::parse(mqtt_read).await {
             Ok(a) => a,
             Err(e) => {
                 alt_drop(e);
                 return;
             }
         };
-        mqtt_read = a;
         trace!("PACKET {:?}", packet);
 
         match packet {

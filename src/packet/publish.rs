@@ -110,6 +110,13 @@ impl PublishPacket {
     }
 }
 
+// allow reuse of both allocations on incoming PublishPacket
+impl Into<(String, Vec<u8>)> for PublishPacket {
+    fn into(self) -> (String, Vec<u8>) {
+        (self.topic_name().into(), self.payload)
+    }
+}
+
 impl Packet for PublishPacket {
     type Payload = Vec<u8>;
 

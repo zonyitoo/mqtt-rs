@@ -7,7 +7,7 @@ use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use tokio::io::{AsyncRead, AsyncReadExt};
+use futures::io::{AsyncRead, AsyncReadExt};
 
 use crate::{Decodable, Encodable};
 use crate::control::packet_type::{PacketType, PacketTypeError};
@@ -46,7 +46,7 @@ impl FixedHeader {
 
     /// Asynchronously parse a single fixed header from an AsyncRead type, such as a network
     /// socket.
-    pub async fn parse<A: AsyncRead + Unpin>(mut rdr: A) -> Result<(A, Self, Vec<u8>), FixedHeaderError> {
+    pub async fn parse<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<(Self, Vec<u8>), FixedHeaderError> {
         let mut type_val_arr = vec![0u8; 1];
         rdr.read_exact(&mut type_val_arr).await?;
         let type_val = type_val_arr[0];
@@ -79,7 +79,7 @@ impl FixedHeader {
         let remaining_len = cur;
 
         match PacketType::from_u8(type_val) {
-            Ok(packet_type) => Ok((rdr, FixedHeader::new(packet_type, remaining_len), data)),
+            Ok(packet_type) => Ok((FixedHeader::new(packet_type, remaining_len), data)),
             Err(PacketTypeError::UndefinedType(ty, _)) => {
                 Err(FixedHeaderError::Unrecognized(ty, remaining_len))
             }

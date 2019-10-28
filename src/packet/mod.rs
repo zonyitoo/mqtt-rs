@@ -5,7 +5,7 @@ use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write, Cursor};
 
-use tokio::io::{AsyncRead, AsyncReadExt};
+use futures::io::{AsyncRead, AsyncReadExt};
 
 use crate::{Decodable, Encodable};
 use crate::control::ControlType;
@@ -191,10 +191,10 @@ macro_rules! impl_variable_packet {
         }
 
         impl VariablePacket {
-            pub async fn peek<A: AsyncRead + Unpin>(rdr: A) -> Result<(A, FixedHeader, Vec<u8>), VariablePacketError> {
+            pub async fn peek<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<(FixedHeader, Vec<u8>), VariablePacketError> {
                 let result = FixedHeader::parse(rdr).await;
-                let (rdr, fixed_header, data) = match result {
-                    Ok((rdr, header, data)) => (rdr, header, data),
+                let (fixed_header, data) = match result {
+                    Ok((header, data)) => (header, data),
                     Err(FixedHeaderError::Unrecognized(code, _length)) => {
                         // can't read excess bytes from rdr as it was dropped when an error
                         // occurred
@@ -208,12 +208,12 @@ macro_rules! impl_variable_packet {
                     Err(err) => return Err(From::from(err))
                 };
 
-                Ok((rdr, fixed_header, data))
+                Ok((fixed_header, data))
             }
             /// only used in tests. does the same as parse below, just provides a byte array too
             #[cfg(test)]
-            pub async fn peek_finalize<A: AsyncRead + Unpin>(rdr: A) -> Result<(A, Vec<u8>, Self), VariablePacketError> {
-                let (mut rdr, fixed_header, header_buffer) = Self::peek(rdr).await?;
+            pub async fn peek_finalize<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<(Vec<u8>, Self), VariablePacketError> {
+                let (fixed_header, header_buffer) = Self::peek(rdr).await?;
 
                 let mut packet = vec![0u8; fixed_header.remaining_length as usize];
                 rdr.read_exact(&mut packet).await?;
@@ -230,10 +230,10 @@ macro_rules! impl_variable_packet {
                 let mut result = Vec::new();
                 result.extend(header_buffer);
                 result.extend(packet);
-                Ok((rdr, result, output))
+                Ok((result, output))
             }
-            pub async fn parse<A: AsyncRead + Unpin>(rdr: A) -> Result<(A, Self), VariablePacketError> {
-                let (mut rdr, fixed_header, _) = Self::peek(rdr).await?;
+            pub async fn parse<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<Self, VariablePacketError> {
+                let (fixed_header, _) = Self::peek(rdr).await?;
 
                 let mut buffer = vec![0u8; fixed_header.remaining_length as usize];
                 rdr.read_exact(&mut buffer).await?;
@@ -248,7 +248,7 @@ macro_rules! impl_variable_packet {
                     )+
                 };
 
-                Ok((rdr, output))
+                Ok(output)
             }
         }
 
@@ -469,10 +469,10 @@ mod test {
         var_packet.encode(&mut buf).unwrap();
 
         // Parse
-        let async_buf = Cursor::new(buf);
-        match VariablePacket::parse(async_buf).await {
+        let mut async_buf = Cursor::new(buf);
+        match VariablePacket::parse(&mut async_buf).await {
             Err(_) => assert!(false),
-            Ok((_, decoded_packet)) => assert_eq!(var_packet, decoded_packet),
+            Ok(decoded_packet) => assert_eq!(var_packet, decoded_packet),
         }
     }
 
@@ -491,16 +491,16 @@ mod test {
         var_packet.encode(&mut buf).unwrap();
 
         // Peek
-        let async_buf = Cursor::new(buf.clone());
-        match VariablePacket::peek(async_buf.clone()).await {
+        let mut async_buf = Cursor::new(buf.clone());
+        match VariablePacket::peek(&mut async_buf.clone()).await {
             Err(_) => assert!(false),
-            Ok((_, fixed_header, _)) => assert_eq!(fixed_header.packet_type.control_type, ControlType::Connect),
+            Ok((fixed_header, _)) => assert_eq!(fixed_header.packet_type.control_type, ControlType::Connect),
         }
 
         // Read the rest
-        match VariablePacket::peek_finalize(async_buf).await {
+        match VariablePacket::peek_finalize(&mut async_buf).await {
             Err(_) => assert!(false),
-            Ok((_, peeked_buffer, peeked_packet)) => {
+            Ok((peeked_buffer, peeked_packet)) => {
                 assert_eq!(peeked_buffer, buf);
                 assert_eq!(peeked_packet, var_packet);
             }

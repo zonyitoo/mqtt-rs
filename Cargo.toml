@@ -1,7 +1,7 @@
 [package]
 authors = ["Y. T. Chung <zonyitoo@gmail.com>"]
 name = "mqtt-protocol"
-version = "0.8.0-alpha.2"
+version = "0.8.0-alpha.3"
 edition = "2018"
 license = "MIT/Apache-2.0"
 description = "MQTT Protocol Library"
@@ -14,8 +14,8 @@ byteorder = "1.3"
 log = "0.4"
 regex = "1.3"
 lazy_static = "1.4"
-tokio = "0.2.0-alpha.6"
-futures-preview = "0.3.0-alpha.19"
+tokio = "0.2"
+futures = "0.3"
 
 [dev-dependencies]
 clap = "2"

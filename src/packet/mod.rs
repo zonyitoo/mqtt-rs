@@ -298,13 +298,13 @@ macro_rules! impl_variable_packet {
                             Err(FixedHeaderError::Unrecognized(code, length)) => {
                                 let reader = &mut reader.take(length as u64);
                                 let mut buf = Vec::with_capacity(length as usize);
-                                try!(reader.read_to_end(&mut buf));
+                                reader.read_to_end(&mut buf)?;
                                 return Err(VariablePacketError::UnrecognizedPacket(code, buf));
                             },
                             Err(FixedHeaderError::ReservedType(code, length)) => {
                                 let reader = &mut reader.take(length as u64);
                                 let mut buf = Vec::with_capacity(length as usize);
-                                try!(reader.read_to_end(&mut buf));
+                                reader.read_to_end(&mut buf)?;
                                 return Err(VariablePacketError::ReservedPacket(code, buf));
                             },
                             Err(err) => return Err(From::from(err))
@@ -316,7 +316,7 @@ macro_rules! impl_variable_packet {
                 match fixed_header.packet_type.control_type {
                     $(
                         ControlType::$hdr => {
-                            let pk = try!(<$name as Packet>::decode_packet(reader, fixed_header));
+                            let pk = <$name as Packet>::decode_packet(reader, fixed_header)?;
                             Ok(VariablePacket::$name(pk))
                         }
                     )+

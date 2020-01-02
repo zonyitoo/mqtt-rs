@@ -1,6 +1,6 @@
 //! QoS (Quality of Services)
 
-use packet::publish::QoSWithPacketIdentifier;
+use crate::packet::publish::QoSWithPacketIdentifier;
 
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]

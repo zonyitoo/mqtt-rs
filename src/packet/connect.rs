@@ -4,13 +4,13 @@ use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
-use control::variable_header::{ConnectFlags, KeepAlive, ProtocolLevel, ProtocolName};
-use control::variable_header::protocol_level::SPEC_3_1_1;
-use encodable::{StringEncodeError, VarBytes};
-use packet::{Packet, PacketError};
-use topic_name::{TopicName, TopicNameError};
+use crate::{Decodable, Encodable};
+use crate::control::{ControlType, FixedHeader, PacketType};
+use crate::control::variable_header::{ConnectFlags, KeepAlive, ProtocolLevel, ProtocolName};
+use crate::control::variable_header::protocol_level::SPEC_3_1_1;
+use crate::encodable::{StringEncodeError, VarBytes};
+use crate::packet::{Packet, PacketError};
+use crate::topic_name::{TopicName, TopicNameError};
 
 /// `CONNECT` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -373,7 +373,7 @@ mod test {
 
     use std::io::Cursor;
 
-    use {Decodable, Encodable};
+    use crate::{Decodable, Encodable};
 
     #[test]
     fn test_connect_packet_encode_basic() {

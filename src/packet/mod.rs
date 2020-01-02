@@ -8,13 +8,13 @@ use std::io::{self, Read, Write, Cursor};
 use futures::Future;
 use tokio_io::{io as async_io, AsyncRead};
 
-use {Decodable, Encodable};
-use control::ControlType;
-use control::FixedHeader;
-use control::fixed_header::FixedHeaderError;
-use control::variable_header::VariableHeaderError;
-use encodable::StringEncodeError;
-use topic_name::TopicNameError;
+use crate::{Decodable, Encodable};
+use crate::control::ControlType;
+use crate::control::FixedHeader;
+use crate::control::fixed_header::FixedHeaderError;
+use crate::control::variable_header::VariableHeaderError;
+use crate::encodable::StringEncodeError;
+use crate::topic_name::TopicNameError;
 
 pub use self::connack::ConnackPacket;
 pub use self::connect::ConnectPacket;
@@ -437,7 +437,7 @@ mod test {
 
     use std::io::Cursor;
 
-    use {Decodable, Encodable};
+    use crate::{Decodable, Encodable};
 
     #[test]
     fn test_variable_packet_basic() {

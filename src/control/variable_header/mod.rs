@@ -6,8 +6,8 @@ use std::fmt;
 use std::io;
 use std::string::FromUtf8Error;
 
-use encodable::StringEncodeError;
-use topic_name::TopicNameError;
+use crate::encodable::StringEncodeError;
+use crate::topic_name::TopicNameError;
 
 pub use self::connect_ack_flags::ConnackFlags;
 pub use self::connect_flags::ConnectFlags;

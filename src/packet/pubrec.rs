@@ -2,10 +2,10 @@
 
 use std::io::{Read, Write};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
-use control::variable_header::PacketIdentifier;
-use packet::{Packet, PacketError};
+use crate::{Decodable, Encodable};
+use crate::control::{ControlType, FixedHeader, PacketType};
+use crate::control::variable_header::PacketIdentifier;
+use crate::packet::{Packet, PacketError};
 
 /// `PUBREC` packet
 #[derive(Debug, Eq, PartialEq, Clone)]

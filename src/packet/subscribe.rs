@@ -8,12 +8,12 @@ use std::string::FromUtf8Error;
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use {Decodable, Encodable, QualityOfService};
-use control::{ControlType, FixedHeader, PacketType};
-use control::variable_header::PacketIdentifier;
-use encodable::StringEncodeError;
-use packet::{Packet, PacketError};
-use topic_filter::{TopicFilter, TopicFilterError};
+use crate::{Decodable, Encodable, QualityOfService};
+use crate::control::{ControlType, FixedHeader, PacketType};
+use crate::control::variable_header::PacketIdentifier;
+use crate::encodable::StringEncodeError;
+use crate::packet::{Packet, PacketError};
+use crate::topic_filter::{TopicFilter, TopicFilterError};
 
 /// `SUBSCRIBE` packet
 #[derive(Debug, Eq, PartialEq, Clone)]

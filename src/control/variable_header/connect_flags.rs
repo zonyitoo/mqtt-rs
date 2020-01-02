@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use {Decodable, Encodable};
-use control::variable_header::VariableHeaderError;
+use crate::{Decodable, Encodable};
+use crate::control::variable_header::VariableHeaderError;
 
 /// Flags for `CONNECT` packet
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]

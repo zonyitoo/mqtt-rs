@@ -147,11 +147,11 @@ fn main() {
         let mut line = String::new();
         stdin.read_line(&mut line).unwrap();
 
-        if line.trim_right() == "" {
+        if line.trim_end() == "" {
             continue;
         }
 
-        let message = format!("{}: {}", user_name, line.trim_right());
+        let message = format!("{}: {}", user_name, line.trim_end());
 
         for chan in &channels {
             let publish_packet = PublishPacket::new(chan.clone(), QoSWithPacketIdentifier::Level0, message.clone());

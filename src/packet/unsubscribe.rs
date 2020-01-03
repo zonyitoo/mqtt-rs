@@ -6,12 +6,12 @@ use std::fmt;
 use std::io::{self, Read, Write};
 use std::string::FromUtf8Error;
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
-use control::variable_header::PacketIdentifier;
-use encodable::StringEncodeError;
-use packet::{Packet, PacketError};
-use topic_filter::{TopicFilter, TopicFilterError};
+use crate::{Decodable, Encodable};
+use crate::control::{ControlType, FixedHeader, PacketType};
+use crate::control::variable_header::PacketIdentifier;
+use crate::encodable::StringEncodeError;
+use crate::packet::{Packet, PacketError};
+use crate::topic_filter::{TopicFilter, TopicFilterError};
 
 /// `UNSUBSCRIBE` packet
 #[derive(Debug, Eq, PartialEq, Clone)]

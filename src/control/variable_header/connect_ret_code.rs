@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use {Decodable, Encodable};
-use control::variable_header::VariableHeaderError;
+use crate::{Decodable, Encodable};
+use crate::control::variable_header::VariableHeaderError;
 
 pub const CONNECTION_ACCEPTED: u8 = 0x00;
 pub const UNACCEPTABLE_PROTOCOL_VERSION: u8 = 0x01;

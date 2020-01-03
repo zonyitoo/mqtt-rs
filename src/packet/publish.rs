@@ -2,12 +2,12 @@
 
 use std::io::{Read, Write};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
-use control::variable_header::PacketIdentifier;
-use packet::{Packet, PacketError};
-use qos::QualityOfService;
-use topic_name::TopicName;
+use crate::{Decodable, Encodable};
+use crate::control::{ControlType, FixedHeader, PacketType};
+use crate::control::variable_header::PacketIdentifier;
+use crate::packet::{Packet, PacketError};
+use crate::qos::QualityOfService;
+use crate::topic_name::TopicName;
 
 /// QoS with identifier pairs
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -175,8 +175,8 @@ mod test {
 
     use std::io::Cursor;
 
-    use {Decodable, Encodable};
-    use topic_name::TopicName;
+    use crate::{Decodable, Encodable};
+    use crate::topic_name::TopicName;
 
     #[test]
     fn test_publish_packet_basic() {

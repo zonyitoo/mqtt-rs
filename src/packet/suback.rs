@@ -8,11 +8,11 @@ use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use {Decodable, Encodable};
-use control::{ControlType, FixedHeader, PacketType};
-use control::variable_header::PacketIdentifier;
-use packet::{Packet, PacketError};
-use qos::QualityOfService;
+use crate::{Decodable, Encodable};
+use crate::control::{ControlType, FixedHeader, PacketType};
+use crate::control::variable_header::PacketIdentifier;
+use crate::packet::{Packet, PacketError};
+use crate::qos::QualityOfService;
 
 /// Subscribe code
 #[repr(u8)]

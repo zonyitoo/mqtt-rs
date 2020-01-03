@@ -7,11 +7,12 @@ use std::io::{Read, Write};
 use std::mem;
 use std::ops::Deref;
 
+use lazy_static::lazy_static;
 use regex::Regex;
 
-use {Decodable, Encodable};
-use encodable::StringEncodeError;
-use topic_name::TopicNameRef;
+use crate::{Decodable, Encodable};
+use crate::encodable::StringEncodeError;
+use crate::topic_name::TopicNameRef;
 
 const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(([^+#]*|\+)(/([^+#]*|\+))*(/#)?|#)$";
 

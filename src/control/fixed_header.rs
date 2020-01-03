@@ -48,6 +48,8 @@ impl FixedHeader {
     #[cfg(feature = "async")]
     /// Asynchronously parse a single fixed header from an AsyncRead type, such as a network
     /// socket.
+    ///
+    /// This requires mqtt-rs to be built with `feature = "async"`
     pub async fn parse<A: AsyncRead + Unpin>(
         rdr: &mut A,
     ) -> Result<(Self, Vec<u8>), FixedHeaderError> {

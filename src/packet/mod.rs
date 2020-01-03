@@ -201,7 +201,10 @@ macro_rules! impl_variable_packet {
 
         #[cfg(feature = "async")]
         impl VariablePacket {
-            pub async fn peek<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<(FixedHeader, Vec<u8>), VariablePacketError> {
+            pub(crate) async fn peek<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<(FixedHeader, Vec<u8>), VariablePacketError> {
+                // TODO: This doesn't really "peek" the stream without modifying it, and it's unclear what
+                // the returned Vec is supposed to be. Perhaps change the name or change the functionality
+                // before making public.
                 let result = FixedHeader::parse(rdr).await;
 
                 let (fixed_header, data) = match result {
@@ -220,7 +223,8 @@ macro_rules! impl_variable_packet {
                 Ok((fixed_header, data))
             }
 
-            pub async fn peek_finalize<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<(Vec<u8>, Self), VariablePacketError> {
+            #[allow(dead_code)]
+            pub(crate) async fn peek_finalize<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<(Vec<u8>, Self), VariablePacketError> {
                 use std::io::Cursor;
                 let (fixed_header, mut result) = Self::peek(rdr).await?;
 
@@ -241,6 +245,9 @@ macro_rules! impl_variable_packet {
                 Ok((result, output))
             }
 
+            /// Asynchronously parse a packet from a `tokio::io::AsyncRead`
+            ///
+            /// This requires mqtt-rs to be built with `feature = "async"`
             pub async fn parse<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<Self, VariablePacketError> {
                 use std::io::Cursor;
                 let (fixed_header, _) = Self::peek(rdr).await?;
@@ -477,7 +484,7 @@ mod test {
 
         // Parse
         let mut async_buf = buf.as_slice();
-        let decoded_packet =  VariablePacket::parse(&mut async_buf).await.unwrap();
+        let decoded_packet = VariablePacket::parse(&mut async_buf).await.unwrap();
 
         assert_eq!(var_packet, decoded_packet);
     }

@@ -7,11 +7,11 @@ use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use futures::{future, Future};
-use tokio_io::{io as async_io, AsyncRead};
+#[cfg(feature = "async")]
+use tokio::io::{AsyncRead, AsyncReadExt};
 
-use crate::{Decodable, Encodable};
 use crate::control::packet_type::{PacketType, PacketTypeError};
+use crate::{Decodable, Encodable};
 
 /// Fixed header for each MQTT control packet
 ///
@@ -45,41 +45,50 @@ impl FixedHeader {
         }
     }
 
+    #[cfg(feature = "async")]
     /// Asynchronously parse a single fixed header from an AsyncRead type, such as a network
     /// socket.
-    pub fn parse<A: AsyncRead>(rdr: A) -> impl Future<Item = (A, Self, Vec<u8>), Error = FixedHeaderError> {
-        async_io::read_exact(rdr, [0u8])
-            .from_err()
-            .and_then(|(rdr, [type_val])| {
-                let mut data: Vec<u8> = Vec::new();
-                data.push(type_val);
-                future::loop_fn((rdr, 0, 0, data), move |(rdr, mut cur, i, mut data)| {
-                    async_io::read_exact(rdr, [0u8])
-                        .from_err()
-                        .and_then(move |(rdr, [byte])| {
-                            data.push(byte);
+    pub async fn parse<A: AsyncRead + Unpin>(
+        rdr: &mut A,
+    ) -> Result<(Self, Vec<u8>), FixedHeaderError> {
+        use std::slice;
+        let mut type_val = 0u8;
+        rdr.read_exact(slice::from_mut(&mut type_val)).await?;
 
-                            cur |= (u32::from(byte) & 0x7F) << (7 * i);
+        let mut data: Vec<u8> = Vec::new();
+        data.push(type_val);
+        let mut remaining_len = 0;
+        let mut i = 0;
 
-                            if i >= 4 {
-                                return Err(FixedHeaderError::MalformedRemainingLength);
-                            }
+        loop {
+            let mut byte = 0u8;
+            rdr.read_exact(slice::from_mut(&mut byte)).await?;
 
-                            if byte & 0x80 == 0 {
-                                Ok(future::Loop::Break((rdr, cur, data)))
-                            } else {
-                                Ok(future::Loop::Continue((rdr, cur, i + 1, data)))
-                            }
-                        })
-                }).and_then(move |(rdr, remaining_len, data)| match PacketType::from_u8(type_val) {
-                    Ok(packet_type) => Ok((rdr, FixedHeader::new(packet_type, remaining_len), data)),
-                    Err(PacketTypeError::UndefinedType(ty, _)) => {
-                        Err(FixedHeaderError::Unrecognized(ty, remaining_len))
-                    }
-                    Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
-                    Err(err) => Err(From::from(err)),
-                })
-            })
+            data.push(byte);
+
+            remaining_len |= (u32::from(byte) & 0x7F) << (7 * i);
+
+            if i >= 4 {
+                return Err(FixedHeaderError::MalformedRemainingLength);
+            }
+
+            if byte & 0x80 == 0 {
+                break;
+            } else {
+                i += 1;
+            }
+        }
+
+        match PacketType::from_u8(type_val) {
+            Ok(packet_type) => Ok((FixedHeader::new(packet_type, remaining_len), data)),
+            Err(PacketTypeError::UndefinedType(ty, _)) => {
+                Err(FixedHeaderError::Unrecognized(ty, remaining_len))
+            }
+            Err(PacketTypeError::ReservedType(ty, _)) => {
+                Err(FixedHeaderError::ReservedType(ty, remaining_len))
+            }
+            Err(err) => Err(From::from(err)),
+        }
     }
 }
 
@@ -126,7 +135,10 @@ impl Decodable for FixedHeader {
     type Err = FixedHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(rdr: &mut R, _rest: Option<()>) -> Result<FixedHeader, FixedHeaderError> {
+    fn decode_with<R: Read>(
+        rdr: &mut R,
+        _rest: Option<()>,
+    ) -> Result<FixedHeader, FixedHeaderError> {
         let type_val = rdr.read_u8()?;
         let remaining_len = {
             let mut cur = 0u32;
@@ -148,8 +160,12 @@ impl Decodable for FixedHeader {
 
         match PacketType::from_u8(type_val) {
             Ok(packet_type) => Ok(FixedHeader::new(packet_type, remaining_len)),
-            Err(PacketTypeError::UndefinedType(ty, _)) => Err(FixedHeaderError::Unrecognized(ty, remaining_len)),
-            Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
+            Err(PacketTypeError::UndefinedType(ty, _)) => {
+                Err(FixedHeaderError::Unrecognized(ty, remaining_len))
+            }
+            Err(PacketTypeError::ReservedType(ty, _)) => {
+                Err(FixedHeaderError::ReservedType(ty, remaining_len))
+            }
             Err(err) => Err(From::from(err)),
         }
     }
@@ -180,8 +196,12 @@ impl fmt::Display for FixedHeaderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &FixedHeaderError::MalformedRemainingLength => write!(f, "Malformed remaining length"),
-            &FixedHeaderError::Unrecognized(code, length) => write!(f, "Unrecognized header ({}, {})", code, length),
-            &FixedHeaderError::ReservedType(code, length) => write!(f, "Reserved header ({}, {})", code, length),
+            &FixedHeaderError::Unrecognized(code, length) => {
+                write!(f, "Unrecognized header ({}, {})", code, length)
+            }
+            &FixedHeaderError::ReservedType(code, length) => {
+                write!(f, "Reserved header ({}, {})", code, length)
+            }
             &FixedHeaderError::PacketTypeError(ref err) => write!(f, "{}", err),
             &FixedHeaderError::IoError(ref err) => write!(f, "{}", err),
         }
@@ -214,8 +234,8 @@ impl Error for FixedHeaderError {
 mod test {
     use super::*;
 
-    use crate::{Decodable, Encodable};
     use crate::control::packet_type::{ControlType, PacketType};
+    use crate::{Decodable, Encodable};
     use std::io::Cursor;
 
     #[test]
@@ -233,7 +253,10 @@ mod test {
         let stream = b"\x10\xc1\x02";
         let mut cursor = Cursor::new(&stream[..]);
         let header = FixedHeader::decode(&mut cursor).unwrap();
-        assert_eq!(header.packet_type, PacketType::with_default(ControlType::Connect));
+        assert_eq!(
+            header.packet_type,
+            PacketType::with_default(ControlType::Connect)
+        );
         assert_eq!(header.remaining_length, 321);
     }
 

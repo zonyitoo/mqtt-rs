@@ -2,10 +2,10 @@
 
 use std::io::{Read, Write};
 
-use crate::{Decodable, Encodable};
-use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::control::variable_header::{ConnackFlags, ConnectReturnCode};
+use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::packet::{Packet, PacketError};
+use crate::{Decodable, Encodable};
 
 /// `CONNACK` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -19,9 +19,12 @@ pub struct ConnackPacket {
 impl ConnackPacket {
     pub fn new(session_present: bool, ret_code: ConnectReturnCode) -> ConnackPacket {
         ConnackPacket {
-            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
-            flags: ConnackFlags { session_present: session_present },
-            ret_code: ret_code,
+            fixed_header: FixedHeader::new(
+                PacketType::with_default(ControlType::ConnectAcknowledgement),
+                2,
+            ),
+            flags: ConnackFlags { session_present },
+            ret_code,
             payload: (),
         }
     }
@@ -60,16 +63,19 @@ impl Packet for ConnackPacket {
         self.flags.encoded_length() + self.ret_code.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(
+        reader: &mut R,
+        fixed_header: FixedHeader,
+    ) -> Result<Self, PacketError<Self>> {
         let flags: ConnackFlags = Decodable::decode(reader)?;
         let code: ConnectReturnCode = Decodable::decode(reader)?;
 
         Ok(ConnackPacket {
-               fixed_header: fixed_header,
-               flags: flags,
-               ret_code: code,
-               payload: (),
-           })
+            fixed_header,
+            flags,
+            ret_code: code,
+            payload: (),
+        })
     }
 }
 
@@ -79,8 +85,8 @@ mod test {
 
     use std::io::Cursor;
 
-    use crate::{Decodable, Encodable};
     use crate::control::variable_header::ConnectReturnCode;
+    use crate::{Decodable, Encodable};
 
     #[test]
     pub fn test_connack_packet_basic() {

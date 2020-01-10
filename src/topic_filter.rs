@@ -4,17 +4,16 @@ use std::convert::Into;
 use std::error::Error;
 use std::fmt;
 use std::io::{Read, Write};
-use std::mem;
 use std::ops::Deref;
 
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::{Decodable, Encodable};
 use crate::encodable::StringEncodeError;
 use crate::topic_name::TopicNameRef;
+use crate::{Decodable, Encodable};
 
-const VALIDATE_TOPIC_FILTER_REGEX: &'static str = r"^(([^+#]*|\+)(/([^+#]*|\+))*(/#)?|#)$";
+const VALIDATE_TOPIC_FILTER_REGEX: &str = r"^(([^+#]*|\+)(/([^+#]*|\+))*(/#)?|#)$";
 
 lazy_static! {
     static ref TOPIC_FILTER_VALIDATOR: Regex = Regex::new(VALIDATE_TOPIC_FILTER_REGEX).unwrap();
@@ -52,6 +51,11 @@ impl TopicFilter {
     }
 
     /// Creates a new topic filter from string without validation
+    ///
+    /// # Safety
+    ///
+    /// Topic filters' syntax is defined in [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106).
+    /// Creating a filter from raw string may cause errors
     pub unsafe fn new_unchecked<S: Into<String>>(topic: S) -> TopicFilter {
         TopicFilter(topic.into())
     }
@@ -75,9 +79,12 @@ impl Decodable for TopicFilter {
     type Err = TopicFilterError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicFilter, TopicFilterError> {
-        let topic_filter: String = Decodable::decode(reader)
-            .map_err(TopicFilterError::StringEncodeError)?;
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        _rest: Option<()>,
+    ) -> Result<TopicFilter, TopicFilterError> {
+        let topic_filter: String =
+            Decodable::decode(reader).map_err(TopicFilterError::StringEncodeError)?;
         TopicFilter::new(topic_filter)
     }
 }
@@ -102,17 +109,23 @@ impl TopicFilterRef {
         if is_invalid_topic_filter(topic) {
             Err(TopicFilterError::InvalidTopicFilter(topic.to_owned()))
         } else {
-            Ok(unsafe { mem::transmute(topic) })
+            Ok(unsafe { &*(topic as *const str as *const TopicFilterRef) })
         }
     }
 
     /// Creates a new topic filter from string without validation
+    ///
+    /// # Safety
+    ///
+    /// Topic filters' syntax is defined in [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106).
+    /// Creating a filter from raw string may cause errors
     pub unsafe fn new_unchecked<S: AsRef<str> + ?Sized>(topic: &S) -> &TopicFilterRef {
-        mem::transmute(topic.as_ref())
+        let topic = topic.as_ref();
+        &*(topic as *const str as *const TopicFilterRef)
     }
 
     /// Get a matcher
-    pub fn get_matcher<'a>(&'a self) -> TopicFilterMatcher<'a> {
+    pub fn get_matcher(&self) -> TopicFilterMatcher<'_> {
         TopicFilterMatcher::new(&self.0)
     }
 }
@@ -134,25 +147,20 @@ pub enum TopicFilterError {
 
 impl fmt::Display for TopicFilterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &TopicFilterError::StringEncodeError(ref err) => err.fmt(f),
-            &TopicFilterError::InvalidTopicFilter(ref topic) => write!(f, "Invalid topic filter ({})", topic),
+        match *self {
+            TopicFilterError::StringEncodeError(ref err) => err.fmt(f),
+            TopicFilterError::InvalidTopicFilter(ref topic) => {
+                write!(f, "Invalid topic filter ({})", topic)
+            }
         }
     }
 }
 
 impl Error for TopicFilterError {
-    fn description(&self) -> &str {
-        match self {
-            &TopicFilterError::StringEncodeError(ref err) => err.description(),
-            &TopicFilterError::InvalidTopicFilter(..) => "Invalid topic filter",
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &TopicFilterError::StringEncodeError(ref err) => Some(err),
-            &TopicFilterError::InvalidTopicFilter(..) => None,
+        match *self {
+            TopicFilterError::StringEncodeError(ref err) => Some(err),
+            TopicFilterError::InvalidTopicFilter(..) => None,
         }
     }
 }
@@ -165,7 +173,9 @@ pub struct TopicFilterMatcher<'a> {
 
 impl<'a> TopicFilterMatcher<'a> {
     fn new(filter: &'a str) -> TopicFilterMatcher<'a> {
-        TopicFilterMatcher { topic_filter: filter }
+        TopicFilterMatcher {
+            topic_filter: filter,
+        }
     }
 
     /// Check if this filter can match the `topic_name`
@@ -198,17 +208,15 @@ impl<'a> TopicFilterMatcher<'a> {
 
         loop {
             match (ft_itr.next(), tn_itr.next()) {
-                (Some(ft), Some(tn)) => {
-                    match ft {
-                        "#" => break,
-                        "+" => {}
-                        _ => {
-                            if ft != tn {
-                                return false;
-                            }
+                (Some(ft), Some(tn)) => match ft {
+                    "#" => break,
+                    "+" => {}
+                    _ => {
+                        if ft != tn {
+                            return false;
                         }
                     }
-                }
+                },
                 (Some(ft), None) => {
                     if ft != "#" {
                         return false;
@@ -221,7 +229,7 @@ impl<'a> TopicFilterMatcher<'a> {
             }
         }
 
-        return true;
+        true
     }
 }
 

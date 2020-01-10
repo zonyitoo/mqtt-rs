@@ -121,40 +121,28 @@ pub enum PacketError<T: Packet + 'static> {
 
 impl<T: Packet> fmt::Display for PacketError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &PacketError::FixedHeaderError(ref err) => err.fmt(f),
-            &PacketError::VariableHeaderError(ref err) => err.fmt(f),
-            &PacketError::PayloadError(ref err) => err.fmt(f),
-            &PacketError::MalformedPacket(ref err) => err.fmt(f),
-            &PacketError::StringEncodeError(ref err) => err.fmt(f),
-            &PacketError::IoError(ref err) => err.fmt(f),
-            &PacketError::TopicNameError(ref err) => err.fmt(f),
+        match *self {
+            PacketError::FixedHeaderError(ref err) => err.fmt(f),
+            PacketError::VariableHeaderError(ref err) => err.fmt(f),
+            PacketError::PayloadError(ref err) => err.fmt(f),
+            PacketError::MalformedPacket(ref err) => err.fmt(f),
+            PacketError::StringEncodeError(ref err) => err.fmt(f),
+            PacketError::IoError(ref err) => err.fmt(f),
+            PacketError::TopicNameError(ref err) => err.fmt(f),
         }
     }
 }
 
 impl<T: Packet + fmt::Debug> Error for PacketError<T> {
-    fn description(&self) -> &str {
-        match self {
-            &PacketError::FixedHeaderError(ref err) => err.description(),
-            &PacketError::VariableHeaderError(ref err) => err.description(),
-            &PacketError::PayloadError(ref err) => err.description(),
-            &PacketError::MalformedPacket(ref err) => &err[..],
-            &PacketError::StringEncodeError(ref err) => err.description(),
-            &PacketError::IoError(ref err) => err.description(),
-            &PacketError::TopicNameError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &PacketError::FixedHeaderError(ref err) => Some(err),
-            &PacketError::VariableHeaderError(ref err) => Some(err),
-            &PacketError::PayloadError(ref err) => Some(err),
-            &PacketError::MalformedPacket(..) => None,
-            &PacketError::StringEncodeError(ref err) => Some(err),
-            &PacketError::IoError(ref err) => Some(err),
-            &PacketError::TopicNameError(ref err) => Some(err),
+        match *self {
+            PacketError::FixedHeaderError(ref err) => Some(err),
+            PacketError::VariableHeaderError(ref err) => Some(err),
+            PacketError::PayloadError(ref err) => Some(err),
+            PacketError::MalformedPacket(..) => None,
+            PacketError::StringEncodeError(ref err) => Some(err),
+            PacketError::IoError(ref err) => Some(err),
+            PacketError::TopicNameError(ref err) => Some(err),
         }
     }
 }
@@ -281,17 +269,17 @@ macro_rules! impl_variable_packet {
             type Err = VariablePacketError;
 
             fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariablePacketError> {
-                match self {
+                match *self {
                     $(
-                        &VariablePacket::$name(ref pk) => pk.encode(writer).map_err(From::from),
+                        VariablePacket::$name(ref pk) => pk.encode(writer).map_err(From::from),
                     )+
                 }
             }
 
             fn encoded_length(&self) -> u32 {
-                match self {
+                match *self {
                     $(
-                        &VariablePacket::$name(ref pk) => pk.encoded_length(),
+                        VariablePacket::$name(ref pk) => pk.encoded_length(),
                     )+
                 }
             }
@@ -371,41 +359,29 @@ macro_rules! impl_variable_packet {
 
         impl fmt::Display for VariablePacketError {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                match self {
-                    &VariablePacketError::FixedHeaderError(ref err) => err.fmt(f),
-                    &VariablePacketError::UnrecognizedPacket(ref code, ref v) =>
+                match *self {
+                    VariablePacketError::FixedHeaderError(ref err) => err.fmt(f),
+                    VariablePacketError::UnrecognizedPacket(ref code, ref v) =>
                         write!(f, "Unrecognized type ({}), [u8, ..{}]", code, v.len()),
-                    &VariablePacketError::ReservedPacket(ref code, ref v) =>
+                    VariablePacketError::ReservedPacket(ref code, ref v) =>
                         write!(f, "Reserved type ({}), [u8, ..{}]", code, v.len()),
-                    &VariablePacketError::IoError(ref err) => err.fmt(f),
+                    VariablePacketError::IoError(ref err) => err.fmt(f),
                     $(
-                        &VariablePacketError::$errname(ref err) => err.fmt(f),
+                        VariablePacketError::$errname(ref err) => err.fmt(f),
                     )+
                 }
             }
         }
 
         impl Error for VariablePacketError {
-            fn description(&self) -> &str {
-                match self {
-                    &VariablePacketError::FixedHeaderError(ref err) => err.description(),
-                    &VariablePacketError::UnrecognizedPacket(..) => "Unrecognized packet",
-                    &VariablePacketError::ReservedPacket(..) => "Reserved packet",
-                    &VariablePacketError::IoError(ref err) => err.description(),
-                    $(
-                        &VariablePacketError::$errname(ref err) => err.description(),
-                    )+
-                }
-            }
-
             fn source(&self) -> Option<&(dyn Error + 'static)> {
-                match self {
-                    &VariablePacketError::FixedHeaderError(ref err) => Some(err),
-                    &VariablePacketError::UnrecognizedPacket(..) => None,
-                    &VariablePacketError::ReservedPacket(..) => None,
-                    &VariablePacketError::IoError(ref err) => Some(err),
+                match *self {
+                    VariablePacketError::FixedHeaderError(ref err) => Some(err),
+                    VariablePacketError::UnrecognizedPacket(..) => None,
+                    VariablePacketError::ReservedPacket(..) => None,
+                    VariablePacketError::IoError(ref err) => Some(err),
                     $(
-                        &VariablePacketError::$errname(ref err) => Some(err),
+                        VariablePacketError::$errname(ref err) => Some(err),
                     )+
                 }
             }

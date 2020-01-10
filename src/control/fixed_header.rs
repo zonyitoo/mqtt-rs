@@ -38,10 +38,10 @@ pub struct FixedHeader {
 
 impl FixedHeader {
     pub fn new(packet_type: PacketType, remaining_length: u32) -> FixedHeader {
-        debug_assert!(remaining_length <= 0x0FFFFFFF);
+        debug_assert!(remaining_length <= 0x0FFF_FFFF);
         FixedHeader {
-            packet_type: packet_type,
-            remaining_length: remaining_length,
+            packet_type,
+            remaining_length,
         }
     }
 
@@ -196,38 +196,28 @@ impl From<PacketTypeError> for FixedHeaderError {
 
 impl fmt::Display for FixedHeaderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &FixedHeaderError::MalformedRemainingLength => write!(f, "Malformed remaining length"),
-            &FixedHeaderError::Unrecognized(code, length) => {
+        match *self {
+            FixedHeaderError::MalformedRemainingLength => write!(f, "Malformed remaining length"),
+            FixedHeaderError::Unrecognized(code, length) => {
                 write!(f, "Unrecognized header ({}, {})", code, length)
             }
-            &FixedHeaderError::ReservedType(code, length) => {
+            FixedHeaderError::ReservedType(code, length) => {
                 write!(f, "Reserved header ({}, {})", code, length)
             }
-            &FixedHeaderError::PacketTypeError(ref err) => write!(f, "{}", err),
-            &FixedHeaderError::IoError(ref err) => write!(f, "{}", err),
+            FixedHeaderError::PacketTypeError(ref err) => write!(f, "{}", err),
+            FixedHeaderError::IoError(ref err) => write!(f, "{}", err),
         }
     }
 }
 
 impl Error for FixedHeaderError {
-    fn description(&self) -> &str {
-        match self {
-            &FixedHeaderError::MalformedRemainingLength => "Malformed remaining length",
-            &FixedHeaderError::Unrecognized(..) => "Unrecognized header",
-            &FixedHeaderError::ReservedType(..) => "Unrecognized header",
-            &FixedHeaderError::PacketTypeError(ref err) => err.description(),
-            &FixedHeaderError::IoError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &FixedHeaderError::MalformedRemainingLength => None,
-            &FixedHeaderError::Unrecognized(..) => None,
-            &FixedHeaderError::ReservedType(..) => None,
-            &FixedHeaderError::PacketTypeError(ref err) => Some(err),
-            &FixedHeaderError::IoError(ref err) => Some(err),
+        match *self {
+            FixedHeaderError::MalformedRemainingLength => None,
+            FixedHeaderError::Unrecognized(..) => None,
+            FixedHeaderError::ReservedType(..) => None,
+            FixedHeaderError::PacketTypeError(ref err) => Some(err),
+            FixedHeaderError::IoError(ref err) => Some(err),
         }
     }
 }

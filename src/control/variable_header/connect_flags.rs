@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::{Decodable, Encodable};
 use crate::control::variable_header::VariableHeaderError;
+use crate::{Decodable, Encodable};
 
 /// Flags for `CONNECT` packet
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -33,7 +33,7 @@ impl ConnectFlags {
 impl Encodable for ConnectFlags {
     type Err = VariableHeaderError;
 
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
         let code = ((self.user_name as u8) << 7)
             | ((self.password as u8) << 6)
@@ -54,19 +54,22 @@ impl Decodable for ConnectFlags {
     type Err = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ConnectFlags, VariableHeaderError> {
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        _rest: Option<()>,
+    ) -> Result<ConnectFlags, VariableHeaderError> {
         let code = reader.read_u8()?;
         if code & 1 != 0 {
             return Err(VariableHeaderError::InvalidReservedFlag);
         }
 
         Ok(ConnectFlags {
-               user_name: (code & 0b1000_0000) != 0,
-               password: (code & 0b0100_0000) != 0,
-               will_retain: (code & 0b0010_0000) != 0,
-               will_qos: (code & 0b0001_1000) >> 3,
-               will_flag: (code & 0b0000_0100) != 0,
-               clean_session: (code & 0b0000_0010) != 0,
-           })
+            user_name: (code & 0b1000_0000) != 0,
+            password: (code & 0b0100_0000) != 0,
+            will_retain: (code & 0b0010_0000) != 0,
+            will_qos: (code & 0b0001_1000) >> 3,
+            will_flag: (code & 0b0000_0100) != 0,
+            clean_session: (code & 0b0000_0010) != 0,
+        })
     }
 }

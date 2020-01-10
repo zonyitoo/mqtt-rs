@@ -8,11 +8,11 @@ use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::{Decodable, Encodable};
-use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::control::variable_header::PacketIdentifier;
+use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::packet::{Packet, PacketError};
 use crate::qos::QualityOfService;
+use crate::{Decodable, Encodable};
 
 /// Subscribe code
 #[repr(u8)]
@@ -62,11 +62,15 @@ pub struct SubackPacket {
 impl SubackPacket {
     pub fn new(pkid: u16, subscribes: Vec<SubscribeReturnCode>) -> SubackPacket {
         let mut pk = SubackPacket {
-            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::SubscribeAcknowledgement), 0),
+            fixed_header: FixedHeader::new(
+                PacketType::with_default(ControlType::SubscribeAcknowledgement),
+                0,
+            ),
             packet_identifier: PacketIdentifier(pkid),
             payload: SubackPacketPayload::new(subscribes),
         };
-        pk.fixed_header.remaining_length = pk.encoded_variable_headers_length() + pk.payload.encoded_length();
+        pk.fixed_header.remaining_length =
+            pk.encoded_variable_headers_length() + pk.payload.encoded_length();
         pk
     }
 
@@ -104,17 +108,21 @@ impl Packet for SubackPacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(
+        reader: &mut R,
+        fixed_header: FixedHeader,
+    ) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
-        let payload: SubackPacketPayload =
-            SubackPacketPayload::decode_with(reader,
-                                             Some(fixed_header.remaining_length - packet_identifier.encoded_length()))
-            .map_err(PacketError::PayloadError)?;
+        let payload: SubackPacketPayload = SubackPacketPayload::decode_with(
+            reader,
+            Some(fixed_header.remaining_length - packet_identifier.encoded_length()),
+        )
+        .map_err(PacketError::PayloadError)?;
         Ok(SubackPacket {
-               fixed_header: fixed_header,
-               packet_identifier: packet_identifier,
-               payload: payload,
-           })
+            fixed_header,
+            packet_identifier,
+            payload,
+        })
     }
 }
 
@@ -153,9 +161,10 @@ impl Decodable for SubackPacketPayload {
     type Err = SubackPacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R,
-                            payload_len: Option<u32>)
-                            -> Result<SubackPacketPayload, SubackPacketPayloadError> {
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        payload_len: Option<u32>,
+    ) -> Result<SubackPacketPayload, SubackPacketPayloadError> {
         let payload_len = payload_len.expect("Must provide payload length");
         let mut subs = Vec::new();
 
@@ -183,9 +192,9 @@ pub enum SubackPacketPayloadError {
 
 impl fmt::Display for SubackPacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &SubackPacketPayloadError::IoError(ref err) => err.fmt(f),
-            &SubackPacketPayloadError::InvalidSubscribeReturnCode(code) => {
+        match *self {
+            SubackPacketPayloadError::IoError(ref err) => err.fmt(f),
+            SubackPacketPayloadError::InvalidSubscribeReturnCode(code) => {
                 write!(f, "Invalid subscribe return code {}", code)
             }
         }
@@ -193,17 +202,10 @@ impl fmt::Display for SubackPacketPayloadError {
 }
 
 impl Error for SubackPacketPayloadError {
-    fn description(&self) -> &str {
-        match self {
-            &SubackPacketPayloadError::IoError(ref err) => err.description(),
-            &SubackPacketPayloadError::InvalidSubscribeReturnCode(..) => "Invalid subscribe return code",
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &SubackPacketPayloadError::IoError(ref err) => Some(err),
-            &SubackPacketPayloadError::InvalidSubscribeReturnCode(..) => None,
+        match *self {
+            SubackPacketPayloadError::IoError(ref err) => Some(err),
+            SubackPacketPayloadError::InvalidSubscribeReturnCode(..) => None,
         }
     }
 }

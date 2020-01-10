@@ -21,6 +21,12 @@ impl PingreqPacket {
     }
 }
 
+impl Default for PingreqPacket {
+    fn default() -> PingreqPacket {
+        PingreqPacket::new()
+    }
+}
+
 impl Packet for PingreqPacket {
     type Payload = ();
 
@@ -44,10 +50,13 @@ impl Packet for PingreqPacket {
         0
     }
 
-    fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(
+        _reader: &mut R,
+        fixed_header: FixedHeader,
+    ) -> Result<Self, PacketError<Self>> {
         Ok(PingreqPacket {
-               fixed_header: fixed_header,
-               payload: (),
-           })
+            fixed_header,
+            payload: (),
+        })
     }
 }

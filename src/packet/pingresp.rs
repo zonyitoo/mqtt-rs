@@ -21,6 +21,12 @@ impl PingrespPacket {
     }
 }
 
+impl Default for PingrespPacket {
+    fn default() -> PingrespPacket {
+        PingrespPacket::new()
+    }
+}
+
 impl Packet for PingrespPacket {
     type Payload = ();
 
@@ -44,10 +50,13 @@ impl Packet for PingrespPacket {
         0
     }
 
-    fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(
+        _reader: &mut R,
+        fixed_header: FixedHeader,
+    ) -> Result<Self, PacketError<Self>> {
         Ok(PingrespPacket {
-               fixed_header: fixed_header,
-               payload: (),
-           })
+            fixed_header,
+            payload: (),
+        })
     }
 }

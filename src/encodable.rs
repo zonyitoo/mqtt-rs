@@ -39,10 +39,11 @@ impl<'a> Encodable for &'a str {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), StringEncodeError> {
         assert!(self.as_bytes().len() <= u16::max_value() as usize);
 
-        writer.write_u16::<BigEndian>(self.as_bytes().len() as u16)
-              .map_err(From::from)
-              .and_then(|_| writer.write_all(self.as_bytes()))
-              .map_err(StringEncodeError::IoError)
+        writer
+            .write_u16::<BigEndian>(self.as_bytes().len() as u16)
+            .map_err(From::from)
+            .and_then(|_| writer.write_all(self.as_bytes()))
+            .map_err(StringEncodeError::IoError)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -78,7 +79,10 @@ impl Decodable for String {
     type Err = StringEncodeError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<String, StringEncodeError> {
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        _rest: Option<()>,
+    ) -> Result<String, StringEncodeError> {
         let len = reader.read_u16::<BigEndian>()? as usize;
         let mut buf = Vec::with_capacity(len);
         unsafe {
@@ -205,28 +209,20 @@ pub enum StringEncodeError {
 
 impl fmt::Display for StringEncodeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &StringEncodeError::IoError(ref err) => err.fmt(f),
-            &StringEncodeError::FromUtf8Error(ref err) => err.fmt(f),
-            &StringEncodeError::MalformedData => write!(f, "Malformed data"),
+        match *self {
+            StringEncodeError::IoError(ref err) => err.fmt(f),
+            StringEncodeError::FromUtf8Error(ref err) => err.fmt(f),
+            StringEncodeError::MalformedData => write!(f, "Malformed data"),
         }
     }
 }
 
 impl Error for StringEncodeError {
-    fn description(&self) -> &str {
-        match self {
-            &StringEncodeError::IoError(ref err) => err.description(),
-            &StringEncodeError::FromUtf8Error(ref err) => err.description(),
-            &StringEncodeError::MalformedData => "Malformed data",
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &StringEncodeError::IoError(ref err) => Some(err),
-            &StringEncodeError::FromUtf8Error(ref err) => Some(err),
-            &StringEncodeError::MalformedData => None,
+        match *self {
+            StringEncodeError::IoError(ref err) => Some(err),
+            StringEncodeError::FromUtf8Error(ref err) => Some(err),
+            StringEncodeError::MalformedData => None,
         }
     }
 }

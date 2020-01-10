@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::{Decodable, Encodable};
 use crate::control::variable_header::VariableHeaderError;
+use crate::{Decodable, Encodable};
 
 pub const CONNECTION_ACCEPTED: u8 = 0x00;
 pub const UNACCEPTABLE_PROTOCOL_VERSION: u8 = 0x01;
@@ -27,8 +27,8 @@ pub enum ConnectReturnCode {
 
 impl ConnectReturnCode {
     /// Get the code
-    pub fn to_u8(&self) -> u8 {
-        match *self {
+    pub fn to_u8(self) -> u8 {
+        match self {
             ConnectReturnCode::ConnectionAccepted => CONNECTION_ACCEPTED,
             ConnectReturnCode::UnacceptableProtocolVersion => UNACCEPTABLE_PROTOCOL_VERSION,
             ConnectReturnCode::IdentifierRejected => IDENTIFIER_REJECTED,
@@ -69,9 +69,13 @@ impl Decodable for ConnectReturnCode {
     type Err = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ConnectReturnCode, VariableHeaderError> {
-        reader.read_u8()
-              .map(ConnectReturnCode::from_u8)
-              .map_err(From::from)
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        _rest: Option<()>,
+    ) -> Result<ConnectReturnCode, VariableHeaderError> {
+        reader
+            .read_u8()
+            .map(ConnectReturnCode::from_u8)
+            .map_err(From::from)
     }
 }

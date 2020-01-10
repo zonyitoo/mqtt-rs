@@ -4,16 +4,15 @@ use std::convert::Into;
 use std::error::Error;
 use std::fmt;
 use std::io::{Read, Write};
-use std::mem;
 use std::ops::Deref;
 
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::{Decodable, Encodable};
 use crate::encodable::StringEncodeError;
+use crate::{Decodable, Encodable};
 
-const TOPIC_NAME_VALIDATE_REGEX: &'static str = r"^[^#+]+$";
+const TOPIC_NAME_VALIDATE_REGEX: &str = r"^[^#+]+$";
 
 lazy_static! {
     static ref TOPIC_NAME_VALIDATOR: Regex = Regex::new(TOPIC_NAME_VALIDATE_REGEX).unwrap();
@@ -21,7 +20,9 @@ lazy_static! {
 
 #[inline]
 fn is_invalid_topic_name(topic_name: &str) -> bool {
-    topic_name.is_empty() || topic_name.as_bytes().len() > 65535 || !TOPIC_NAME_VALIDATOR.is_match(&topic_name)
+    topic_name.is_empty()
+        || topic_name.as_bytes().len() > 65535
+        || !TOPIC_NAME_VALIDATOR.is_match(&topic_name)
 }
 
 /// Topic name
@@ -43,6 +44,11 @@ impl TopicName {
     }
 
     /// Creates a new topic name from string without validation
+    ///
+    /// # Safety
+    ///
+    /// Topic names' syntax is defined in [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106).
+    /// Creating a name from raw string may cause errors
     pub unsafe fn new_unchecked(topic_name: String) -> TopicName {
         TopicName(topic_name)
     }
@@ -80,9 +86,12 @@ impl Decodable for TopicName {
     type Err = TopicNameError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicName, TopicNameError> {
-        let topic_name: String = Decodable::decode(reader)
-            .map_err(TopicNameError::StringEncodeError)?;
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        _rest: Option<()>,
+    ) -> Result<TopicName, TopicNameError> {
+        let topic_name: String =
+            Decodable::decode(reader).map_err(TopicNameError::StringEncodeError)?;
         TopicName::new(topic_name)
     }
 }
@@ -96,25 +105,20 @@ pub enum TopicNameError {
 
 impl fmt::Display for TopicNameError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &TopicNameError::StringEncodeError(ref err) => err.fmt(f),
-            &TopicNameError::InvalidTopicName(ref topic) => write!(f, "Invalid topic filter ({})", topic),
+        match *self {
+            TopicNameError::StringEncodeError(ref err) => err.fmt(f),
+            TopicNameError::InvalidTopicName(ref topic) => {
+                write!(f, "Invalid topic filter ({})", topic)
+            }
         }
     }
 }
 
 impl Error for TopicNameError {
-    fn description(&self) -> &str {
-        match self {
-            &TopicNameError::StringEncodeError(ref err) => err.description(),
-            &TopicNameError::InvalidTopicName(..) => "Invalid topic filter",
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &TopicNameError::StringEncodeError(ref err) => Some(err),
-            &TopicNameError::InvalidTopicName(..) => None,
+        match *self {
+            TopicNameError::StringEncodeError(ref err) => Some(err),
+            TopicNameError::InvalidTopicName(..) => None,
         }
     }
 }
@@ -131,13 +135,19 @@ impl TopicNameRef {
         if is_invalid_topic_name(&topic_name) {
             Err(TopicNameError::InvalidTopicName(topic_name.to_owned()))
         } else {
-            Ok(unsafe { mem::transmute(topic_name) })
+            Ok(unsafe { &*(topic_name as *const str as *const TopicNameRef) })
         }
     }
 
     /// Creates a new topic name from string without validation
+    ///
+    /// # Safety
+    ///
+    /// Topic names' syntax is defined in [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106).
+    /// Creating a name from raw string may cause errors
     pub unsafe fn new_unchecked<S: AsRef<str> + ?Sized>(topic_name: &S) -> &TopicNameRef {
-        mem::transmute(topic_name.as_ref())
+        let topic_name = topic_name.as_ref();
+        &*(topic_name as *const str as *const TopicNameRef)
     }
 
     /// Check if this topic name is only for server.

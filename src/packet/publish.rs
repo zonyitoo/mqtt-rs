@@ -2,12 +2,12 @@
 
 use std::io::{Read, Write};
 
-use crate::{Decodable, Encodable};
-use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::control::variable_header::PacketIdentifier;
+use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::packet::{Packet, PacketError};
 use crate::qos::QualityOfService;
 use crate::topic_name::TopicName;
+use crate::{Decodable, Encodable};
 
 /// QoS with identifier pairs
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -37,7 +37,11 @@ pub struct PublishPacket {
 }
 
 impl PublishPacket {
-    pub fn new<P: Into<Vec<u8>>>(topic_name: TopicName, qos: QoSWithPacketIdentifier, payload: P) -> PublishPacket {
+    pub fn new<P: Into<Vec<u8>>>(
+        topic_name: TopicName,
+        qos: QoSWithPacketIdentifier,
+        payload: P,
+    ) -> PublishPacket {
         let (qos, pkid) = match qos {
             QoSWithPacketIdentifier::Level0 => (0, None),
             QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
@@ -46,7 +50,7 @@ impl PublishPacket {
 
         let mut pk = PublishPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Publish), 0),
-            topic_name: topic_name,
+            topic_name,
             packet_identifier: pkid,
             payload: payload.into(),
         };
@@ -136,14 +140,18 @@ impl Packet for PublishPacket {
     }
 
     fn encoded_variable_headers_length(&self) -> u32 {
-        self.topic_name.encoded_length() +
-            self.packet_identifier
+        self.topic_name.encoded_length()
+            + self
+                .packet_identifier
                 .as_ref()
                 .map(|x| x.encoded_length())
                 .unwrap_or(0)
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(
+        reader: &mut R,
+        fixed_header: FixedHeader,
+    ) -> Result<Self, PacketError<Self>> {
         let topic_name: TopicName = TopicName::decode(reader)?;
 
         let packet_identifier = if fixed_header.packet_type.flags & 0x06 != 0 {
@@ -152,20 +160,21 @@ impl Packet for PublishPacket {
             None
         };
 
-        let vhead_len = topic_name.encoded_length() +
-            packet_identifier.as_ref()
-                             .map(|x| x.encoded_length())
-                             .unwrap_or(0);
+        let vhead_len = topic_name.encoded_length()
+            + packet_identifier
+                .as_ref()
+                .map(|x| x.encoded_length())
+                .unwrap_or(0);
         let payload_len = fixed_header.remaining_length - vhead_len;
 
         let payload: Vec<u8> = Decodable::decode_with(reader, Some(payload_len))?;
 
         Ok(PublishPacket {
-               fixed_header: fixed_header,
-               topic_name: topic_name,
-               packet_identifier: packet_identifier,
-               payload: payload,
-           })
+            fixed_header,
+            topic_name,
+            packet_identifier,
+            payload,
+        })
     }
 }
 
@@ -175,14 +184,16 @@ mod test {
 
     use std::io::Cursor;
 
-    use crate::{Decodable, Encodable};
     use crate::topic_name::TopicName;
+    use crate::{Decodable, Encodable};
 
     #[test]
     fn test_publish_packet_basic() {
-        let packet = PublishPacket::new(TopicName::new("a/b".to_owned()).unwrap(),
-                                        QoSWithPacketIdentifier::Level2(10),
-                                        b"Hello world!".to_vec());
+        let packet = PublishPacket::new(
+            TopicName::new("a/b".to_owned()).unwrap(),
+            QoSWithPacketIdentifier::Level2(10),
+            b"Hello world!".to_vec(),
+        );
 
         let mut buf = Vec::new();
         packet.encode(&mut buf).unwrap();

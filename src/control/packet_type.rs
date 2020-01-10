@@ -11,7 +11,7 @@ pub struct PacketType {
 }
 
 /// Defined control types
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ControlType {
@@ -64,7 +64,7 @@ impl PacketType {
     pub fn new(t: ControlType, flags: u8) -> PacketType {
         PacketType {
             control_type: t,
-            flags: flags,
+            flags,
         }
     }
 
@@ -97,12 +97,12 @@ impl PacketType {
     }
 
     /// To code
-    pub fn to_u8(&self) -> u8 {
+    pub fn to_u8(self) -> u8 {
         (self.control_type as u8) << 4 | (self.flags & 0x0F)
     }
 
     /// From code
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     pub fn from_u8(val: u8) -> Result<PacketType, PacketTypeError> {
 
         let type_val = val >> 4;
@@ -156,25 +156,23 @@ pub enum PacketTypeError {
 
 impl fmt::Display for PacketTypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &PacketTypeError::ReservedType(t, flag) => write!(f, "Reserved type {:?} ({:#X})", t, flag),
-            &PacketTypeError::InvalidFlag(t, flag) => write!(f, "Invalid flag for {:?} ({:#X})", t, flag),
-            &PacketTypeError::UndefinedType(t, flag) => write!(f, "Undefined type {:?} ({:#X})", t, flag),
+        match *self {
+            PacketTypeError::ReservedType(t, flag) => {
+                write!(f, "Reserved type {:?} ({:#X})", t, flag)
+            }
+            PacketTypeError::InvalidFlag(t, flag) => {
+                write!(f, "Invalid flag for {:?} ({:#X})", t, flag)
+            }
+            PacketTypeError::UndefinedType(t, flag) => {
+                write!(f, "Undefined type {:?} ({:#X})", t, flag)
+            }
         }
     }
 }
 
-impl Error for PacketTypeError {
-    fn description(&self) -> &str {
-        match self {
-            &PacketTypeError::ReservedType(..) => "Reserved type",
-            &PacketTypeError::UndefinedType(..) => "Undefined type",
-            &PacketTypeError::InvalidFlag(..) => "Invalid flag",
-        }
-    }
-}
+impl Error for PacketTypeError {}
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 mod value {
     pub const CONNECT:     u8 = 1;
     pub const CONNACK:     u8 = 2;

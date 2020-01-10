@@ -8,12 +8,12 @@ use std::string::FromUtf8Error;
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::{Decodable, Encodable, QualityOfService};
-use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::control::variable_header::PacketIdentifier;
+use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::encodable::StringEncodeError;
 use crate::packet::{Packet, PacketError};
 use crate::topic_filter::{TopicFilter, TopicFilterError};
+use crate::{Decodable, Encodable, QualityOfService};
 
 /// `SUBSCRIBE` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -30,7 +30,8 @@ impl SubscribePacket {
             packet_identifier: PacketIdentifier(pkid),
             payload: SubscribePacketPayload::new(subscribes),
         };
-        pk.fixed_header.remaining_length = pk.encoded_variable_headers_length() + pk.payload.encoded_length();
+        pk.fixed_header.remaining_length =
+            pk.encoded_variable_headers_length() + pk.payload.encoded_length();
         pk
     }
 
@@ -68,18 +69,21 @@ impl Packet for SubscribePacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(
+        reader: &mut R,
+        fixed_header: FixedHeader,
+    ) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
-        let payload: SubscribePacketPayload =
-            SubscribePacketPayload::decode_with(reader,
-                                                Some(fixed_header.remaining_length -
-                                                         packet_identifier.encoded_length()))
-            .map_err(PacketError::PayloadError)?;
+        let payload: SubscribePacketPayload = SubscribePacketPayload::decode_with(
+            reader,
+            Some(fixed_header.remaining_length - packet_identifier.encoded_length()),
+        )
+        .map_err(PacketError::PayloadError)?;
         Ok(SubscribePacket {
-               fixed_header: fixed_header,
-               packet_identifier: packet_identifier,
-               payload: payload,
-           })
+            fixed_header,
+            packet_identifier,
+            payload,
+        })
     }
 }
 
@@ -122,9 +126,10 @@ impl Decodable for SubscribePacketPayload {
     type Err = SubscribePacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R,
-                            payload_len: Option<u32>)
-                            -> Result<SubscribePacketPayload, SubscribePacketPayloadError> {
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        payload_len: Option<u32>,
+    ) -> Result<SubscribePacketPayload, SubscribePacketPayloadError> {
         let mut payload_len = payload_len.expect("Must provide payload length");
         let mut subs = Vec::new();
 
@@ -156,34 +161,26 @@ pub enum SubscribePacketPayloadError {
 
 impl fmt::Display for SubscribePacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &SubscribePacketPayloadError::IoError(ref err) => err.fmt(f),
-            &SubscribePacketPayloadError::FromUtf8Error(ref err) => err.fmt(f),
-            &SubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
-            &SubscribePacketPayloadError::InvalidQualityOfService => write!(f, "Invalid quality of service"),
-            &SubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
+        match *self {
+            SubscribePacketPayloadError::IoError(ref err) => err.fmt(f),
+            SubscribePacketPayloadError::FromUtf8Error(ref err) => err.fmt(f),
+            SubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
+            SubscribePacketPayloadError::InvalidQualityOfService => {
+                write!(f, "Invalid quality of service")
+            }
+            SubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
         }
     }
 }
 
 impl Error for SubscribePacketPayloadError {
-    fn description(&self) -> &str {
-        match self {
-            &SubscribePacketPayloadError::IoError(ref err) => err.description(),
-            &SubscribePacketPayloadError::FromUtf8Error(ref err) => err.description(),
-            &SubscribePacketPayloadError::StringEncodeError(ref err) => err.description(),
-            &SubscribePacketPayloadError::InvalidQualityOfService => "Invalid quality of service",
-            &SubscribePacketPayloadError::TopicFilterError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &SubscribePacketPayloadError::IoError(ref err) => Some(err),
-            &SubscribePacketPayloadError::FromUtf8Error(ref err) => Some(err),
-            &SubscribePacketPayloadError::StringEncodeError(ref err) => Some(err),
-            &SubscribePacketPayloadError::InvalidQualityOfService => None,
-            &SubscribePacketPayloadError::TopicFilterError(ref err) => Some(err),
+        match *self {
+            SubscribePacketPayloadError::IoError(ref err) => Some(err),
+            SubscribePacketPayloadError::FromUtf8Error(ref err) => Some(err),
+            SubscribePacketPayloadError::StringEncodeError(ref err) => Some(err),
+            SubscribePacketPayloadError::InvalidQualityOfService => None,
+            SubscribePacketPayloadError::TopicFilterError(ref err) => Some(err),
         }
     }
 }

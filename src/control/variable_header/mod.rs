@@ -18,13 +18,13 @@ pub use self::protocol_level::ProtocolLevel;
 pub use self::protocol_name::ProtocolName;
 pub use self::topic_name::TopicNameHeader;
 
-mod packet_identifier;
-mod protocol_name;
-pub mod protocol_level;
-mod connect_flags;
-mod keep_alive;
 mod connect_ack_flags;
+mod connect_flags;
 mod connect_ret_code;
+mod keep_alive;
+mod packet_identifier;
+pub mod protocol_level;
+mod protocol_name;
 mod topic_name;
 
 /// Errors while decoding variable header
@@ -63,34 +63,24 @@ impl From<TopicNameError> for VariableHeaderError {
 
 impl fmt::Display for VariableHeaderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &VariableHeaderError::IoError(ref err) => write!(f, "{}", err),
-            &VariableHeaderError::StringEncodeError(ref err) => write!(f, "{}", err),
-            &VariableHeaderError::InvalidReservedFlag => write!(f, "Invalid reserved flags"),
-            &VariableHeaderError::FromUtf8Error(ref err) => write!(f, "{}", err),
-            &VariableHeaderError::TopicNameError(ref err) => write!(f, "{}", err),
+        match *self {
+            VariableHeaderError::IoError(ref err) => write!(f, "{}", err),
+            VariableHeaderError::StringEncodeError(ref err) => write!(f, "{}", err),
+            VariableHeaderError::InvalidReservedFlag => write!(f, "Invalid reserved flags"),
+            VariableHeaderError::FromUtf8Error(ref err) => write!(f, "{}", err),
+            VariableHeaderError::TopicNameError(ref err) => write!(f, "{}", err),
         }
     }
 }
 
 impl Error for VariableHeaderError {
-    fn description(&self) -> &str {
-        match self {
-            &VariableHeaderError::IoError(ref err) => err.description(),
-            &VariableHeaderError::StringEncodeError(ref err) => err.description(),
-            &VariableHeaderError::InvalidReservedFlag => "Invalid reserved flags",
-            &VariableHeaderError::FromUtf8Error(ref err) => err.description(),
-            &VariableHeaderError::TopicNameError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &VariableHeaderError::IoError(ref err) => Some(err),
-            &VariableHeaderError::StringEncodeError(ref err) => Some(err),
-            &VariableHeaderError::InvalidReservedFlag => None,
-            &VariableHeaderError::FromUtf8Error(ref err) => Some(err),
-            &VariableHeaderError::TopicNameError(ref err) => Some(err),
+        match *self {
+            VariableHeaderError::IoError(ref err) => Some(err),
+            VariableHeaderError::StringEncodeError(ref err) => Some(err),
+            VariableHeaderError::InvalidReservedFlag => None,
+            VariableHeaderError::FromUtf8Error(ref err) => Some(err),
+            VariableHeaderError::TopicNameError(ref err) => Some(err),
         }
     }
 }

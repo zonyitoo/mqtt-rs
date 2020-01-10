@@ -4,13 +4,13 @@ use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write};
 
-use crate::{Decodable, Encodable};
-use crate::control::{ControlType, FixedHeader, PacketType};
-use crate::control::variable_header::{ConnectFlags, KeepAlive, ProtocolLevel, ProtocolName};
 use crate::control::variable_header::protocol_level::SPEC_3_1_1;
+use crate::control::variable_header::{ConnectFlags, KeepAlive, ProtocolLevel, ProtocolName};
+use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::encodable::{StringEncodeError, VarBytes};
 use crate::packet::{Packet, PacketError};
 use crate::topic_name::{TopicName, TopicNameError};
+use crate::{Decodable, Encodable};
 
 /// `CONNECT` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -123,11 +123,11 @@ impl ConnectPacket {
             .as_ref()
             .map(|x| &x[..])
             .and_then(|topic| {
-                          self.payload
-                              .will_message
-                              .as_ref()
-                              .map(|msg| (topic, &msg.0))
-                      })
+                self.payload
+                    .will_message
+                    .as_ref()
+                    .map(|msg| (topic, &msg.0))
+            })
     }
 
     pub fn will_retain(&self) -> bool {
@@ -172,26 +172,31 @@ impl Packet for ConnectPacket {
     }
 
     fn encoded_variable_headers_length(&self) -> u32 {
-        self.protocol_name.encoded_length() + self.protocol_level.encoded_length() + self.flags.encoded_length() +
-            self.keep_alive.encoded_length()
+        self.protocol_name.encoded_length()
+            + self.protocol_level.encoded_length()
+            + self.flags.encoded_length()
+            + self.keep_alive.encoded_length()
     }
 
-    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(
+        reader: &mut R,
+        fixed_header: FixedHeader,
+    ) -> Result<Self, PacketError<Self>> {
         let protoname: ProtocolName = Decodable::decode(reader)?;
         let protocol_level: ProtocolLevel = Decodable::decode(reader)?;
         let flags: ConnectFlags = Decodable::decode(reader)?;
         let keep_alive: KeepAlive = Decodable::decode(reader)?;
-        let payload: ConnectPacketPayload = Decodable::decode_with(reader, Some(flags))
-            .map_err(PacketError::PayloadError)?;
+        let payload: ConnectPacketPayload =
+            Decodable::decode_with(reader, Some(flags)).map_err(PacketError::PayloadError)?;
 
         Ok(ConnectPacket {
-               fixed_header: fixed_header,
-               protocol_name: protoname,
-               protocol_level: protocol_level,
-               flags: flags,
-               keep_alive: keep_alive,
-               payload: payload,
-           })
+            fixed_header,
+            protocol_name: protoname,
+            protocol_level,
+            flags,
+            keep_alive,
+            payload,
+        })
     }
 }
 
@@ -208,7 +213,7 @@ pub struct ConnectPacketPayload {
 impl ConnectPacketPayload {
     pub fn new(client_identifier: String) -> ConnectPacketPayload {
         ConnectPacketPayload {
-            client_identifier: client_identifier,
+            client_identifier,
             will_topic: None,
             will_message: None,
             user_name: None,
@@ -243,20 +248,24 @@ impl Encodable for ConnectPacketPayload {
     }
 
     fn encoded_length(&self) -> u32 {
-        self.client_identifier.encoded_length() +
-            self.will_topic
+        self.client_identifier.encoded_length()
+            + self
+                .will_topic
                 .as_ref()
                 .map(|t| t.encoded_length())
-                .unwrap_or(0) +
-            self.will_message
+                .unwrap_or(0)
+            + self
+                .will_message
                 .as_ref()
                 .map(|t| t.encoded_length())
-                .unwrap_or(0) +
-            self.user_name
+                .unwrap_or(0)
+            + self
+                .user_name
                 .as_ref()
                 .map(|t| t.encoded_length())
-                .unwrap_or(0) +
-            self.password
+                .unwrap_or(0)
+            + self
+                .password
                 .as_ref()
                 .map(|t| t.encoded_length())
                 .unwrap_or(0)
@@ -267,9 +276,10 @@ impl Decodable for ConnectPacketPayload {
     type Err = ConnectPacketPayloadError;
     type Cond = ConnectFlags;
 
-    fn decode_with<R: Read>(reader: &mut R,
-                            rest: Option<ConnectFlags>)
-                            -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
+    fn decode_with<R: Read>(
+        reader: &mut R,
+        rest: Option<ConnectFlags>,
+    ) -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
         let mut need_will_topic = false;
         let mut need_will_message = false;
         let mut need_user_name = false;
@@ -305,12 +315,12 @@ impl Decodable for ConnectPacketPayload {
         };
 
         Ok(ConnectPacketPayload {
-               client_identifier: ident,
-               will_topic: topic,
-               will_message: msg,
-               user_name: uname,
-               password: pwd,
-           })
+            client_identifier: ident,
+            will_topic: topic,
+            will_message: msg,
+            user_name: uname,
+            password: pwd,
+        })
     }
 }
 
@@ -323,28 +333,20 @@ pub enum ConnectPacketPayloadError {
 
 impl fmt::Display for ConnectPacketPayloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &ConnectPacketPayloadError::IoError(ref err) => err.fmt(f),
-            &ConnectPacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
-            &ConnectPacketPayloadError::TopicNameError(ref err) => err.fmt(f),
+        match *self {
+            ConnectPacketPayloadError::IoError(ref err) => err.fmt(f),
+            ConnectPacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
+            ConnectPacketPayloadError::TopicNameError(ref err) => err.fmt(f),
         }
     }
 }
 
 impl Error for ConnectPacketPayloadError {
-    fn description(&self) -> &str {
-        match self {
-            &ConnectPacketPayloadError::IoError(ref err) => err.description(),
-            &ConnectPacketPayloadError::StringEncodeError(ref err) => err.description(),
-            &ConnectPacketPayloadError::TopicNameError(ref err) => err.description(),
-        }
-    }
-
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &ConnectPacketPayloadError::IoError(ref err) => Some(err),
-            &ConnectPacketPayloadError::StringEncodeError(ref err) => Some(err),
-            &ConnectPacketPayloadError::TopicNameError(ref err) => Some(err),
+        match *self {
+            ConnectPacketPayloadError::IoError(ref err) => Some(err),
+            ConnectPacketPayloadError::StringEncodeError(ref err) => Some(err),
+            ConnectPacketPayloadError::TopicNameError(ref err) => Some(err),
         }
     }
 }

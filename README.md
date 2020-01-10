@@ -2,6 +2,8 @@
 
 [![Build Status](https://img.shields.io/travis/zonyitoo/mqtt-rs.svg)](https://travis-ci.org/zonyitoo/mqtt-rs)
 [![License](https://img.shields.io/github/license/zonyitoo/mqtt-rs.svg)](https://github.com/zonyitoo/mqtt-rs)
+[![crates.io](https://img.shields.io/crates/v/mqtt-protocol.svg)](https://crates.io/crates/mqtt-protocol)
+[![dependency status](https://deps.rs/repo/github/zonyitoo/mqtt-rs/status.svg)](https://deps.rs/repo/github/zonyitoo/mqtt-rs)
 
 MQTT protocol library for Rust
 

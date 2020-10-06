@@ -61,6 +61,12 @@ impl TopicFilter {
     }
 }
 
+impl From<TopicFilter> for String {
+    fn from(topic: TopicFilter) -> String {
+        topic.0
+    }
+}
+
 impl Encodable for TopicFilter {
     type Err = TopicFilterError;
 

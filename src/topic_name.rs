@@ -55,7 +55,7 @@ impl TopicName {
 }
 
 impl From<TopicName> for String {
-    fn into(topic_name: TopicName) -> String {
+    fn from(topic_name: TopicName) -> String {
         topic_name.0
     }
 }

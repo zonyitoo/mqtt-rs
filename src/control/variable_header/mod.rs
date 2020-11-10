@@ -35,6 +35,7 @@ pub enum VariableHeaderError {
     InvalidReservedFlag,
     FromUtf8Error(FromUtf8Error),
     TopicNameError(TopicNameError),
+    InvalidProtocolVersion,
 }
 
 impl From<io::Error> for VariableHeaderError {
@@ -69,6 +70,7 @@ impl fmt::Display for VariableHeaderError {
             VariableHeaderError::InvalidReservedFlag => write!(f, "Invalid reserved flags"),
             VariableHeaderError::FromUtf8Error(ref err) => write!(f, "{}", err),
             VariableHeaderError::TopicNameError(ref err) => write!(f, "{}", err),
+            VariableHeaderError::InvalidProtocolVersion => write!(f, "Invalid protocol version"),
         }
     }
 }
@@ -81,6 +83,7 @@ impl Error for VariableHeaderError {
             VariableHeaderError::InvalidReservedFlag => None,
             VariableHeaderError::FromUtf8Error(ref err) => Some(err),
             VariableHeaderError::TopicNameError(ref err) => Some(err),
+            VariableHeaderError::InvalidProtocolVersion => None,
         }
     }
 }

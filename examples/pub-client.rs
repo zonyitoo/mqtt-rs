@@ -81,7 +81,7 @@ fn main() {
     info!("Connected!");
 
     info!("Client identifier {:?}", client_id);
-    let mut conn = ConnectPacket::new("MQTT", client_id);
+    let mut conn = ConnectPacket::new(client_id);
     conn.set_clean_session(true);
     let mut buf = Vec::new();
     conn.encode(&mut buf).unwrap();

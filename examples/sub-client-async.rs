@@ -149,7 +149,7 @@ async fn main() {
     let mut ping_stream = tokio::time::interval(ping_time);
 
     let ping_sender = async move {
-        while let Some(_) = ping_stream.next().await {
+        while ping_stream.next().await.is_some() {
             info!("Sending PINGREQ to broker");
 
             let pingreq_packet = PingreqPacket::new();

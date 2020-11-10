@@ -1,6 +1,6 @@
 //! Encodable traits
 
-use std::convert::From;
+use std::convert::{From, Infallible};
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write};
@@ -130,9 +130,9 @@ impl Decodable for Vec<u8> {
 }
 
 impl Encodable for () {
-    type Err = NoError;
+    type Err = Infallible;
 
-    fn encode<W: Write>(&self, _: &mut W) -> Result<(), NoError> {
+    fn encode<W: Write>(&self, _: &mut W) -> Result<(), Self::Err> {
         Ok(())
     }
 
@@ -142,10 +142,10 @@ impl Encodable for () {
 }
 
 impl Decodable for () {
-    type Err = NoError;
+    type Err = Infallible;
     type Cond = ();
 
-    fn decode_with<R: Read>(_: &mut R, _: Option<()>) -> Result<(), NoError> {
+    fn decode_with<R: Read>(_: &mut R, _: Option<()>) -> Result<(), Self::Err> {
         Ok(())
     }
 }
@@ -180,22 +180,6 @@ impl Decodable for VarBytes {
         }
         reader.read_exact(&mut buf)?;
         Ok(VarBytes(buf))
-    }
-}
-
-/// Error that indicates we won't have any errors
-#[derive(Debug)]
-pub struct NoError;
-
-impl fmt::Display for NoError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "No error")
-    }
-}
-
-impl Error for NoError {
-    fn description(&self) -> &str {
-        "No error"
     }
 }
 

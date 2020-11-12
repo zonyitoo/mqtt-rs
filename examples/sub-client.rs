@@ -41,7 +41,8 @@ fn main() {
                 .takes_value(true)
                 .required(true)
                 .help("MQTT server address (host:port)"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("SUBSCRIBE")
                 .short("s")
                 .long("subscribe")
@@ -49,25 +50,29 @@ fn main() {
                 .multiple(true)
                 .required(true)
                 .help("Channel filter to subscribe"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("USER_NAME")
                 .short("u")
                 .long("username")
                 .takes_value(true)
                 .help("Login user name"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("PASSWORD")
                 .short("p")
                 .long("password")
                 .takes_value(true)
                 .help("Password"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("CLIENT_ID")
                 .short("i")
                 .long("client-identifier")
                 .takes_value(true)
                 .help("Client identifier"),
-        ).get_matches();
+        )
+        .get_matches();
 
     let server_addr = matches.value_of("SERVER").unwrap();
     let client_id = matches

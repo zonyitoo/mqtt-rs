@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{Decodable, Encodable};
 use crate::control::variable_header::VariableHeaderError;
+use crate::{Decodable, Encodable};
 
 /// Packet identifier
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -27,8 +27,6 @@ impl Decodable for PacketIdentifier {
     type Cond = ();
 
     fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<PacketIdentifier, VariableHeaderError> {
-        reader.read_u16::<BigEndian>()
-              .map(PacketIdentifier)
-              .map_err(From::from)
+        reader.read_u16::<BigEndian>().map(PacketIdentifier).map_err(From::from)
     }
 }

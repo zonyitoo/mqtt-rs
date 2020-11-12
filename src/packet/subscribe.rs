@@ -30,8 +30,7 @@ impl SubscribePacket {
             packet_identifier: PacketIdentifier(pkid),
             payload: SubscribePacketPayload::new(subscribes),
         };
-        pk.fixed_header.remaining_length =
-            pk.encoded_variable_headers_length() + pk.payload.encoded_length();
+        pk.fixed_header.remaining_length = pk.encoded_variable_headers_length() + pk.payload.encoded_length();
         pk
     }
 
@@ -69,10 +68,7 @@ impl Packet for SubscribePacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(
-        reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         let payload: SubscribePacketPayload = SubscribePacketPayload::decode_with(
             reader,
@@ -116,9 +112,7 @@ impl Encodable for SubscribePacketPayload {
     }
 
     fn encoded_length(&self) -> u32 {
-        self.subscribes
-            .iter()
-            .fold(0, |b, a| b + a.0.encoded_length() + 1)
+        self.subscribes.iter().fold(0, |b, a| b + a.0.encoded_length() + 1)
     }
 }
 
@@ -165,9 +159,7 @@ impl fmt::Display for SubscribePacketPayloadError {
             SubscribePacketPayloadError::IoError(ref err) => err.fmt(f),
             SubscribePacketPayloadError::FromUtf8Error(ref err) => err.fmt(f),
             SubscribePacketPayloadError::StringEncodeError(ref err) => err.fmt(f),
-            SubscribePacketPayloadError::InvalidQualityOfService => {
-                write!(f, "Invalid quality of service")
-            }
+            SubscribePacketPayloadError::InvalidQualityOfService => write!(f, "Invalid quality of service"),
             SubscribePacketPayloadError::TopicFilterError(ref err) => err.fmt(f),
         }
     }

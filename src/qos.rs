@@ -39,5 +39,4 @@ mod test {
         let q2 = QualityOfService::Level1;
         assert_eq!(min(q1, q2), q2);
     }
-
 }

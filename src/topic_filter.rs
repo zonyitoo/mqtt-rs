@@ -85,12 +85,8 @@ impl Decodable for TopicFilter {
     type Err = TopicFilterError;
     type Cond = ();
 
-    fn decode_with<R: Read>(
-        reader: &mut R,
-        _rest: Option<()>,
-    ) -> Result<TopicFilter, TopicFilterError> {
-        let topic_filter: String =
-            Decodable::decode(reader).map_err(TopicFilterError::StringEncodeError)?;
+    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicFilter, TopicFilterError> {
+        let topic_filter: String = Decodable::decode(reader).map_err(TopicFilterError::StringEncodeError)?;
         TopicFilter::new(topic_filter)
     }
 }
@@ -155,9 +151,7 @@ impl fmt::Display for TopicFilterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TopicFilterError::StringEncodeError(ref err) => err.fmt(f),
-            TopicFilterError::InvalidTopicFilter(ref topic) => {
-                write!(f, "Invalid topic filter ({})", topic)
-            }
+            TopicFilterError::InvalidTopicFilter(ref topic) => write!(f, "Invalid topic filter ({})", topic),
         }
     }
 }
@@ -179,9 +173,7 @@ pub struct TopicFilterMatcher<'a> {
 
 impl<'a> TopicFilterMatcher<'a> {
     fn new(filter: &'a str) -> TopicFilterMatcher<'a> {
-        TopicFilterMatcher {
-            topic_filter: filter,
-        }
+        TopicFilterMatcher { topic_filter: filter }
     }
 
     /// Check if this filter can match the `topic_name`

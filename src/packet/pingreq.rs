@@ -50,10 +50,7 @@ impl Packet for PingreqPacket {
         0
     }
 
-    fn decode_packet<R: Read>(
-        _reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         Ok(PingreqPacket {
             fixed_header,
             payload: (),

@@ -1,8 +1,8 @@
 use std::convert::From;
 use std::io::{Read, Write};
 
-use crate::{Decodable, Encodable};
 use crate::control::variable_header::VariableHeaderError;
+use crate::{Decodable, Encodable};
 
 /// Protocol name in variable header
 ///

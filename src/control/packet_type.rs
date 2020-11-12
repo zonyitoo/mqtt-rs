@@ -62,10 +62,7 @@ impl PacketType {
     /// Creates a packet type
     #[inline]
     pub fn new(t: ControlType, flags: u8) -> PacketType {
-        PacketType {
-            control_type: t,
-            flags,
-        }
+        PacketType { control_type: t, flags }
     }
 
     /// Creates a packet type with default flags
@@ -157,15 +154,9 @@ pub enum PacketTypeError {
 impl fmt::Display for PacketTypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            PacketTypeError::ReservedType(t, flag) => {
-                write!(f, "Reserved type {:?} ({:#X})", t, flag)
-            }
-            PacketTypeError::InvalidFlag(t, flag) => {
-                write!(f, "Invalid flag for {:?} ({:#X})", t, flag)
-            }
-            PacketTypeError::UndefinedType(t, flag) => {
-                write!(f, "Undefined type {:?} ({:#X})", t, flag)
-            }
+            PacketTypeError::ReservedType(t, flag) => write!(f, "Reserved type {:?} ({:#X})", t, flag),
+            PacketTypeError::InvalidFlag(t, flag) => write!(f, "Invalid flag for {:?} ({:#X})", t, flag),
+            PacketTypeError::UndefinedType(t, flag) => write!(f, "Undefined type {:?} ({:#X})", t, flag),
         }
     }
 }

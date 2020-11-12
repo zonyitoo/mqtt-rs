@@ -20,9 +20,7 @@ lazy_static! {
 
 #[inline]
 fn is_invalid_topic_name(topic_name: &str) -> bool {
-    topic_name.is_empty()
-        || topic_name.as_bytes().len() > 65535
-        || !TOPIC_NAME_VALIDATOR.is_match(&topic_name)
+    topic_name.is_empty() || topic_name.as_bytes().len() > 65535 || !TOPIC_NAME_VALIDATOR.is_match(&topic_name)
 }
 
 /// Topic name
@@ -72,9 +70,7 @@ impl Encodable for TopicName {
     type Err = TopicNameError;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicNameError> {
-        (&self.0[..])
-            .encode(writer)
-            .map_err(TopicNameError::StringEncodeError)
+        (&self.0[..]).encode(writer).map_err(TopicNameError::StringEncodeError)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -86,12 +82,8 @@ impl Decodable for TopicName {
     type Err = TopicNameError;
     type Cond = ();
 
-    fn decode_with<R: Read>(
-        reader: &mut R,
-        _rest: Option<()>,
-    ) -> Result<TopicName, TopicNameError> {
-        let topic_name: String =
-            Decodable::decode(reader).map_err(TopicNameError::StringEncodeError)?;
+    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicName, TopicNameError> {
+        let topic_name: String = Decodable::decode(reader).map_err(TopicNameError::StringEncodeError)?;
         TopicName::new(topic_name)
     }
 }
@@ -107,9 +99,7 @@ impl fmt::Display for TopicNameError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TopicNameError::StringEncodeError(ref err) => err.fmt(f),
-            TopicNameError::InvalidTopicName(ref topic) => {
-                write!(f, "Invalid topic filter ({})", topic)
-            }
+            TopicNameError::InvalidTopicName(ref topic) => write!(f, "Invalid topic filter ({})", topic),
         }
     }
 }

@@ -18,10 +18,7 @@ pub struct PubcompPacket {
 impl PubcompPacket {
     pub fn new(pkid: u16) -> PubcompPacket {
         PubcompPacket {
-            fixed_header: FixedHeader::new(
-                PacketType::with_default(ControlType::PublishComplete),
-                2,
-            ),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::PublishComplete), 2),
             packet_identifier: PacketIdentifier(pkid),
             payload: (),
         }
@@ -61,10 +58,7 @@ impl Packet for PubcompPacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(
-        reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         Ok(PubcompPacket {
             fixed_header,

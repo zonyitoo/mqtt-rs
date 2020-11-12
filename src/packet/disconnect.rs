@@ -50,10 +50,7 @@ impl Packet for DisconnectPacket {
         0
     }
 
-    fn decode_packet<R: Read>(
-        _reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         Ok(DisconnectPacket {
             fixed_header,
             payload: (),

@@ -19,10 +19,7 @@ pub struct ConnackPacket {
 impl ConnackPacket {
     pub fn new(session_present: bool, ret_code: ConnectReturnCode) -> ConnackPacket {
         ConnackPacket {
-            fixed_header: FixedHeader::new(
-                PacketType::with_default(ControlType::ConnectAcknowledgement),
-                2,
-            ),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
             flags: ConnackFlags { session_present },
             ret_code,
             payload: (),
@@ -63,10 +60,7 @@ impl Packet for ConnackPacket {
         self.flags.encoded_length() + self.ret_code.encoded_length()
     }
 
-    fn decode_packet<R: Read>(
-        reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let flags: ConnackFlags = Decodable::decode(reader)?;
         let code: ConnectReturnCode = Decodable::decode(reader)?;
 

@@ -18,10 +18,7 @@ pub struct PubrelPacket {
 impl PubrelPacket {
     pub fn new(pkid: u16) -> PubrelPacket {
         PubrelPacket {
-            fixed_header: FixedHeader::new(
-                PacketType::with_default(ControlType::PublishRelease),
-                2,
-            ),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::PublishRelease), 2),
             packet_identifier: PacketIdentifier(pkid),
             payload: (),
         }
@@ -61,10 +58,7 @@ impl Packet for PubrelPacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(
-        reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         Ok(PubrelPacket {
             fixed_header,

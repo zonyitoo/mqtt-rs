@@ -37,11 +37,7 @@ pub struct PublishPacket {
 }
 
 impl PublishPacket {
-    pub fn new<P: Into<Vec<u8>>>(
-        topic_name: TopicName,
-        qos: QoSWithPacketIdentifier,
-        payload: P,
-    ) -> PublishPacket {
+    pub fn new<P: Into<Vec<u8>>>(topic_name: TopicName, qos: QoSWithPacketIdentifier, payload: P) -> PublishPacket {
         let (qos, pkid) = match qos {
             QoSWithPacketIdentifier::Level0 => (0, None),
             QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
@@ -140,18 +136,10 @@ impl Packet for PublishPacket {
     }
 
     fn encoded_variable_headers_length(&self) -> u32 {
-        self.topic_name.encoded_length()
-            + self
-                .packet_identifier
-                .as_ref()
-                .map(|x| x.encoded_length())
-                .unwrap_or(0)
+        self.topic_name.encoded_length() + self.packet_identifier.as_ref().map(|x| x.encoded_length()).unwrap_or(0)
     }
 
-    fn decode_packet<R: Read>(
-        reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let topic_name: TopicName = TopicName::decode(reader)?;
 
         let packet_identifier = if fixed_header.packet_type.flags & 0x06 != 0 {
@@ -160,11 +148,8 @@ impl Packet for PublishPacket {
             None
         };
 
-        let vhead_len = topic_name.encoded_length()
-            + packet_identifier
-                .as_ref()
-                .map(|x| x.encoded_length())
-                .unwrap_or(0);
+        let vhead_len =
+            topic_name.encoded_length() + packet_identifier.as_ref().map(|x| x.encoded_length()).unwrap_or(0);
         let payload_len = fixed_header.remaining_length - vhead_len;
 
         let payload: Vec<u8> = Decodable::decode_with(reader, Some(payload_len))?;

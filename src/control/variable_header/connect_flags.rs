@@ -15,6 +15,8 @@ pub struct ConnectFlags {
     pub will_qos: u8,
     pub will_flag: bool,
     pub clean_session: bool,
+    // We never use this, but must decode because brokers must verify it's zero per [MQTT-3.1.2-3]
+    pub reserved: bool,
 }
 
 impl ConnectFlags {
@@ -26,6 +28,7 @@ impl ConnectFlags {
             will_qos: 0,
             will_flag: false,
             clean_session: false,
+            reserved: false,
         }
     }
 }
@@ -67,6 +70,7 @@ impl Decodable for ConnectFlags {
             will_qos: (code & 0b0001_1000) >> 3,
             will_flag: (code & 0b0000_0100) != 0,
             clean_session: (code & 0b0000_0010) != 0,
+            reserved: (code & 0b0000_0001) != 0,
         })
     }
 }

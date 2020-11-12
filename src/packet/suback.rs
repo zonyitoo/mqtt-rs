@@ -62,15 +62,11 @@ pub struct SubackPacket {
 impl SubackPacket {
     pub fn new(pkid: u16, subscribes: Vec<SubscribeReturnCode>) -> SubackPacket {
         let mut pk = SubackPacket {
-            fixed_header: FixedHeader::new(
-                PacketType::with_default(ControlType::SubscribeAcknowledgement),
-                0,
-            ),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::SubscribeAcknowledgement), 0),
             packet_identifier: PacketIdentifier(pkid),
             payload: SubackPacketPayload::new(subscribes),
         };
-        pk.fixed_header.remaining_length =
-            pk.encoded_variable_headers_length() + pk.payload.encoded_length();
+        pk.fixed_header.remaining_length = pk.encoded_variable_headers_length() + pk.payload.encoded_length();
         pk
     }
 
@@ -108,10 +104,7 @@ impl Packet for SubackPacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(
-        reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         let payload: SubackPacketPayload = SubackPacketPayload::decode_with(
             reader,

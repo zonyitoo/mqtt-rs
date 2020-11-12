@@ -18,10 +18,7 @@ pub struct UnsubackPacket {
 impl UnsubackPacket {
     pub fn new(pkid: u16) -> UnsubackPacket {
         UnsubackPacket {
-            fixed_header: FixedHeader::new(
-                PacketType::with_default(ControlType::UnsubscribeAcknowledgement),
-                2,
-            ),
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::UnsubscribeAcknowledgement), 2),
             packet_identifier: PacketIdentifier(pkid),
             payload: (),
         }
@@ -61,10 +58,7 @@ impl Packet for UnsubackPacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(
-        reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         Ok(UnsubackPacket {
             fixed_header,

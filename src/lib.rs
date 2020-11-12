@@ -40,8 +40,8 @@ pub use self::topic_filter::{TopicFilter, TopicFilterRef};
 pub use self::topic_name::{TopicName, TopicNameRef};
 
 pub mod control;
-pub mod packet;
 pub mod encodable;
+pub mod packet;
 pub mod qos;
 pub mod topic_filter;
 pub mod topic_name;

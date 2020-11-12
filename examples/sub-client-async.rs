@@ -26,10 +26,7 @@ fn generate_client_id() -> String {
 #[tokio::main]
 async fn main() {
     // configure logging
-    env::set_var(
-        "RUST_LOG",
-        env::var_os("RUST_LOG").unwrap_or_else(|| "info".into()),
-    );
+    env::set_var("RUST_LOG", env::var_os("RUST_LOG").unwrap_or_else(|| "info".into()));
     env_logger::init();
 
     let matches = App::new("sub-client")
@@ -82,12 +79,7 @@ async fn main() {
     let channel_filters: Vec<(TopicFilter, QualityOfService)> = matches
         .values_of("SUBSCRIBE")
         .unwrap()
-        .map(|c| {
-            (
-                TopicFilter::new(c.to_string()).unwrap(),
-                QualityOfService::Level0,
-            )
-        })
+        .map(|c| (TopicFilter::new(c.to_string()).unwrap(), QualityOfService::Level0))
         .collect();
 
     let keep_alive = 10;

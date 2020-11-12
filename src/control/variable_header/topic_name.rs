@@ -1,9 +1,9 @@
 use std::convert::{From, Into};
 use std::io::{Read, Write};
 
-use crate::{Decodable, Encodable};
 use crate::control::variable_header::VariableHeaderError;
 use crate::topic_name::TopicName;
+use crate::{Decodable, Encodable};
 
 /// Topic name wrapper
 #[derive(Debug, Eq, PartialEq, Clone)]

@@ -28,8 +28,7 @@ impl UnsubscribePacket {
             packet_identifier: PacketIdentifier(pkid),
             payload: UnsubscribePacketPayload::new(subscribes),
         };
-        pk.fixed_header.remaining_length =
-            pk.encoded_variable_headers_length() + pk.payload.encoded_length();
+        pk.fixed_header.remaining_length = pk.encoded_variable_headers_length() + pk.payload.encoded_length();
         pk
     }
 
@@ -67,10 +66,7 @@ impl Packet for UnsubscribePacket {
         self.packet_identifier.encoded_length()
     }
 
-    fn decode_packet<R: Read>(
-        reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         let payload: UnsubscribePacketPayload = UnsubscribePacketPayload::decode_with(
             reader,
@@ -112,9 +108,7 @@ impl Encodable for UnsubscribePacketPayload {
     }
 
     fn encoded_length(&self) -> u32 {
-        self.subscribes
-            .iter()
-            .fold(0, |b, a| b + a.encoded_length())
+        self.subscribes.iter().fold(0, |b, a| b + a.encoded_length())
     }
 }
 

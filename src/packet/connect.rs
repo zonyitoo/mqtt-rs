@@ -122,12 +122,7 @@ impl ConnectPacket {
             .will_topic
             .as_ref()
             .map(|x| &x[..])
-            .and_then(|topic| {
-                self.payload
-                    .will_message
-                    .as_ref()
-                    .map(|msg| (topic, &msg.0))
-            })
+            .and_then(|topic| self.payload.will_message.as_ref().map(|msg| (topic, &msg.0)))
     }
 
     pub fn will_retain(&self) -> bool {
@@ -186,10 +181,7 @@ impl Packet for ConnectPacket {
             + self.keep_alive.encoded_length()
     }
 
-    fn decode_packet<R: Read>(
-        reader: &mut R,
-        fixed_header: FixedHeader,
-    ) -> Result<Self, PacketError<Self>> {
+    fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let protoname: ProtocolName = Decodable::decode(reader)?;
         let protocol_level: ProtocolLevel = Decodable::decode(reader)?;
         let flags: ConnectFlags = Decodable::decode(reader)?;
@@ -257,26 +249,10 @@ impl Encodable for ConnectPacketPayload {
 
     fn encoded_length(&self) -> u32 {
         self.client_identifier.encoded_length()
-            + self
-                .will_topic
-                .as_ref()
-                .map(|t| t.encoded_length())
-                .unwrap_or(0)
-            + self
-                .will_message
-                .as_ref()
-                .map(|t| t.encoded_length())
-                .unwrap_or(0)
-            + self
-                .user_name
-                .as_ref()
-                .map(|t| t.encoded_length())
-                .unwrap_or(0)
-            + self
-                .password
-                .as_ref()
-                .map(|t| t.encoded_length())
-                .unwrap_or(0)
+            + self.will_topic.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
+            + self.will_message.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
+            + self.user_name.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
+            + self.password.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
     }
 }
 

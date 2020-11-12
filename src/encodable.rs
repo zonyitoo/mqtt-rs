@@ -79,10 +79,7 @@ impl Decodable for String {
     type Err = StringEncodeError;
     type Cond = ();
 
-    fn decode_with<R: Read>(
-        reader: &mut R,
-        _rest: Option<()>,
-    ) -> Result<String, StringEncodeError> {
+    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<String, StringEncodeError> {
         let len = reader.read_u16::<BigEndian>()? as usize;
         let mut buf = Vec::with_capacity(len);
         unsafe {

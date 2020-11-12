@@ -54,10 +54,7 @@ impl Decodable for ConnectFlags {
     type Err = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(
-        reader: &mut R,
-        _rest: Option<()>,
-    ) -> Result<ConnectFlags, VariableHeaderError> {
+    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ConnectFlags, VariableHeaderError> {
         let code = reader.read_u8()?;
         if code & 1 != 0 {
             return Err(VariableHeaderError::InvalidReservedFlag);

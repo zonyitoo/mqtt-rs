@@ -148,6 +148,12 @@ impl ConnectPacket {
     pub fn clean_session(&self) -> bool {
         self.flags.clean_session
     }
+
+    /// Read back the "reserved" Connect flag bit 0. For compliant implementations this should
+    /// always be false.
+    pub fn reserved_flag(&self) -> bool {
+        self.flags.reserved
+    }
 }
 
 impl Packet for ConnectPacket {

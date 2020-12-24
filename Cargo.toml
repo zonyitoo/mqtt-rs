@@ -1,7 +1,7 @@
 [package]
 authors = ["Y. T. Chung <zonyitoo@gmail.com>"]
 name = "mqtt-protocol"
-version = "0.9.0"
+version = "0.10.0"
 license = "MIT/Apache-2.0"
 description = "MQTT Protocol Library"
 keywords = ["mqtt", "protocol"]

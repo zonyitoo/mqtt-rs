@@ -50,21 +50,14 @@ impl FixedHeader {
     /// socket.
     ///
     /// This requires mqtt-rs to be built with `feature = "async"`
-    pub async fn parse<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<(Self, Vec<u8>), FixedHeaderError> {
-        use std::slice;
-        let mut type_val = 0u8;
-        rdr.read_exact(slice::from_mut(&mut type_val)).await?;
+    pub async fn parse<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<Self, FixedHeaderError> {
+        let type_val = rdr.read_u8().await?;
 
-        let mut data: Vec<u8> = Vec::new();
-        data.push(type_val);
         let mut remaining_len = 0;
         let mut i = 0;
 
         loop {
-            let mut byte = 0u8;
-            rdr.read_exact(slice::from_mut(&mut byte)).await?;
-
-            data.push(byte);
+            let byte = rdr.read_u8().await?;
 
             remaining_len |= (u32::from(byte) & 0x7F) << (7 * i);
 
@@ -80,7 +73,7 @@ impl FixedHeader {
         }
 
         match PacketType::from_u8(type_val) {
-            Ok(packet_type) => Ok((FixedHeader::new(packet_type, remaining_len), data)),
+            Ok(packet_type) => Ok(FixedHeader::new(packet_type, remaining_len)),
             Err(PacketTypeError::UndefinedType(ty, _)) => Err(FixedHeaderError::Unrecognized(ty, remaining_len)),
             Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
             Err(err) => Err(From::from(err)),

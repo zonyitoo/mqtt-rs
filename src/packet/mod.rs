@@ -229,24 +229,30 @@ macro_rules! impl_variable_packet {
             ///
             /// This requires mqtt-rs to be built with `feature = "async"`
             pub async fn parse<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<Self, VariablePacketError> {
-                use std::io::Cursor;
                 let (fixed_header, _) = Self::peek(rdr).await?;
 
                 let mut buffer = vec![0u8; fixed_header.remaining_length as usize];
                 rdr.read_exact(&mut buffer).await?;
 
-                let mut buff_rdr = Cursor::new(buffer);
-                let output = match fixed_header.packet_type.control_type {
-                    $(
-                        ControlType::$hdr => {
-                            let pk = <$name as Packet>::decode_packet(&mut buff_rdr, fixed_header)?;
-                            VariablePacket::$name(pk)
-                        }
-                    )+
-                };
-
-                Ok(output)
+                decode_buf_with_header(buffer, fixed_header)
             }
+        }
+
+        #[cfg(feature = "async")]
+        #[inline]
+        fn decode_buf_with_header(buffer: Vec<u8>, fixed_header: FixedHeader) -> Result<VariablePacket, VariablePacketError> {
+            use std::io::Cursor;
+            let mut buff_rdr = Cursor::new(buffer);
+            let output = match fixed_header.packet_type.control_type {
+                $(
+                    ControlType::$hdr => {
+                        let pk = <$name as Packet>::decode_packet(&mut buff_rdr, fixed_header)?;
+                        VariablePacket::$name(pk)
+                    }
+                )+
+            };
+
+            Ok(output)
         }
 
         $(
@@ -412,6 +418,179 @@ impl VariablePacket {
     }
 }
 
+#[cfg(feature = "tokio-codec")]
+mod tokio_codec {
+    use super::*;
+    use crate::control::PacketType;
+    use bytes::{Buf, BufMut, BytesMut};
+    use tokio_util::codec;
+
+    pub struct MqttDecodeCodec {
+        state: DecodeState,
+    }
+
+    enum DecodeState {
+        Start,
+        Packet { buf: Vec<u8>, typ: DecodePacketType },
+    }
+
+    enum DecodePacketType {
+        Standard(PacketType),
+        Unrecognized(u8),
+        Reserved(u8),
+    }
+
+    impl MqttDecodeCodec {
+        pub const fn new() -> Self {
+            MqttDecodeCodec {
+                state: DecodeState::Start,
+            }
+        }
+    }
+
+    impl codec::Decoder for MqttDecodeCodec {
+        type Item = VariablePacket;
+        type Error = VariablePacketError;
+        fn decode(&mut self, src: &mut BytesMut) -> Result<Option<VariablePacket>, VariablePacketError> {
+            loop {
+                match &mut self.state {
+                    DecodeState::Start => {
+                        let mut slice = &src[..];
+                        let start_len = slice.len();
+                        let (typ, length) = match FixedHeader::decode(&mut slice) {
+                            Ok(header) => (DecodePacketType::Standard(header.packet_type), header.remaining_length),
+                            Err(FixedHeaderError::Unrecognized(code, length)) => {
+                                (DecodePacketType::Unrecognized(code), length)
+                            }
+                            Err(FixedHeaderError::ReservedType(code, length)) => {
+                                (DecodePacketType::Reserved(code), length)
+                            }
+                            Err(FixedHeaderError::IoError(e)) if e.kind() == io::ErrorKind::UnexpectedEof => {
+                                return Ok(None)
+                            }
+                            Err(e) => return Err(e.into()),
+                        };
+                        let header_size = start_len - slice.len();
+                        src.advance(header_size);
+                        let buf = Vec::with_capacity(length as usize);
+                        self.state = DecodeState::Packet { typ, buf };
+                        continue;
+                    }
+                    DecodeState::Packet { buf, .. } => {
+                        let remaining = buf.capacity() - buf.len();
+                        buf.put(src.take(remaining));
+                        if buf.capacity() != buf.len() {
+                            return Ok(None);
+                        }
+
+                        let state = std::mem::replace(&mut self.state, DecodeState::Start);
+                        let (typ, buf) = match state {
+                            DecodeState::Packet { typ, buf } => (typ, buf),
+                            _ => unreachable!(),
+                        };
+
+                        match typ {
+                            DecodePacketType::Standard(typ) => {
+                                let header = FixedHeader {
+                                    packet_type: typ,
+                                    remaining_length: buf.len() as u32,
+                                };
+                                return decode_buf_with_header(buf, header).map(Some);
+                            }
+                            DecodePacketType::Unrecognized(code) => {
+                                return Err(VariablePacketError::UnrecognizedPacket(code, buf))
+                            }
+                            DecodePacketType::Reserved(code) => {
+                                return Err(VariablePacketError::ReservedPacket(code, buf))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub struct MqttEncodeCodec {
+        _priv: (),
+    }
+
+    impl MqttEncodeCodec {
+        pub const fn new() -> Self {
+            MqttEncodeCodec { _priv: () }
+        }
+    }
+
+    pub trait MqttEncodablePacket {
+        type Error: From<io::Error>;
+        fn encoded_length(&self) -> u32;
+        fn encode<W: io::Write>(&self, writer: &mut W) -> Result<(), Self::Error>;
+    }
+    impl<T: Packet + fmt::Debug + 'static> MqttEncodablePacket for T {
+        type Error = PacketError<T>;
+        #[inline]
+        fn encoded_length(&self) -> u32 {
+            Encodable::encoded_length(self)
+        }
+        #[inline]
+        fn encode<W: io::Write>(&self, writer: &mut W) -> Result<(), Self::Error> {
+            Encodable::encode(self, writer)
+        }
+    }
+    impl MqttEncodablePacket for VariablePacket {
+        type Error = VariablePacketError;
+        #[inline]
+        fn encoded_length(&self) -> u32 {
+            Encodable::encoded_length(self)
+        }
+        #[inline]
+        fn encode<W: io::Write>(&self, writer: &mut W) -> Result<(), Self::Error> {
+            Encodable::encode(self, writer)
+        }
+    }
+
+    impl<T: MqttEncodablePacket> codec::Encoder<T> for MqttEncodeCodec {
+        type Error = T::Error;
+        fn encode(&mut self, packet: T, dst: &mut BytesMut) -> Result<(), T::Error> {
+            dst.reserve(packet.encoded_length() as usize);
+            packet.encode(&mut dst.writer())
+        }
+    }
+
+    pub struct MqttCodec {
+        decode: MqttDecodeCodec,
+        encode: MqttEncodeCodec,
+    }
+
+    impl MqttCodec {
+        pub const fn new() -> Self {
+            MqttCodec {
+                decode: MqttDecodeCodec::new(),
+                encode: MqttEncodeCodec::new(),
+            }
+        }
+    }
+
+    impl codec::Decoder for MqttCodec {
+        type Item = VariablePacket;
+        type Error = VariablePacketError;
+        #[inline]
+        fn decode(&mut self, src: &mut BytesMut) -> Result<Option<VariablePacket>, VariablePacketError> {
+            self.decode.decode(src)
+        }
+    }
+
+    impl<T: MqttEncodablePacket> codec::Encoder<T> for MqttCodec {
+        type Error = T::Error;
+        #[inline]
+        fn encode(&mut self, packet: T, dst: &mut BytesMut) -> Result<(), T::Error> {
+            self.encode.encode(packet, dst)
+        }
+    }
+}
+
+#[cfg(feature = "tokio-codec")]
+pub use tokio_codec::{MqttCodec, MqttDecodeCodec, MqttEncodeCodec};
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -481,5 +660,40 @@ mod test {
 
         assert_eq!(peeked_buffer, buf);
         assert_eq!(peeked_packet, var_packet);
+    }
+
+    #[cfg(feature = "tokio-codec")]
+    #[tokio::test]
+    async fn test_variable_packet_framed() {
+        use crate::{QualityOfService, TopicFilter};
+        use futures::{SinkExt, StreamExt};
+        use tokio_util::codec::{FramedRead, FramedWrite};
+
+        let conn_packet = ConnectPacket::new("1234".to_owned());
+        let sub_packet = SubscribePacket::new(1, vec![(TopicFilter::new("foo/#").unwrap(), QualityOfService::Level0)]);
+
+        // small, to make sure buffering and stuff works
+        let (reader, writer) = tokio::io::duplex(8);
+
+        let task = tokio::spawn({
+            let (conn_packet, sub_packet) = (conn_packet.clone(), sub_packet.clone());
+            async move {
+                let mut sink = FramedWrite::new(writer, MqttEncodeCodec::new());
+                sink.send(conn_packet).await.unwrap();
+                sink.send(sub_packet).await.unwrap();
+                SinkExt::<VariablePacket>::flush(&mut sink).await.unwrap();
+            }
+        });
+
+        let mut stream = FramedRead::new(reader, MqttDecodeCodec::new());
+        let decoded_conn = stream.next().await.unwrap().unwrap();
+        let decoded_sub = stream.next().await.unwrap().unwrap();
+
+        task.await.unwrap();
+
+        assert!(stream.next().await.is_none());
+
+        assert_eq!(decoded_conn, conn_packet.into());
+        assert_eq!(decoded_sub, sub_packet.into());
     }
 }

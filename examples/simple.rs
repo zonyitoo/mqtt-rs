@@ -1,5 +1,3 @@
-extern crate mqtt;
-
 use std::io::Cursor;
 
 use mqtt::packet::{PublishPacket, QoSWithPacketIdentifier, VariablePacket};

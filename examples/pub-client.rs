@@ -1,9 +1,5 @@
-extern crate mqtt;
 #[macro_use]
 extern crate log;
-extern crate clap;
-extern crate env_logger;
-extern crate uuid;
 
 use std::env;
 use std::io::{self, Write};

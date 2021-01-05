@@ -10,9 +10,8 @@ use log::{error, info, trace};
 use uuid::Uuid;
 
 use futures::join;
-use futures::prelude::*;
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-use tokio::prelude::*;
 
 use mqtt::control::variable_header::ConnectReturnCode;
 use mqtt::packet::*;
@@ -141,7 +140,9 @@ async fn main() {
     let mut ping_stream = tokio::time::interval(ping_time);
 
     let ping_sender = async move {
-        while ping_stream.next().await.is_some() {
+        loop {
+            ping_stream.tick().await;
+
             info!("Sending PINGREQ to broker");
 
             let pingreq_packet = PingreqPacket::new();

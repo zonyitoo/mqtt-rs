@@ -1,11 +1,11 @@
 //! CONNACK
 
-use std::io::{Read, Write};
+use std::io::Read;
 
 use crate::control::variable_header::{ConnackFlags, ConnectReturnCode};
 use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::packet::{Packet, PacketError};
-use crate::{Decodable, Encodable};
+use crate::Decodable;
 
 /// `CONNACK` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -15,6 +15,8 @@ pub struct ConnackPacket {
     ret_code: ConnectReturnCode,
     payload: (),
 }
+
+encodable_packet!(ConnackPacket(flags, ret_code));
 
 impl ConnackPacket {
     pub fn new(session_present: bool, ret_code: ConnectReturnCode) -> ConnackPacket {
@@ -38,26 +40,12 @@ impl ConnackPacket {
 impl Packet for ConnackPacket {
     type Payload = ();
 
-    fn fixed_header(&self) -> &FixedHeader {
-        &self.fixed_header
-    }
-
     fn payload(self) -> Self::Payload {
         self.payload
     }
 
     fn payload_ref(&self) -> &Self::Payload {
         &self.payload
-    }
-
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
-        self.flags.encode(writer)?;
-        self.ret_code.encode(writer)?;
-        Ok(())
-    }
-
-    fn encoded_variable_headers_length(&self) -> u32 {
-        self.flags.encoded_length() + self.ret_code.encoded_length()
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {

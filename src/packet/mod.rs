@@ -1,20 +1,45 @@
 //! Specific packets
 
-use std::convert::From;
-use std::error::Error;
 use std::fmt;
 use std::io::{self, Read, Write};
 
-#[cfg(feature = "async")]
+#[cfg(feature = "tokio")]
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use crate::control::fixed_header::FixedHeaderError;
 use crate::control::variable_header::VariableHeaderError;
 use crate::control::ControlType;
 use crate::control::FixedHeader;
-use crate::encodable::StringEncodeError;
-use crate::topic_name::TopicNameError;
+use crate::topic_name::{TopicNameDecodeError, TopicNameError};
 use crate::{Decodable, Encodable};
+
+macro_rules! encodable_packet {
+    ($typ:ident($($field:ident),* $(,)?)) => {
+        impl $crate::encodable::Encodable for $typ {
+            fn encode<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+                $crate::encodable::Encodable::encode(&self.fixed_header, writer)?;
+                $($crate::encodable::Encodable::encode(&self.$field, writer)?;)*
+                $crate::encodable::Encodable::encode(&self.payload, writer)?;
+                Ok(())
+            }
+
+            fn encoded_length(&self) -> u32 {
+                $crate::encodable::Encodable::encoded_length(&self.fixed_header)
+            }
+        }
+
+        impl $typ {
+            fn encoded_length_noheader(&self) -> u32 {
+                $($crate::encodable::Encodable::encoded_length(&self.$field) +)*
+                    $crate::encodable::Encodable::encoded_length(&self.payload)
+            }
+            #[allow(unused)]
+            fn fix_header_remaining_len(&mut self) {
+                self.fixed_header.remaining_length = self.encoded_length_noheader()
+            }
+        }
+    };
+}
 
 pub use self::connack::ConnackPacket;
 pub use self::connect::ConnectPacket;
@@ -49,46 +74,23 @@ pub mod unsuback;
 pub mod unsubscribe;
 
 /// Methods for encoding and decoding a packet
-pub trait Packet: Sized {
+pub trait Packet: Encodable + fmt::Debug + Sized + 'static {
     type Payload: Encodable + Decodable;
 
-    /// Get a `FixedHeader` of this packet
-    fn fixed_header(&self) -> &FixedHeader;
     /// Get the payload
     fn payload(self) -> Self::Payload;
     /// Get a borrow of payload
     fn payload_ref(&self) -> &Self::Payload;
 
-    /// Encode variable headers to writer
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>>;
-    /// Length of bytes after encoding variable header
-    fn encoded_variable_headers_length(&self) -> u32;
-    /// Deocde packet with a `FixedHeader`
+    /// Deocde packet given a `FixedHeader`
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>>;
 }
 
-impl<T: Packet + fmt::Debug + 'static> Encodable for T {
-    type Err = PacketError<T>;
+impl<T: Packet> Decodable for T {
+    type Error = PacketError<T>;
+    type Cond = Option<FixedHeader>;
 
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<T>> {
-        self.fixed_header().encode(writer)?;
-        self.encode_variable_headers(writer)?;
-
-        self.payload_ref().encode(writer).map_err(PacketError::PayloadError)
-    }
-
-    fn encoded_length(&self) -> u32 {
-        self.fixed_header().encoded_length()
-            + self.encoded_variable_headers_length()
-            + self.payload_ref().encoded_length()
-    }
-}
-
-impl<T: Packet + fmt::Debug + 'static> Decodable for T {
-    type Err = PacketError<T>;
-    type Cond = FixedHeader;
-
-    fn decode_with<R: Read>(reader: &mut R, fixed_header: Option<FixedHeader>) -> Result<Self, PacketError<Self>> {
+    fn decode_with<R: Read>(reader: &mut R, fixed_header: Self::Cond) -> Result<Self, Self::Error> {
         let fixed_header: FixedHeader = if let Some(hdr) = fixed_header {
             hdr
         } else {
@@ -100,72 +102,22 @@ impl<T: Packet + fmt::Debug + 'static> Decodable for T {
 }
 
 /// Parsing errors for packet
-#[derive(Debug)]
-pub enum PacketError<T: Packet + 'static> {
-    FixedHeaderError(FixedHeaderError),
-    VariableHeaderError(VariableHeaderError),
-    PayloadError(<<T as Packet>::Payload as Encodable>::Err),
-    MalformedPacket(String),
-    StringEncodeError(StringEncodeError),
-    IoError(io::Error),
-    TopicNameError(TopicNameError),
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
+pub enum PacketError<P: Packet> {
+    FixedHeaderError(#[from] FixedHeaderError),
+    VariableHeaderError(#[from] VariableHeaderError),
+    PayloadError(<<P as Packet>::Payload as Decodable>::Error),
+    IoError(#[from] io::Error),
+    TopicNameError(#[from] TopicNameError),
 }
 
-impl<T: Packet> fmt::Display for PacketError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            PacketError::FixedHeaderError(ref err) => err.fmt(f),
-            PacketError::VariableHeaderError(ref err) => err.fmt(f),
-            PacketError::PayloadError(ref err) => err.fmt(f),
-            PacketError::MalformedPacket(ref err) => err.fmt(f),
-            PacketError::StringEncodeError(ref err) => err.fmt(f),
-            PacketError::IoError(ref err) => err.fmt(f),
-            PacketError::TopicNameError(ref err) => err.fmt(f),
+impl<P: Packet> From<TopicNameDecodeError> for PacketError<P> {
+    fn from(e: TopicNameDecodeError) -> Self {
+        match e {
+            TopicNameDecodeError::IoError(e) => e.into(),
+            TopicNameDecodeError::InvalidTopicName(e) => e.into(),
         }
-    }
-}
-
-impl<T: Packet + fmt::Debug> Error for PacketError<T> {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match *self {
-            PacketError::FixedHeaderError(ref err) => Some(err),
-            PacketError::VariableHeaderError(ref err) => Some(err),
-            PacketError::PayloadError(ref err) => Some(err),
-            PacketError::MalformedPacket(..) => None,
-            PacketError::StringEncodeError(ref err) => Some(err),
-            PacketError::IoError(ref err) => Some(err),
-            PacketError::TopicNameError(ref err) => Some(err),
-        }
-    }
-}
-
-impl<T: Packet> From<FixedHeaderError> for PacketError<T> {
-    fn from(err: FixedHeaderError) -> PacketError<T> {
-        PacketError::FixedHeaderError(err)
-    }
-}
-
-impl<T: Packet> From<VariableHeaderError> for PacketError<T> {
-    fn from(err: VariableHeaderError) -> PacketError<T> {
-        PacketError::VariableHeaderError(err)
-    }
-}
-
-impl<T: Packet> From<io::Error> for PacketError<T> {
-    fn from(err: io::Error) -> PacketError<T> {
-        PacketError::IoError(err)
-    }
-}
-
-impl<T: Packet> From<StringEncodeError> for PacketError<T> {
-    fn from(err: StringEncodeError) -> PacketError<T> {
-        PacketError::StringEncodeError(err)
-    }
-}
-
-impl<T: Packet> From<TopicNameError> for PacketError<T> {
-    fn from(err: TopicNameError) -> PacketError<T> {
-        PacketError::TopicNameError(err)
     }
 }
 
@@ -179,11 +131,11 @@ macro_rules! impl_variable_packet {
             )+
         }
 
-        #[cfg(feature = "async")]
+        #[cfg(feature = "tokio")]
         impl VariablePacket {
             /// Asynchronously parse a packet from a `tokio::io::AsyncRead`
             ///
-            /// This requires mqtt-rs to be built with `feature = "async"`
+            /// This requires mqtt-rs to be built with `feature = "tokio"`
             pub async fn parse<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<Self, VariablePacketError> {
                 use std::io::Cursor;
                 let fixed_header = FixedHeader::parse(rdr).await?;
@@ -216,12 +168,10 @@ macro_rules! impl_variable_packet {
         )+
 
         impl Encodable for VariablePacket {
-            type Err = VariablePacketError;
-
-            fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariablePacketError> {
+            fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
                 match *self {
                     $(
-                        VariablePacket::$name(ref pk) => pk.encode(writer).map_err(From::from),
+                        VariablePacket::$name(ref pk) => pk.encode(writer),
                     )+
                 }
             }
@@ -236,11 +186,11 @@ macro_rules! impl_variable_packet {
         }
 
         impl Decodable for VariablePacket {
-            type Err = VariablePacketError;
-            type Cond = FixedHeader;
+            type Error = VariablePacketError;
+            type Cond = Option<FixedHeader>;
 
-            fn decode_with<R: Read>(reader: &mut R, fixed_header: Option<FixedHeader>)
-                    -> Result<VariablePacket, Self::Err> {
+            fn decode_with<R: Read>(reader: &mut R, fixed_header: Self::Cond)
+                    -> Result<VariablePacket, Self::Error> {
                 let fixed_header = match fixed_header {
                     Some(fh) => fh,
                     None => {
@@ -269,65 +219,20 @@ macro_rules! impl_variable_packet {
         }
 
         /// Parsing errors for variable packet
-        #[derive(Debug)]
+        #[derive(Debug, thiserror::Error)]
         pub enum VariablePacketError {
-            FixedHeaderError(FixedHeaderError),
+            #[error(transparent)]
+            FixedHeaderError(#[from] FixedHeaderError),
+            #[error("unrecognized packet type ({0}), [u8, ..{}]", .1.len())]
             UnrecognizedPacket(u8, Vec<u8>),
+            #[error("reserved packet type ({0}), [u8, ..{}]", .1.len())]
             ReservedPacket(u8, Vec<u8>),
-            IoError(io::Error),
+            #[error(transparent)]
+            IoError(#[from] io::Error),
             $(
-                $errname(PacketError<$name>),
+                #[error(transparent)]
+                $errname(#[from] PacketError<$name>),
             )+
-        }
-
-        impl From<FixedHeaderError> for VariablePacketError {
-            fn from(err: FixedHeaderError) -> VariablePacketError {
-                VariablePacketError::FixedHeaderError(err)
-            }
-        }
-
-        impl From<io::Error> for VariablePacketError {
-            fn from(err: io::Error) -> VariablePacketError {
-                VariablePacketError::IoError(err)
-            }
-        }
-
-        $(
-            impl From<PacketError<$name>> for VariablePacketError {
-                fn from(err: PacketError<$name>) -> VariablePacketError {
-                    VariablePacketError::$errname(err)
-                }
-            }
-        )+
-
-        impl fmt::Display for VariablePacketError {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                match *self {
-                    VariablePacketError::FixedHeaderError(ref err) => err.fmt(f),
-                    VariablePacketError::UnrecognizedPacket(ref code, ref v) =>
-                        write!(f, "Unrecognized type ({}), [u8, ..{}]", code, v.len()),
-                    VariablePacketError::ReservedPacket(ref code, ref v) =>
-                        write!(f, "Reserved type ({}), [u8, ..{}]", code, v.len()),
-                    VariablePacketError::IoError(ref err) => err.fmt(f),
-                    $(
-                        VariablePacketError::$errname(ref err) => err.fmt(f),
-                    )+
-                }
-            }
-        }
-
-        impl Error for VariablePacketError {
-            fn source(&self) -> Option<&(dyn Error + 'static)> {
-                match *self {
-                    VariablePacketError::FixedHeaderError(ref err) => Some(err),
-                    VariablePacketError::UnrecognizedPacket(..) => None,
-                    VariablePacketError::ReservedPacket(..) => None,
-                    VariablePacketError::IoError(ref err) => Some(err),
-                    $(
-                        VariablePacketError::$errname(ref err) => Some(err),
-                    )+
-                }
-            }
         }
     }
 }
@@ -370,7 +275,7 @@ mod tokio_codec {
     use bytes::{Buf, BufMut, BytesMut};
     use tokio_util::codec;
 
-    pub struct MqttDecodeCodec {
+    pub struct MqttDecoder {
         state: DecodeState,
     }
 
@@ -386,15 +291,15 @@ mod tokio_codec {
         Reserved(u8),
     }
 
-    impl MqttDecodeCodec {
+    impl MqttDecoder {
         pub const fn new() -> Self {
-            MqttDecodeCodec {
+            MqttDecoder {
                 state: DecodeState::Start,
             }
         }
     }
 
-    impl codec::Decoder for MqttDecodeCodec {
+    impl codec::Decoder for MqttDecoder {
         type Item = VariablePacket;
         type Error = VariablePacketError;
         fn decode(&mut self, src: &mut BytesMut) -> Result<Option<VariablePacket>, VariablePacketError> {
@@ -455,62 +360,34 @@ mod tokio_codec {
         }
     }
 
-    pub struct MqttEncodeCodec {
+    pub struct MqttEncoder {
         _priv: (),
     }
 
-    impl MqttEncodeCodec {
+    impl MqttEncoder {
         pub const fn new() -> Self {
-            MqttEncodeCodec { _priv: () }
+            MqttEncoder { _priv: () }
         }
     }
 
-    pub trait MqttEncodablePacket {
-        type Error: From<io::Error>;
-        fn encoded_length(&self) -> u32;
-        fn encode<W: io::Write>(&self, writer: &mut W) -> Result<(), Self::Error>;
-    }
-    impl<T: Packet + fmt::Debug + 'static> MqttEncodablePacket for T {
-        type Error = PacketError<T>;
-        #[inline]
-        fn encoded_length(&self) -> u32 {
-            Encodable::encoded_length(self)
-        }
-        #[inline]
-        fn encode<W: io::Write>(&self, writer: &mut W) -> Result<(), Self::Error> {
-            Encodable::encode(self, writer)
-        }
-    }
-    impl MqttEncodablePacket for VariablePacket {
-        type Error = VariablePacketError;
-        #[inline]
-        fn encoded_length(&self) -> u32 {
-            Encodable::encoded_length(self)
-        }
-        #[inline]
-        fn encode<W: io::Write>(&self, writer: &mut W) -> Result<(), Self::Error> {
-            Encodable::encode(self, writer)
-        }
-    }
-
-    impl<T: MqttEncodablePacket> codec::Encoder<T> for MqttEncodeCodec {
-        type Error = T::Error;
-        fn encode(&mut self, packet: T, dst: &mut BytesMut) -> Result<(), T::Error> {
+    impl<T: Encodable> codec::Encoder<T> for MqttEncoder {
+        type Error = io::Error;
+        fn encode(&mut self, packet: T, dst: &mut BytesMut) -> Result<(), io::Error> {
             dst.reserve(packet.encoded_length() as usize);
             packet.encode(&mut dst.writer())
         }
     }
 
     pub struct MqttCodec {
-        decode: MqttDecodeCodec,
-        encode: MqttEncodeCodec,
+        decode: MqttDecoder,
+        encode: MqttEncoder,
     }
 
     impl MqttCodec {
         pub const fn new() -> Self {
             MqttCodec {
-                decode: MqttDecodeCodec::new(),
-                encode: MqttEncodeCodec::new(),
+                decode: MqttDecoder::new(),
+                encode: MqttEncoder::new(),
             }
         }
     }
@@ -524,17 +401,17 @@ mod tokio_codec {
         }
     }
 
-    impl<T: MqttEncodablePacket> codec::Encoder<T> for MqttCodec {
-        type Error = T::Error;
+    impl<T: Encodable> codec::Encoder<T> for MqttCodec {
+        type Error = io::Error;
         #[inline]
-        fn encode(&mut self, packet: T, dst: &mut BytesMut) -> Result<(), T::Error> {
+        fn encode(&mut self, packet: T, dst: &mut BytesMut) -> Result<(), io::Error> {
             self.encode.encode(packet, dst)
         }
     }
 }
 
 #[cfg(feature = "tokio-codec")]
-pub use tokio_codec::{MqttCodec, MqttDecodeCodec, MqttEncodeCodec};
+pub use tokio_codec::{MqttCodec, MqttDecoder, MqttEncoder};
 
 #[cfg(test)]
 mod test {
@@ -562,7 +439,7 @@ mod test {
         assert_eq!(var_packet, decoded_packet);
     }
 
-    #[cfg(feature = "async")]
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn test_variable_packet_async_parse() {
         let packet = ConnectPacket::new("1234".to_owned());

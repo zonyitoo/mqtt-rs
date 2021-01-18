@@ -1,15 +1,11 @@
 //! Topic name
 
-use std::convert::Into;
-use std::error::Error;
-use std::fmt;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::ops::Deref;
 
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::encodable::StringEncodeError;
 use crate::{Decodable, Encodable};
 
 const TOPIC_NAME_VALIDATE_REGEX: &str = r"^[^#+]+$";
@@ -35,7 +31,7 @@ impl TopicName {
     pub fn new<S: Into<String>>(topic_name: S) -> Result<TopicName, TopicNameError> {
         let topic_name = topic_name.into();
         if is_invalid_topic_name(&topic_name) {
-            Err(TopicNameError::InvalidTopicName(topic_name))
+            Err(TopicNameError(topic_name))
         } else {
             Ok(TopicName(topic_name))
         }
@@ -67,10 +63,8 @@ impl Deref for TopicName {
 }
 
 impl Encodable for TopicName {
-    type Err = TopicNameError;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicNameError> {
-        (&self.0[..]).encode(writer).map_err(TopicNameError::StringEncodeError)
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        (&self.0[..]).encode(writer)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -79,42 +73,30 @@ impl Encodable for TopicName {
 }
 
 impl Decodable for TopicName {
-    type Err = TopicNameError;
+    type Error = TopicNameDecodeError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicName, TopicNameError> {
-        let topic_name: String = Decodable::decode(reader).map_err(TopicNameError::StringEncodeError)?;
-        TopicName::new(topic_name)
+    fn decode_with<R: Read>(reader: &mut R, _rest: ()) -> Result<TopicName, TopicNameDecodeError> {
+        let topic_name = String::decode(reader)?;
+        Ok(TopicName::new(topic_name)?)
     }
 }
+
+#[derive(Debug, thiserror::Error)]
+#[error("invalid topic filter ({0})")]
+pub struct TopicNameError(pub String);
 
 /// Errors while parsing topic names
-#[derive(Debug)]
-pub enum TopicNameError {
-    StringEncodeError(StringEncodeError),
-    InvalidTopicName(String),
-}
-
-impl fmt::Display for TopicNameError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TopicNameError::StringEncodeError(ref err) => err.fmt(f),
-            TopicNameError::InvalidTopicName(ref topic) => write!(f, "Invalid topic filter ({})", topic),
-        }
-    }
-}
-
-impl Error for TopicNameError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match *self {
-            TopicNameError::StringEncodeError(ref err) => Some(err),
-            TopicNameError::InvalidTopicName(..) => None,
-        }
-    }
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
+pub enum TopicNameDecodeError {
+    IoError(#[from] io::Error),
+    InvalidTopicName(#[from] TopicNameError),
 }
 
 /// Reference to a topic name
 #[derive(Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[repr(transparent)]
 pub struct TopicNameRef(str);
 
 impl TopicNameRef {
@@ -123,7 +105,7 @@ impl TopicNameRef {
     pub fn new<S: AsRef<str> + ?Sized>(topic_name: &S) -> Result<&TopicNameRef, TopicNameError> {
         let topic_name = topic_name.as_ref();
         if is_invalid_topic_name(&topic_name) {
-            Err(TopicNameError::InvalidTopicName(topic_name.to_owned()))
+            Err(TopicNameError(topic_name.to_owned()))
         } else {
             Ok(unsafe { &*(topic_name as *const str as *const TopicNameRef) })
         }

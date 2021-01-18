@@ -1,7 +1,6 @@
 //! Protocol level header
 
-use std::convert::From;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
@@ -22,10 +21,8 @@ pub enum ProtocolLevel {
 }
 
 impl Encodable for ProtocolLevel {
-    type Err = VariableHeaderError;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
-        writer.write_u8(*self as u8).map_err(From::from)
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        writer.write_u8(*self as u8)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -34,10 +31,10 @@ impl Encodable for ProtocolLevel {
 }
 
 impl Decodable for ProtocolLevel {
-    type Err = VariableHeaderError;
+    type Error = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ProtocolLevel, VariableHeaderError> {
+    fn decode_with<R: Read>(reader: &mut R, _rest: ()) -> Result<ProtocolLevel, VariableHeaderError> {
         reader
             .read_u8()
             .map_err(From::from)

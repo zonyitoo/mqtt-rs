@@ -1,11 +1,11 @@
 //! PUBREC
 
-use std::io::{Read, Write};
+use std::io::Read;
 
 use crate::control::variable_header::PacketIdentifier;
 use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::packet::{Packet, PacketError};
-use crate::{Decodable, Encodable};
+use crate::Decodable;
 
 /// `PUBREC` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -14,6 +14,8 @@ pub struct PubrecPacket {
     packet_identifier: PacketIdentifier,
     payload: (),
 }
+
+encodable_packet!(PubrecPacket(packet_identifier));
 
 impl PubrecPacket {
     pub fn new(pkid: u16) -> PubrecPacket {
@@ -36,26 +38,12 @@ impl PubrecPacket {
 impl Packet for PubrecPacket {
     type Payload = ();
 
-    fn fixed_header(&self) -> &FixedHeader {
-        &self.fixed_header
-    }
-
     fn payload(self) -> Self::Payload {
         self.payload
     }
 
     fn payload_ref(&self) -> &Self::Payload {
         &self.payload
-    }
-
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
-        self.packet_identifier.encode(writer)?;
-
-        Ok(())
-    }
-
-    fn encoded_variable_headers_length(&self) -> u32 {
-        self.packet_identifier.encoded_length()
     }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {

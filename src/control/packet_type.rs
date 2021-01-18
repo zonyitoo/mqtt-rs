@@ -1,8 +1,5 @@
 //! Packet types
 
-use std::error::Error;
-use std::fmt;
-
 /// Packet type
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct PacketType {
@@ -144,24 +141,15 @@ impl PacketType {
 }
 
 /// Parsing packet type errors
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum PacketTypeError {
+    #[error("reserved type {0:?} ({1:#X})")]
     ReservedType(u8, u8),
+    #[error("undefined type {0:?} ({1:#X})")]
     UndefinedType(u8, u8),
+    #[error("invalid flag for {0:?} ({1:#X})")]
     InvalidFlag(ControlType, u8),
 }
-
-impl fmt::Display for PacketTypeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            PacketTypeError::ReservedType(t, flag) => write!(f, "Reserved type {:?} ({:#X})", t, flag),
-            PacketTypeError::InvalidFlag(t, flag) => write!(f, "Invalid flag for {:?} ({:#X})", t, flag),
-            PacketTypeError::UndefinedType(t, flag) => write!(f, "Undefined type {:?} ({:#X})", t, flag),
-        }
-    }
-}
-
-impl Error for PacketTypeError {}
 
 #[rustfmt::skip]
 mod value {

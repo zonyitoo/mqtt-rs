@@ -1,5 +1,4 @@
-use std::convert::From;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
@@ -19,11 +18,9 @@ impl ConnackFlags {
 }
 
 impl Encodable for ConnackFlags {
-    type Err = VariableHeaderError;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
         let code = self.session_present as u8;
-        writer.write_u8(code).map_err(From::from)
+        writer.write_u8(code)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -32,10 +29,10 @@ impl Encodable for ConnackFlags {
 }
 
 impl Decodable for ConnackFlags {
-    type Err = VariableHeaderError;
+    type Error = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ConnackFlags, VariableHeaderError> {
+    fn decode_with<R: Read>(reader: &mut R, _rest: ()) -> Result<ConnackFlags, VariableHeaderError> {
         let code = reader.read_u8()?;
         if code & !1 != 0 {
             return Err(VariableHeaderError::InvalidReservedFlag);

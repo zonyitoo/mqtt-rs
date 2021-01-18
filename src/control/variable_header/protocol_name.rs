@@ -1,5 +1,4 @@
-use std::convert::From;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 
 use crate::control::variable_header::VariableHeaderError;
 use crate::{Decodable, Encodable};
@@ -23,10 +22,8 @@ use crate::{Decodable, Encodable};
 pub struct ProtocolName(pub String);
 
 impl Encodable for ProtocolName {
-    type Err = VariableHeaderError;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
-        (&self.0[..]).encode(writer).map_err(From::from)
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        (&self.0[..]).encode(writer)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -35,10 +32,10 @@ impl Encodable for ProtocolName {
 }
 
 impl Decodable for ProtocolName {
-    type Err = VariableHeaderError;
+    type Error = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ProtocolName, VariableHeaderError> {
+    fn decode_with<R: Read>(reader: &mut R, _rest: ()) -> Result<ProtocolName, VariableHeaderError> {
         Ok(ProtocolName(Decodable::decode(reader)?))
     }
 }

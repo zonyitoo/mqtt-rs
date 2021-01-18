@@ -1,5 +1,4 @@
-use std::convert::From;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
@@ -34,10 +33,8 @@ impl ConnectFlags {
 }
 
 impl Encodable for ConnectFlags {
-    type Err = VariableHeaderError;
-
     #[rustfmt::skip]
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
         let code = ((self.user_name as u8) << 7)
             | ((self.password as u8) << 6)
             | ((self.will_retain as u8) << 5)
@@ -45,7 +42,7 @@ impl Encodable for ConnectFlags {
             | ((self.will_flag as u8) << 2)
             | ((self.clean_session as u8) << 1);
 
-        writer.write_u8(code).map_err(From::from)
+        writer.write_u8(code)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -54,10 +51,10 @@ impl Encodable for ConnectFlags {
 }
 
 impl Decodable for ConnectFlags {
-    type Err = VariableHeaderError;
+    type Error = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ConnectFlags, VariableHeaderError> {
+    fn decode_with<R: Read>(reader: &mut R, _rest: ()) -> Result<ConnectFlags, VariableHeaderError> {
         let code = reader.read_u8()?;
         if code & 1 != 0 {
             return Err(VariableHeaderError::InvalidReservedFlag);

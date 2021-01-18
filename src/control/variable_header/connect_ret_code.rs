@@ -1,5 +1,4 @@
-use std::convert::From;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
@@ -54,10 +53,8 @@ impl ConnectReturnCode {
 }
 
 impl Encodable for ConnectReturnCode {
-    type Err = VariableHeaderError;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
-        writer.write_u8(self.to_u8()).map_err(From::from)
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        writer.write_u8(self.to_u8())
     }
 
     fn encoded_length(&self) -> u32 {
@@ -66,10 +63,10 @@ impl Encodable for ConnectReturnCode {
 }
 
 impl Decodable for ConnectReturnCode {
-    type Err = VariableHeaderError;
+    type Error = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<ConnectReturnCode, VariableHeaderError> {
+    fn decode_with<R: Read>(reader: &mut R, _rest: ()) -> Result<ConnectReturnCode, VariableHeaderError> {
         reader.read_u8().map(ConnectReturnCode::from_u8).map_err(From::from)
     }
 }

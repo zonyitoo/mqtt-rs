@@ -1,5 +1,4 @@
-use std::convert::{From, Into};
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 
 use crate::control::variable_header::VariableHeaderError;
 use crate::topic_name::TopicName;
@@ -25,10 +24,8 @@ impl Into<TopicName> for TopicNameHeader {
 }
 
 impl Encodable for TopicNameHeader {
-    type Err = VariableHeaderError;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), VariableHeaderError> {
-        (&self.0[..]).encode(writer).map_err(From::from)
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        (&self.0[..]).encode(writer)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -37,10 +34,10 @@ impl Encodable for TopicNameHeader {
 }
 
 impl Decodable for TopicNameHeader {
-    type Err = VariableHeaderError;
+    type Error = VariableHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicNameHeader, VariableHeaderError> {
+    fn decode_with<R: Read>(reader: &mut R, _rest: ()) -> Result<TopicNameHeader, VariableHeaderError> {
         TopicNameHeader::new(Decodable::decode(reader)?)
     }
 }

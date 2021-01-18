@@ -1,9 +1,7 @@
 //! SUBACK
 
 use std::cmp::Ordering;
-use std::convert::From;
-use std::error::Error;
-use std::fmt;
+
 use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
@@ -59,6 +57,8 @@ pub struct SubackPacket {
     payload: SubackPacketPayload,
 }
 
+encodable_packet!(SubackPacket(packet_identifier));
+
 impl SubackPacket {
     pub fn new(pkid: u16, subscribes: Vec<SubscribeReturnCode>) -> SubackPacket {
         let mut pk = SubackPacket {
@@ -66,7 +66,7 @@ impl SubackPacket {
             packet_identifier: PacketIdentifier(pkid),
             payload: SubackPacketPayload::new(subscribes),
         };
-        pk.fixed_header.remaining_length = pk.encoded_variable_headers_length() + pk.payload.encoded_length();
+        pk.fix_header_remaining_len();
         pk
     }
 
@@ -82,10 +82,6 @@ impl SubackPacket {
 impl Packet for SubackPacket {
     type Payload = SubackPacketPayload;
 
-    fn fixed_header(&self) -> &FixedHeader {
-        &self.fixed_header
-    }
-
     fn payload(self) -> Self::Payload {
         self.payload
     }
@@ -94,21 +90,11 @@ impl Packet for SubackPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
-        self.packet_identifier.encode(writer)?;
-
-        Ok(())
-    }
-
-    fn encoded_variable_headers_length(&self) -> u32 {
-        self.packet_identifier.encoded_length()
-    }
-
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
-        let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
+        let packet_identifier = PacketIdentifier::decode(reader)?;
         let payload: SubackPacketPayload = SubackPacketPayload::decode_with(
             reader,
-            Some(fixed_header.remaining_length - packet_identifier.encoded_length()),
+            fixed_header.remaining_length - packet_identifier.encoded_length(),
         )
         .map_err(PacketError::PayloadError)?;
         Ok(SubackPacket {
@@ -135,9 +121,7 @@ impl SubackPacketPayload {
 }
 
 impl Encodable for SubackPacketPayload {
-    type Err = SubackPacketPayloadError;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), Self::Err> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
         for code in self.subscribes.iter() {
             writer.write_u8(*code as u8)?;
         }
@@ -151,14 +135,10 @@ impl Encodable for SubackPacketPayload {
 }
 
 impl Decodable for SubackPacketPayload {
-    type Err = SubackPacketPayloadError;
+    type Error = SubackPacketPayloadError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(
-        reader: &mut R,
-        payload_len: Option<u32>,
-    ) -> Result<SubackPacketPayload, SubackPacketPayloadError> {
-        let payload_len = payload_len.expect("Must provide payload length");
+    fn decode_with<R: Read>(reader: &mut R, payload_len: u32) -> Result<SubackPacketPayload, SubackPacketPayloadError> {
         let mut subs = Vec::new();
 
         for _ in 0..payload_len {
@@ -177,34 +157,10 @@ impl Decodable for SubackPacketPayload {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum SubackPacketPayloadError {
-    IoError(io::Error),
+    #[error(transparent)]
+    IoError(#[from] io::Error),
+    #[error("invalid subscribe return code {0}")]
     InvalidSubscribeReturnCode(u8),
-}
-
-impl fmt::Display for SubackPacketPayloadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            SubackPacketPayloadError::IoError(ref err) => err.fmt(f),
-            SubackPacketPayloadError::InvalidSubscribeReturnCode(code) => {
-                write!(f, "Invalid subscribe return code {}", code)
-            }
-        }
-    }
-}
-
-impl Error for SubackPacketPayloadError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match *self {
-            SubackPacketPayloadError::IoError(ref err) => Some(err),
-            SubackPacketPayloadError::InvalidSubscribeReturnCode(..) => None,
-        }
-    }
-}
-
-impl From<io::Error> for SubackPacketPayloadError {
-    fn from(err: io::Error) -> SubackPacketPayloadError {
-        SubackPacketPayloadError::IoError(err)
-    }
 }

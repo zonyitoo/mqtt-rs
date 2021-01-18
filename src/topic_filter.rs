@@ -1,15 +1,11 @@
 //! Topic filter
 
-use std::convert::Into;
-use std::error::Error;
-use std::fmt;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::ops::Deref;
 
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::encodable::StringEncodeError;
 use crate::topic_name::TopicNameRef;
 use crate::{Decodable, Encodable};
 
@@ -44,7 +40,7 @@ impl TopicFilter {
     pub fn new<S: Into<String>>(topic: S) -> Result<TopicFilter, TopicFilterError> {
         let topic = topic.into();
         if is_invalid_topic_filter(&topic) {
-            Err(TopicFilterError::InvalidTopicFilter(topic))
+            Err(TopicFilterError(topic))
         } else {
             Ok(TopicFilter(topic))
         }
@@ -68,12 +64,8 @@ impl From<TopicFilter> for String {
 }
 
 impl Encodable for TopicFilter {
-    type Err = TopicFilterError;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), TopicFilterError> {
-        (&self.0[..])
-            .encode(writer)
-            .map_err(TopicFilterError::StringEncodeError)
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        (&self.0[..]).encode(writer)
     }
 
     fn encoded_length(&self) -> u32 {
@@ -82,12 +74,12 @@ impl Encodable for TopicFilter {
 }
 
 impl Decodable for TopicFilter {
-    type Err = TopicFilterError;
+    type Error = TopicFilterDecodeError;
     type Cond = ();
 
-    fn decode_with<R: Read>(reader: &mut R, _rest: Option<()>) -> Result<TopicFilter, TopicFilterError> {
-        let topic_filter: String = Decodable::decode(reader).map_err(TopicFilterError::StringEncodeError)?;
-        TopicFilter::new(topic_filter)
+    fn decode_with<R: Read>(reader: &mut R, _rest: ()) -> Result<TopicFilter, TopicFilterDecodeError> {
+        let topic_filter = String::decode(reader)?;
+        Ok(TopicFilter::new(topic_filter)?)
     }
 }
 
@@ -101,6 +93,7 @@ impl Deref for TopicFilter {
 
 /// Reference to a `TopicFilter`
 #[derive(Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[repr(transparent)]
 pub struct TopicFilterRef(str);
 
 impl TopicFilterRef {
@@ -109,7 +102,7 @@ impl TopicFilterRef {
     pub fn new<S: AsRef<str> + ?Sized>(topic: &S) -> Result<&TopicFilterRef, TopicFilterError> {
         let topic = topic.as_ref();
         if is_invalid_topic_filter(topic) {
-            Err(TopicFilterError::InvalidTopicFilter(topic.to_owned()))
+            Err(TopicFilterError(topic.to_owned()))
         } else {
             Ok(unsafe { &*(topic as *const str as *const TopicFilterRef) })
         }
@@ -140,29 +133,16 @@ impl Deref for TopicFilterRef {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("invalid topic filter ({0})")]
+pub struct TopicFilterError(pub String);
+
 /// Errors while parsing topic filters
-#[derive(Debug)]
-pub enum TopicFilterError {
-    StringEncodeError(StringEncodeError),
-    InvalidTopicFilter(String),
-}
-
-impl fmt::Display for TopicFilterError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TopicFilterError::StringEncodeError(ref err) => err.fmt(f),
-            TopicFilterError::InvalidTopicFilter(ref topic) => write!(f, "Invalid topic filter ({})", topic),
-        }
-    }
-}
-
-impl Error for TopicFilterError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match *self {
-            TopicFilterError::StringEncodeError(ref err) => Some(err),
-            TopicFilterError::InvalidTopicFilter(..) => None,
-        }
-    }
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
+pub enum TopicFilterDecodeError {
+    IoError(#[from] io::Error),
+    InvalidTopicFilter(#[from] TopicFilterError),
 }
 
 /// Matcher for matching topic names with this filter

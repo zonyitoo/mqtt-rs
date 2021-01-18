@@ -1,13 +1,10 @@
 //! Fixed header in MQTT
 
-use std::convert::From;
-use std::error::Error;
-use std::fmt;
 use std::io::{self, Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-#[cfg(feature = "async")]
+#[cfg(feature = "tokio")]
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use crate::control::packet_type::{PacketType, PacketTypeError};
@@ -45,11 +42,11 @@ impl FixedHeader {
         }
     }
 
-    #[cfg(feature = "async")]
+    #[cfg(feature = "tokio")]
     /// Asynchronously parse a single fixed header from an AsyncRead type, such as a network
     /// socket.
     ///
-    /// This requires mqtt-rs to be built with `feature = "async"`
+    /// This requires mqtt-rs to be built with `feature = "tokio"`
     pub async fn parse<A: AsyncRead + Unpin>(rdr: &mut A) -> Result<Self, FixedHeaderError> {
         let type_val = rdr.read_u8().await?;
 
@@ -82,9 +79,7 @@ impl FixedHeader {
 }
 
 impl Encodable for FixedHeader {
-    type Err = FixedHeaderError;
-
-    fn encode<W: Write>(&self, wr: &mut W) -> Result<(), FixedHeaderError> {
+    fn encode<W: Write>(&self, wr: &mut W) -> Result<(), io::Error> {
         wr.write_u8(self.packet_type.to_u8())?;
 
         let mut cur_len = self.remaining_length;
@@ -121,10 +116,10 @@ impl Encodable for FixedHeader {
 }
 
 impl Decodable for FixedHeader {
-    type Err = FixedHeaderError;
+    type Error = FixedHeaderError;
     type Cond = ();
 
-    fn decode_with<R: Read>(rdr: &mut R, _rest: Option<()>) -> Result<FixedHeader, FixedHeaderError> {
+    fn decode_with<R: Read>(rdr: &mut R, _rest: ()) -> Result<FixedHeader, FixedHeaderError> {
         let type_val = rdr.read_u8()?;
         let remaining_len = {
             let mut cur = 0u32;
@@ -153,49 +148,18 @@ impl Decodable for FixedHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum FixedHeaderError {
+    #[error("malformed remaining length")]
     MalformedRemainingLength,
+    #[error("unrecognized header ({0}, {1})")]
     Unrecognized(u8, u32),
+    #[error("reserved header ({0}, {1})")]
     ReservedType(u8, u32),
-    PacketTypeError(PacketTypeError),
-    IoError(io::Error),
-}
-
-impl From<io::Error> for FixedHeaderError {
-    fn from(err: io::Error) -> FixedHeaderError {
-        FixedHeaderError::IoError(err)
-    }
-}
-
-impl From<PacketTypeError> for FixedHeaderError {
-    fn from(err: PacketTypeError) -> FixedHeaderError {
-        FixedHeaderError::PacketTypeError(err)
-    }
-}
-
-impl fmt::Display for FixedHeaderError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            FixedHeaderError::MalformedRemainingLength => write!(f, "Malformed remaining length"),
-            FixedHeaderError::Unrecognized(code, length) => write!(f, "Unrecognized header ({}, {})", code, length),
-            FixedHeaderError::ReservedType(code, length) => write!(f, "Reserved header ({}, {})", code, length),
-            FixedHeaderError::PacketTypeError(ref err) => write!(f, "{}", err),
-            FixedHeaderError::IoError(ref err) => write!(f, "{}", err),
-        }
-    }
-}
-
-impl Error for FixedHeaderError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match *self {
-            FixedHeaderError::MalformedRemainingLength => None,
-            FixedHeaderError::Unrecognized(..) => None,
-            FixedHeaderError::ReservedType(..) => None,
-            FixedHeaderError::PacketTypeError(ref err) => Some(err),
-            FixedHeaderError::IoError(ref err) => Some(err),
-        }
-    }
+    #[error(transparent)]
+    PacketTypeError(#[from] PacketTypeError),
+    #[error(transparent)]
+    IoError(#[from] io::Error),
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 //! PUBLISH
 
-use std::io::{Read, Write};
+use std::io::Read;
 
 use crate::control::variable_header::PacketIdentifier;
 use crate::control::{ControlType, FixedHeader, PacketType};
@@ -36,6 +36,8 @@ pub struct PublishPacket {
     payload: Vec<u8>,
 }
 
+encodable_packet!(PublishPacket(topic_name, packet_identifier));
+
 impl PublishPacket {
     pub fn new<P: Into<Vec<u8>>>(topic_name: TopicName, qos: QoSWithPacketIdentifier, payload: P) -> PublishPacket {
         let (qos, pkid) = match qos {
@@ -51,13 +53,8 @@ impl PublishPacket {
             payload: payload.into(),
         };
         pk.fixed_header.packet_type.flags |= qos << 1;
-        pk.fixed_header.remaining_length = pk.calculate_remaining_length();
+        pk.fix_header_remaining_len();
         pk
-    }
-
-    #[inline]
-    fn calculate_remaining_length(&self) -> u32 {
-        self.encoded_variable_headers_length() + self.payload_ref().encoded_length()
     }
 
     pub fn set_dup(&mut self, dup: bool) {
@@ -102,7 +99,7 @@ impl PublishPacket {
 
     pub fn set_topic_name(&mut self, topic_name: TopicName) {
         self.topic_name = topic_name;
-        self.fixed_header.remaining_length = self.calculate_remaining_length();
+        self.fix_header_remaining_len();
     }
 
     pub fn topic_name(&self) -> &str {
@@ -113,10 +110,6 @@ impl PublishPacket {
 impl Packet for PublishPacket {
     type Payload = Vec<u8>;
 
-    fn fixed_header(&self) -> &FixedHeader {
-        &self.fixed_header
-    }
-
     fn payload(self) -> Self::Payload {
         self.payload
     }
@@ -125,22 +118,8 @@ impl Packet for PublishPacket {
         &self.payload
     }
 
-    fn encode_variable_headers<W: Write>(&self, writer: &mut W) -> Result<(), PacketError<Self>> {
-        self.topic_name.encode(writer)?;
-
-        if let Some(pkid) = self.packet_identifier.as_ref() {
-            pkid.encode(writer)?;
-        }
-
-        Ok(())
-    }
-
-    fn encoded_variable_headers_length(&self) -> u32 {
-        self.topic_name.encoded_length() + self.packet_identifier.as_ref().map(|x| x.encoded_length()).unwrap_or(0)
-    }
-
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
-        let topic_name: TopicName = TopicName::decode(reader)?;
+        let topic_name = TopicName::decode(reader)?;
 
         let packet_identifier = if fixed_header.packet_type.flags & 0x06 != 0 {
             Some(PacketIdentifier::decode(reader)?)
@@ -152,7 +131,7 @@ impl Packet for PublishPacket {
             topic_name.encoded_length() + packet_identifier.as_ref().map(|x| x.encoded_length()).unwrap_or(0);
         let payload_len = fixed_header.remaining_length - vhead_len;
 
-        let payload: Vec<u8> = Decodable::decode_with(reader, Some(payload_len))?;
+        let payload = Vec::<u8>::decode_with(reader, Some(payload_len))?;
 
         Ok(PublishPacket {
             fixed_header,

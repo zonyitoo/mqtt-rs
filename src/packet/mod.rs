@@ -271,7 +271,7 @@ impl VariablePacket {
 #[cfg(feature = "tokio-codec")]
 mod tokio_codec {
     use super::*;
-    use crate::control::PacketType;
+    use crate::control::packet_type::{PacketType, PacketTypeError};
     use bytes::{Buf, BufMut, BytesMut};
     use tokio_util::codec;
 
@@ -299,33 +299,63 @@ mod tokio_codec {
         }
     }
 
+    /// Like FixedHeader::decode(), but on a buffer instead of a stream. Returns None if it reaches
+    /// the end of the buffer before it finishes decoding the header.
+    #[inline]
+    fn decode_header(mut data: &[u8]) -> Option<Result<(DecodePacketType, u32, usize), FixedHeaderError>> {
+        let mut header_size = 0;
+        macro_rules! read_u8 {
+            () => {{
+                let (&x, rest) = data.split_first()?;
+                data = rest;
+                header_size += 1;
+                x
+            }};
+        }
+
+        let type_val = read_u8!();
+        let remaining_len = {
+            let mut cur = 0u32;
+            for i in 0.. {
+                let byte = read_u8!();
+                cur |= ((byte as u32) & 0x7F) << (7 * i);
+
+                if i >= 4 {
+                    return Some(Err(FixedHeaderError::MalformedRemainingLength));
+                }
+
+                if byte & 0x80 == 0 {
+                    break;
+                }
+            }
+
+            cur
+        };
+
+        let packet_type = match PacketType::from_u8(type_val) {
+            Ok(ty) => DecodePacketType::Standard(ty),
+            Err(PacketTypeError::UndefinedType(ty, _)) => DecodePacketType::Unrecognized(ty),
+            Err(PacketTypeError::ReservedType(ty, _)) => DecodePacketType::Reserved(ty),
+            Err(err) => return Some(Err(err.into())),
+        };
+        Some(Ok((packet_type, remaining_len, header_size)))
+    }
+
     impl codec::Decoder for MqttDecoder {
         type Item = VariablePacket;
         type Error = VariablePacketError;
         fn decode(&mut self, src: &mut BytesMut) -> Result<Option<VariablePacket>, VariablePacketError> {
             loop {
                 match &mut self.state {
-                    DecodeState::Start => {
-                        let mut slice = &src[..];
-                        let start_len = slice.len();
-                        let (typ, length) = match FixedHeader::decode(&mut slice) {
-                            Ok(header) => (DecodePacketType::Standard(header.packet_type), header.remaining_length),
-                            Err(FixedHeaderError::Unrecognized(code, length)) => {
-                                (DecodePacketType::Unrecognized(code), length)
-                            }
-                            Err(FixedHeaderError::ReservedType(code, length)) => {
-                                (DecodePacketType::Reserved(code), length)
-                            }
-                            Err(FixedHeaderError::IoError(e)) if e.kind() == io::ErrorKind::UnexpectedEof => {
-                                return Ok(None)
-                            }
-                            Err(e) => return Err(e.into()),
-                        };
-                        let header_size = start_len - slice.len();
-                        src.advance(header_size);
-                        self.state = DecodeState::Packet { length, typ };
-                        continue;
-                    }
+                    DecodeState::Start => match decode_header(&src[..]) {
+                        Some(Ok((typ, length, header_size))) => {
+                            src.advance(header_size);
+                            self.state = DecodeState::Packet { length, typ };
+                            continue;
+                        }
+                        Some(Err(e)) => return Err(e.into()),
+                        None => return Ok(None),
+                    },
                     DecodeState::Packet { length, typ } => {
                         let length = *length;
                         if src.remaining() < length as usize {

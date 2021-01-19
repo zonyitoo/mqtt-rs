@@ -28,6 +28,8 @@ macro_rules! encodable_packet {
             }
         }
 
+        impl $crate::packet::EncodablePacket for $typ {}
+
         impl $typ {
             fn encoded_length_noheader(&self) -> u32 {
                 $($crate::encodable::Encodable::encoded_length(&self.$field) +)*
@@ -73,6 +75,14 @@ pub mod subscribe;
 pub mod unsuback;
 pub mod unsubscribe;
 
+/// A trait representing a packet that can be encoded, when passed as `FooPacket` or as
+/// `&FooPacket`. Different from [`Encodable`] in that it prevents you from accidentally passing
+/// a type intended to be encoded only as a part of a packet and doesn't have a header, e.g.
+/// `Vec<u8>`.
+pub trait EncodablePacket: Encodable {}
+
+impl<T: EncodablePacket> EncodablePacket for &T {}
+
 /// Methods for encoding and decoding a packet
 pub trait Packet: Encodable + fmt::Debug + Sized + 'static {
     type Payload: Encodable + Decodable;
@@ -82,7 +92,7 @@ pub trait Packet: Encodable + fmt::Debug + Sized + 'static {
     /// Get a borrow of payload
     fn payload_ref(&self) -> &Self::Payload;
 
-    /// Deocde packet given a `FixedHeader`
+    /// Decode packet given a `FixedHeader`
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>>;
 }
 
@@ -184,6 +194,8 @@ macro_rules! impl_variable_packet {
                 }
             }
         }
+
+        impl EncodablePacket for VariablePacket {}
 
         impl Decodable for VariablePacket {
             type Error = VariablePacketError;
@@ -400,7 +412,7 @@ mod tokio_codec {
         }
     }
 
-    impl<T: Encodable> codec::Encoder<T> for MqttEncoder {
+    impl<T: EncodablePacket> codec::Encoder<T> for MqttEncoder {
         type Error = io::Error;
         fn encode(&mut self, packet: T, dst: &mut BytesMut) -> Result<(), io::Error> {
             dst.reserve(packet.encoded_length() as usize);
@@ -431,7 +443,7 @@ mod tokio_codec {
         }
     }
 
-    impl<T: Encodable> codec::Encoder<T> for MqttCodec {
+    impl<T: EncodablePacket> codec::Encoder<T> for MqttCodec {
         type Error = io::Error;
         #[inline]
         fn encode(&mut self, packet: T, dst: &mut BytesMut) -> Result<(), io::Error> {

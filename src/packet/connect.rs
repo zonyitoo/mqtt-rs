@@ -6,7 +6,7 @@ use crate::control::variable_header::protocol_level::SPEC_3_1_1;
 use crate::control::variable_header::{ConnectFlags, KeepAlive, ProtocolLevel, ProtocolName, VariableHeaderError};
 use crate::control::{ControlType, FixedHeader, PacketType};
 use crate::encodable::VarBytes;
-use crate::packet::{Packet, PacketError};
+use crate::packet::{DecodablePacket, PacketError};
 use crate::topic_name::{TopicName, TopicNameDecodeError, TopicNameError};
 use crate::{Decodable, Encodable};
 
@@ -23,7 +23,7 @@ pub struct ConnectPacket {
     payload: ConnectPacketPayload,
 }
 
-encodable_packet!(ConnectPacket(protocol_name, protocol_level, flags, keep_alive));
+encodable_packet!(ConnectPacket(protocol_name, protocol_level, flags, keep_alive, payload));
 
 impl ConnectPacket {
     pub fn new<C>(client_identifier: C) -> ConnectPacket
@@ -151,16 +151,8 @@ impl ConnectPacket {
     }
 }
 
-impl Packet for ConnectPacket {
+impl DecodablePacket for ConnectPacket {
     type Payload = ConnectPacketPayload;
-
-    fn payload(self) -> ConnectPacketPayload {
-        self.payload
-    }
-
-    fn payload_ref(&self) -> &ConnectPacketPayload {
-        &self.payload
-    }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let protoname: ProtocolName = Decodable::decode(reader)?;

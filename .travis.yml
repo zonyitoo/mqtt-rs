@@ -5,3 +5,4 @@ rust:
 
 script:
     - cargo test -v
+    - cargo test --features "tokio-codec"

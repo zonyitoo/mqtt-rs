@@ -155,7 +155,8 @@ fn main() {
         let message = format!("{}: {}", user_name, line.trim_end());
 
         for chan in &channels {
-            let publish_packet = PublishPacket::new(chan.clone(), QoSWithPacketIdentifier::Level0, message.clone());
+            // let publish_packet = PublishPacket::new(chan.clone(), QoSWithPacketIdentifier::Level0, message.clone());
+            let publish_packet = PublishPacketRef::new(chan, QoSWithPacketIdentifier::Level0, message.as_bytes());
             let mut buf = Vec::new();
             publish_packet.encode(&mut buf).unwrap();
             stream.write_all(&buf[..]).unwrap();

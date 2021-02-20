@@ -4,7 +4,7 @@ use std::io::Read;
 
 use crate::control::variable_header::PacketIdentifier;
 use crate::control::{ControlType, FixedHeader, PacketType};
-use crate::packet::{Packet, PacketError};
+use crate::packet::{DecodablePacket, PacketError};
 use crate::Decodable;
 
 /// `PUBACK` packet
@@ -12,7 +12,6 @@ use crate::Decodable;
 pub struct PubackPacket {
     fixed_header: FixedHeader,
     packet_identifier: PacketIdentifier,
-    payload: (),
 }
 
 encodable_packet!(PubackPacket(packet_identifier));
@@ -22,7 +21,6 @@ impl PubackPacket {
         PubackPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::PublishAcknowledgement), 2),
             packet_identifier: PacketIdentifier(pkid),
-            payload: (),
         }
     }
 
@@ -35,23 +33,14 @@ impl PubackPacket {
     }
 }
 
-impl Packet for PubackPacket {
+impl DecodablePacket for PubackPacket {
     type Payload = ();
-
-    fn payload(self) -> Self::Payload {
-        self.payload
-    }
-
-    fn payload_ref(&self) -> &Self::Payload {
-        &self.payload
-    }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
         Ok(PubackPacket {
             fixed_header,
             packet_identifier,
-            payload: (),
         })
     }
 }

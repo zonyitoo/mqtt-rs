@@ -1,6 +1,6 @@
 //! Specific packets
 
-use std::fmt;
+use std::fmt::{self, Debug};
 use std::io::{self, Read, Write};
 
 #[cfg(feature = "tokio")]
@@ -15,29 +15,28 @@ use crate::{Decodable, Encodable};
 
 macro_rules! encodable_packet {
     ($typ:ident($($field:ident),* $(,)?)) => {
-        impl $crate::encodable::Encodable for $typ {
-            fn encode<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-                $crate::encodable::Encodable::encode(&self.fixed_header, writer)?;
+        impl $crate::packet::EncodablePacket for $typ {
+            fn fixed_header(&self) -> &$crate::control::fixed_header::FixedHeader {
+                &self.fixed_header
+            }
+
+            #[allow(unused)]
+            fn encode_packet<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
                 $($crate::encodable::Encodable::encode(&self.$field, writer)?;)*
-                $crate::encodable::Encodable::encode(&self.payload, writer)?;
                 Ok(())
             }
 
-            fn encoded_length(&self) -> u32 {
-                $crate::encodable::Encodable::encoded_length(&self.fixed_header)
+            fn encoded_packet_length(&self) -> u32 {
+                $($crate::encodable::Encodable::encoded_length(&self.$field) +)*
+                    0
             }
         }
 
-        impl $crate::packet::EncodablePacket for $typ {}
-
         impl $typ {
-            fn encoded_length_noheader(&self) -> u32 {
-                $($crate::encodable::Encodable::encoded_length(&self.$field) +)*
-                    $crate::encodable::Encodable::encoded_length(&self.payload)
-            }
             #[allow(unused)]
+            #[inline(always)]
             fn fix_header_remaining_len(&mut self) {
-                self.fixed_header.remaining_length = self.encoded_length_noheader()
+                self.fixed_header.remaining_length = $crate::packet::EncodablePacket::encoded_packet_length(self);
             }
         }
     };
@@ -50,7 +49,7 @@ pub use self::pingreq::PingreqPacket;
 pub use self::pingresp::PingrespPacket;
 pub use self::puback::PubackPacket;
 pub use self::pubcomp::PubcompPacket;
-pub use self::publish::PublishPacket;
+pub use self::publish::{PublishPacket, PublishPacketRef};
 pub use self::pubrec::PubrecPacket;
 pub use self::pubrel::PubrelPacket;
 pub use self::suback::SubackPacket;
@@ -79,24 +78,40 @@ pub mod unsubscribe;
 /// `&FooPacket`. Different from [`Encodable`] in that it prevents you from accidentally passing
 /// a type intended to be encoded only as a part of a packet and doesn't have a header, e.g.
 /// `Vec<u8>`.
-pub trait EncodablePacket: Encodable {}
+pub trait EncodablePacket {
+    /// Get a reference to `FixedHeader`. All MQTT packet must have a fixed header.
+    fn fixed_header(&self) -> &FixedHeader;
 
-impl<T: EncodablePacket> EncodablePacket for &T {}
+    /// Encodes packet data after fixed header, including variable headers and payload
+    fn encode_packet<W: Write>(&self, _writer: &mut W) -> io::Result<()> {
+        Ok(())
+    }
 
-/// Methods for encoding and decoding a packet
-pub trait Packet: Encodable + fmt::Debug + Sized + 'static {
-    type Payload: Encodable + Decodable;
+    /// Length in bytes for data after fixed header, including variable headers and payload
+    fn encoded_packet_length(&self) -> u32 {
+        0
+    }
+}
 
-    /// Get the payload
-    fn payload(self) -> Self::Payload;
-    /// Get a borrow of payload
-    fn payload_ref(&self) -> &Self::Payload;
+impl<T: EncodablePacket> Encodable for T {
+    fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        self.fixed_header().encode(writer)?;
+        self.encode_packet(writer)
+    }
+
+    fn encoded_length(&self) -> u32 {
+        self.fixed_header().encoded_length() + self.encoded_packet_length()
+    }
+}
+
+pub trait DecodablePacket: EncodablePacket + Sized {
+    type Payload: Decodable + 'static;
 
     /// Decode packet given a `FixedHeader`
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>>;
 }
 
-impl<T: Packet> Decodable for T {
+impl<T: DecodablePacket> Decodable for T {
     type Error = PacketError<T>;
     type Cond = Option<FixedHeader>;
 
@@ -107,22 +122,41 @@ impl<T: Packet> Decodable for T {
             Decodable::decode(reader)?
         };
 
-        <Self as Packet>::decode_packet(reader, fixed_header)
+        <Self as DecodablePacket>::decode_packet(reader, fixed_header)
     }
 }
 
 /// Parsing errors for packet
-#[derive(Debug, thiserror::Error)]
+#[derive(thiserror::Error)]
 #[error(transparent)]
-pub enum PacketError<P: Packet> {
+pub enum PacketError<P>
+where
+    P: DecodablePacket,
+{
     FixedHeaderError(#[from] FixedHeaderError),
     VariableHeaderError(#[from] VariableHeaderError),
-    PayloadError(<<P as Packet>::Payload as Decodable>::Error),
+    PayloadError(<<P as DecodablePacket>::Payload as Decodable>::Error),
     IoError(#[from] io::Error),
     TopicNameError(#[from] TopicNameError),
 }
 
-impl<P: Packet> From<TopicNameDecodeError> for PacketError<P> {
+impl<P> Debug for PacketError<P>
+where
+    P: DecodablePacket,
+    <P::Payload as Decodable>::Error: Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            PacketError::FixedHeaderError(ref e) => f.debug_tuple("FixedHeaderError").field(e).finish(),
+            PacketError::VariableHeaderError(ref e) => f.debug_tuple("VariableHeaderError").field(e).finish(),
+            PacketError::PayloadError(ref e) => f.debug_tuple("PayloadError").field(e).finish(),
+            PacketError::IoError(ref e) => f.debug_tuple("IoError").field(e).finish(),
+            PacketError::TopicNameError(ref e) => f.debug_tuple("TopicNameError").field(e).finish(),
+        }
+    }
+}
+
+impl<P: DecodablePacket> From<TopicNameDecodeError> for PacketError<P> {
     fn from(e: TopicNameDecodeError) -> Self {
         match e {
             TopicNameDecodeError::IoError(e) => e.into(),
@@ -162,7 +196,7 @@ macro_rules! impl_variable_packet {
             match fixed_header.packet_type.control_type {
                 $(
                     ControlType::$hdr => {
-                        let pk = <$name as Packet>::decode_packet(rdr, fixed_header)?;
+                        let pk = <$name as DecodablePacket>::decode_packet(rdr, fixed_header)?;
                         Ok(VariablePacket::$name(pk))
                     }
                 )+
@@ -177,25 +211,49 @@ macro_rules! impl_variable_packet {
             }
         )+
 
-        impl Encodable for VariablePacket {
-            fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        // impl Encodable for VariablePacket {
+        //     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        //         match *self {
+        //             $(
+        //                 VariablePacket::$name(ref pk) => pk.encode(writer),
+        //             )+
+        //         }
+        //     }
+
+        //     fn encoded_length(&self) -> u32 {
+        //         match *self {
+        //             $(
+        //                 VariablePacket::$name(ref pk) => pk.encoded_length(),
+        //             )+
+        //         }
+        //     }
+        // }
+
+        impl EncodablePacket for VariablePacket {
+            fn fixed_header(&self) -> &FixedHeader {
                 match *self {
                     $(
-                        VariablePacket::$name(ref pk) => pk.encode(writer),
+                        VariablePacket::$name(ref pk) => pk.fixed_header(),
                     )+
                 }
             }
 
-            fn encoded_length(&self) -> u32 {
+            fn encode_packet<W: Write>(&self, writer: &mut W) -> io::Result<()> {
                 match *self {
                     $(
-                        VariablePacket::$name(ref pk) => pk.encoded_length(),
+                        VariablePacket::$name(ref pk) => pk.encode_packet(writer),
+                    )+
+                }
+            }
+
+            fn encoded_packet_length(&self) -> u32 {
+                match *self {
+                    $(
+                        VariablePacket::$name(ref pk) => pk.encoded_packet_length(),
                     )+
                 }
             }
         }
-
-        impl EncodablePacket for VariablePacket {}
 
         impl Decodable for VariablePacket {
             type Error = VariablePacketError;
@@ -516,14 +574,14 @@ mod test {
         let task = tokio::spawn({
             let (conn_packet, sub_packet) = (conn_packet.clone(), sub_packet.clone());
             async move {
-                let mut sink = FramedWrite::new(writer, MqttEncodeCodec::new());
+                let mut sink = FramedWrite::new(writer, MqttEncoder::new());
                 sink.send(conn_packet).await.unwrap();
                 sink.send(sub_packet).await.unwrap();
                 SinkExt::<VariablePacket>::flush(&mut sink).await.unwrap();
             }
         });
 
-        let mut stream = FramedRead::new(reader, MqttDecodeCodec::new());
+        let mut stream = FramedRead::new(reader, MqttCodec::new());
         let decoded_conn = stream.next().await.unwrap().unwrap();
         let decoded_sub = stream.next().await.unwrap().unwrap();
 

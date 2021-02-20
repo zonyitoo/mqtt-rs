@@ -7,7 +7,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use crate::control::variable_header::PacketIdentifier;
 use crate::control::{ControlType, FixedHeader, PacketType};
-use crate::packet::{Packet, PacketError};
+use crate::packet::{DecodablePacket, PacketError};
 use crate::topic_filter::{TopicFilter, TopicFilterDecodeError, TopicFilterError};
 use crate::{Decodable, Encodable, QualityOfService};
 
@@ -19,7 +19,7 @@ pub struct SubscribePacket {
     payload: SubscribePacketPayload,
 }
 
-encodable_packet!(SubscribePacket(packet_identifier));
+encodable_packet!(SubscribePacket(packet_identifier, payload));
 
 impl SubscribePacket {
     pub fn new(pkid: u16, subscribes: Vec<(TopicFilter, QualityOfService)>) -> SubscribePacket {
@@ -41,16 +41,8 @@ impl SubscribePacket {
     }
 }
 
-impl Packet for SubscribePacket {
+impl DecodablePacket for SubscribePacket {
     type Payload = SubscribePacketPayload;
-
-    fn payload(self) -> Self::Payload {
-        self.payload
-    }
-
-    fn payload_ref(&self) -> &Self::Payload {
-        &self.payload
-    }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;

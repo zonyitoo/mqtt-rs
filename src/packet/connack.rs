@@ -4,7 +4,7 @@ use std::io::Read;
 
 use crate::control::variable_header::{ConnackFlags, ConnectReturnCode};
 use crate::control::{ControlType, FixedHeader, PacketType};
-use crate::packet::{Packet, PacketError};
+use crate::packet::{DecodablePacket, PacketError};
 use crate::Decodable;
 
 /// `CONNACK` packet
@@ -13,7 +13,6 @@ pub struct ConnackPacket {
     fixed_header: FixedHeader,
     flags: ConnackFlags,
     ret_code: ConnectReturnCode,
-    payload: (),
 }
 
 encodable_packet!(ConnackPacket(flags, ret_code));
@@ -24,7 +23,6 @@ impl ConnackPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::ConnectAcknowledgement), 2),
             flags: ConnackFlags { session_present },
             ret_code,
-            payload: (),
         }
     }
 
@@ -37,16 +35,8 @@ impl ConnackPacket {
     }
 }
 
-impl Packet for ConnackPacket {
+impl DecodablePacket for ConnackPacket {
     type Payload = ();
-
-    fn payload(self) -> Self::Payload {
-        self.payload
-    }
-
-    fn payload_ref(&self) -> &Self::Payload {
-        &self.payload
-    }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let flags: ConnackFlags = Decodable::decode(reader)?;
@@ -56,7 +46,6 @@ impl Packet for ConnackPacket {
             fixed_header,
             flags,
             ret_code: code,
-            payload: (),
         })
     }
 }

@@ -16,14 +16,14 @@ pub trait Encodable {
     fn encoded_length(&self) -> u32;
 }
 
-impl<T: Encodable> Encodable for &T {
-    fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        (**self).encode(writer)
-    }
-    fn encoded_length(&self) -> u32 {
-        (**self).encoded_length()
-    }
-}
+// impl<T: Encodable> Encodable for &T {
+//     fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+//         (**self).encode(writer)
+//     }
+//     fn encoded_length(&self) -> u32 {
+//         (**self).encoded_length()
+//     }
+// }
 
 impl<T: Encodable> Encodable for Option<T> {
     fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {

@@ -1,13 +1,15 @@
 //! PUBLISH
 
-use std::io::Read;
+use std::io::{self, Read, Write};
 
-use crate::control::variable_header::PacketIdentifier;
 use crate::control::{ControlType, FixedHeader, PacketType};
-use crate::packet::{Packet, PacketError};
+use crate::packet::{DecodablePacket, PacketError};
 use crate::qos::QualityOfService;
 use crate::topic_name::TopicName;
+use crate::{control::variable_header::PacketIdentifier, TopicNameRef};
 use crate::{Decodable, Encodable};
+
+use super::EncodablePacket;
 
 /// QoS with identifier pairs
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -36,7 +38,7 @@ pub struct PublishPacket {
     payload: Vec<u8>,
 }
 
-encodable_packet!(PublishPacket(topic_name, packet_identifier));
+encodable_packet!(PublishPacket(topic_name, packet_identifier, payload));
 
 impl PublishPacket {
     pub fn new<P: Into<Vec<u8>>>(topic_name: TopicName, qos: QoSWithPacketIdentifier, payload: P) -> PublishPacket {
@@ -105,18 +107,19 @@ impl PublishPacket {
     pub fn topic_name(&self) -> &str {
         &self.topic_name[..]
     }
-}
 
-impl Packet for PublishPacket {
-    type Payload = Vec<u8>;
-
-    fn payload(self) -> Self::Payload {
-        self.payload
-    }
-
-    fn payload_ref(&self) -> &Self::Payload {
+    pub fn payload(&self) -> &[u8] {
         &self.payload
     }
+
+    pub fn set_payload<P: Into<Vec<u8>>>(&mut self, payload: P) {
+        self.payload = payload.into();
+        self.fix_header_remaining_len();
+    }
+}
+
+impl DecodablePacket for PublishPacket {
+    type Payload = Vec<u8>;
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let topic_name = TopicName::decode(reader)?;
@@ -139,6 +142,55 @@ impl Packet for PublishPacket {
             packet_identifier,
             payload,
         })
+    }
+}
+
+/// `PUBLISH` packet by reference, for encoding only
+pub struct PublishPacketRef<'a> {
+    fixed_header: FixedHeader,
+    topic_name: &'a TopicNameRef,
+    packet_identifier: Option<PacketIdentifier>,
+    payload: &'a [u8],
+}
+
+impl<'a> PublishPacketRef<'a> {
+    pub fn new(topic_name: &'a TopicNameRef, qos: QoSWithPacketIdentifier, payload: &'a [u8]) -> PublishPacketRef<'a> {
+        let (qos, pkid) = match qos {
+            QoSWithPacketIdentifier::Level0 => (0, None),
+            QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
+            QoSWithPacketIdentifier::Level2(pkid) => (2, Some(PacketIdentifier(pkid))),
+        };
+
+        let mut pk = PublishPacketRef {
+            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Publish), 0),
+            topic_name,
+            packet_identifier: pkid,
+            payload,
+        };
+        pk.fixed_header.packet_type.flags |= qos << 1;
+        pk.fix_header_remaining_len();
+        pk
+    }
+
+    fn fix_header_remaining_len(&mut self) {
+        self.fixed_header.remaining_length =
+            self.topic_name.encoded_length() + self.packet_identifier.encoded_length() + self.payload.encoded_length();
+    }
+}
+
+impl EncodablePacket for PublishPacketRef<'_> {
+    fn fixed_header(&self) -> &FixedHeader {
+        &self.fixed_header
+    }
+
+    fn encode_packet<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        self.topic_name.encode(writer)?;
+        self.packet_identifier.encode(writer)?;
+        self.payload.encode(writer)
+    }
+
+    fn encoded_packet_length(&self) -> u32 {
+        self.topic_name.encoded_length() + self.packet_identifier.encoded_length() + self.payload.encoded_length()
     }
 }
 

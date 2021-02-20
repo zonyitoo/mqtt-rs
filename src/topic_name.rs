@@ -189,6 +189,16 @@ impl ToOwned for TopicNameRef {
     }
 }
 
+impl Encodable for TopicNameRef {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        (&self.0[..]).encode(writer)
+    }
+
+    fn encoded_length(&self) -> u32 {
+        (&self.0[..]).encoded_length()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

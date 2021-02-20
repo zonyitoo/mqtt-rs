@@ -173,7 +173,7 @@ fn main() {
                 info!("Receiving PINGRESP from broker ..");
             }
             VariablePacket::PublishPacket(ref publ) => {
-                let msg = match str::from_utf8(&publ.payload_ref()[..]) {
+                let msg = match str::from_utf8(publ.payload()) {
                     Ok(msg) => msg,
                     Err(err) => {
                         error!("Failed to decode publish message {:?}", err);

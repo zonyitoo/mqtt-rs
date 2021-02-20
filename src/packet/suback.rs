@@ -8,7 +8,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use crate::control::variable_header::PacketIdentifier;
 use crate::control::{ControlType, FixedHeader, PacketType};
-use crate::packet::{Packet, PacketError};
+use crate::packet::{DecodablePacket, PacketError};
 use crate::qos::QualityOfService;
 use crate::{Decodable, Encodable};
 
@@ -57,7 +57,7 @@ pub struct SubackPacket {
     payload: SubackPacketPayload,
 }
 
-encodable_packet!(SubackPacket(packet_identifier));
+encodable_packet!(SubackPacket(packet_identifier, payload));
 
 impl SubackPacket {
     pub fn new(pkid: u16, subscribes: Vec<SubscribeReturnCode>) -> SubackPacket {
@@ -79,16 +79,8 @@ impl SubackPacket {
     }
 }
 
-impl Packet for SubackPacket {
+impl DecodablePacket for SubackPacket {
     type Payload = SubackPacketPayload;
-
-    fn payload(self) -> Self::Payload {
-        self.payload
-    }
-
-    fn payload_ref(&self) -> &Self::Payload {
-        &self.payload
-    }
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier = PacketIdentifier::decode(reader)?;

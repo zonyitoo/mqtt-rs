@@ -3,13 +3,12 @@
 use std::io::Read;
 
 use crate::control::{ControlType, FixedHeader, PacketType};
-use crate::packet::{Packet, PacketError};
+use crate::packet::{DecodablePacket, PacketError};
 
 /// `PINGREQ` packet
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct PingreqPacket {
     fixed_header: FixedHeader,
-    payload: (),
 }
 
 encodable_packet!(PingreqPacket());
@@ -18,7 +17,6 @@ impl PingreqPacket {
     pub fn new() -> PingreqPacket {
         PingreqPacket {
             fixed_header: FixedHeader::new(PacketType::with_default(ControlType::PingRequest), 0),
-            payload: (),
         }
     }
 }
@@ -29,21 +27,10 @@ impl Default for PingreqPacket {
     }
 }
 
-impl Packet for PingreqPacket {
+impl DecodablePacket for PingreqPacket {
     type Payload = ();
 
-    fn payload(self) -> Self::Payload {
-        self.payload
-    }
-
-    fn payload_ref(&self) -> &Self::Payload {
-        &self.payload
-    }
-
     fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
-        Ok(PingreqPacket {
-            fixed_header,
-            payload: (),
-        })
+        Ok(PingreqPacket { fixed_header })
     }
 }

@@ -1,7 +1,10 @@
 //! Topic name
 
-use std::io::{self, Read, Write};
-use std::ops::Deref;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    io::{self, Read, Write},
+    ops::{Deref, DerefMut},
+};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -62,6 +65,24 @@ impl Deref for TopicName {
     }
 }
 
+impl DerefMut for TopicName {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { TopicNameRef::new_mut_unchecked(&mut self.0) }
+    }
+}
+
+impl Borrow<TopicNameRef> for TopicName {
+    fn borrow(&self) -> &TopicNameRef {
+        Deref::deref(self)
+    }
+}
+
+impl BorrowMut<TopicNameRef> for TopicName {
+    fn borrow_mut(&mut self) -> &mut TopicNameRef {
+        DerefMut::deref_mut(self)
+    }
+}
+
 impl Encodable for TopicName {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
         (&self.0[..]).encode(writer)
@@ -104,10 +125,21 @@ impl TopicNameRef {
     /// Return error if the string is not a valid topic name
     pub fn new<S: AsRef<str> + ?Sized>(topic_name: &S) -> Result<&TopicNameRef, TopicNameError> {
         let topic_name = topic_name.as_ref();
-        if is_invalid_topic_name(&topic_name) {
+        if is_invalid_topic_name(topic_name) {
             Err(TopicNameError(topic_name.to_owned()))
         } else {
             Ok(unsafe { &*(topic_name as *const str as *const TopicNameRef) })
+        }
+    }
+
+    /// Creates a new topic name from string
+    /// Return error if the string is not a valid topic name
+    pub fn new_mut<S: AsMut<str> + ?Sized>(topic_name: &mut S) -> Result<&mut TopicNameRef, TopicNameError> {
+        let topic_name = topic_name.as_mut();
+        if is_invalid_topic_name(topic_name) {
+            Err(TopicNameError(topic_name.to_owned()))
+        } else {
+            Ok(unsafe { &mut *(topic_name as *mut str as *mut TopicNameRef) })
         }
     }
 
@@ -120,6 +152,17 @@ impl TopicNameRef {
     pub unsafe fn new_unchecked<S: AsRef<str> + ?Sized>(topic_name: &S) -> &TopicNameRef {
         let topic_name = topic_name.as_ref();
         &*(topic_name as *const str as *const TopicNameRef)
+    }
+
+    /// Creates a new topic name from string without validation
+    ///
+    /// # Safety
+    ///
+    /// Topic names' syntax is defined in [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106).
+    /// Creating a name from raw string may cause errors
+    pub unsafe fn new_mut_unchecked<S: AsMut<str> + ?Sized>(topic_name: &mut S) -> &mut TopicNameRef {
+        let topic_name = topic_name.as_mut();
+        &mut *(topic_name as *mut str as *mut TopicNameRef)
     }
 
     /// Check if this topic name is only for server.
@@ -135,6 +178,14 @@ impl Deref for TopicNameRef {
 
     fn deref(&self) -> &str {
         &self.0
+    }
+}
+
+impl ToOwned for TopicNameRef {
+    type Owned = TopicName;
+
+    fn to_owned(&self) -> Self::Owned {
+        TopicName(self.0.to_owned())
     }
 }
 

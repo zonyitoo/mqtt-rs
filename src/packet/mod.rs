@@ -1,5 +1,6 @@
 //! Specific packets
 
+use std::error::Error;
 use std::fmt::{self, Debug};
 use std::io::{self, Read, Write};
 
@@ -105,7 +106,7 @@ impl<T: EncodablePacket> Encodable for T {
 }
 
 pub trait DecodablePacket: EncodablePacket + Sized {
-    type Payload: Decodable + 'static;
+    type DecodePacketError: Error + 'static;
 
     /// Decode packet given a `FixedHeader`
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>>;
@@ -135,7 +136,7 @@ where
 {
     FixedHeaderError(#[from] FixedHeaderError),
     VariableHeaderError(#[from] VariableHeaderError),
-    PayloadError(<<P as DecodablePacket>::Payload as Decodable>::Error),
+    PayloadError(<P as DecodablePacket>::DecodePacketError),
     IoError(#[from] io::Error),
     TopicNameError(#[from] TopicNameError),
 }
@@ -143,7 +144,6 @@ where
 impl<P> Debug for PacketError<P>
 where
     P: DecodablePacket,
-    <P::Payload as Decodable>::Error: Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

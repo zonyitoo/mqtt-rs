@@ -77,10 +77,14 @@ impl SubackPacket {
     pub fn set_packet_identifier(&mut self, pkid: u16) {
         self.packet_identifier.0 = pkid;
     }
+
+    pub fn subscribes(&self) -> &[SubscribeReturnCode] {
+        &self.payload.subscribes[..]
+    }
 }
 
 impl DecodablePacket for SubackPacket {
-    type Payload = SubackPacketPayload;
+    type DecodePacketError = SubackPacketError;
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier = PacketIdentifier::decode(reader)?;
@@ -98,17 +102,13 @@ impl DecodablePacket for SubackPacket {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct SubackPacketPayload {
+struct SubackPacketPayload {
     subscribes: Vec<SubscribeReturnCode>,
 }
 
 impl SubackPacketPayload {
     pub fn new(subs: Vec<SubscribeReturnCode>) -> SubackPacketPayload {
         SubackPacketPayload { subscribes: subs }
-    }
-
-    pub fn subscribes(&self) -> &[SubscribeReturnCode] {
-        &self.subscribes[..]
     }
 }
 
@@ -127,10 +127,10 @@ impl Encodable for SubackPacketPayload {
 }
 
 impl Decodable for SubackPacketPayload {
-    type Error = SubackPacketPayloadError;
+    type Error = SubackPacketError;
     type Cond = u32;
 
-    fn decode_with<R: Read>(reader: &mut R, payload_len: u32) -> Result<SubackPacketPayload, SubackPacketPayloadError> {
+    fn decode_with<R: Read>(reader: &mut R, payload_len: u32) -> Result<SubackPacketPayload, SubackPacketError> {
         let mut subs = Vec::new();
 
         for _ in 0..payload_len {
@@ -139,7 +139,7 @@ impl Decodable for SubackPacketPayload {
                 0x01 => SubscribeReturnCode::MaximumQoSLevel1,
                 0x02 => SubscribeReturnCode::MaximumQoSLevel2,
                 0x80 => SubscribeReturnCode::Failure,
-                code => return Err(SubackPacketPayloadError::InvalidSubscribeReturnCode(code)),
+                code => return Err(SubackPacketError::InvalidSubscribeReturnCode(code)),
             };
 
             subs.push(retcode);
@@ -150,7 +150,7 @@ impl Decodable for SubackPacketPayload {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum SubackPacketPayloadError {
+pub enum SubackPacketError {
     #[error(transparent)]
     IoError(#[from] io::Error),
     #[error("invalid subscribe return code {0}")]

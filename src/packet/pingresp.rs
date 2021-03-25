@@ -28,7 +28,7 @@ impl Default for PingrespPacket {
 }
 
 impl DecodablePacket for PingrespPacket {
-    type Payload = ();
+    type DecodePacketError = std::convert::Infallible;
 
     fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         Ok(PingrespPacket { fixed_header })

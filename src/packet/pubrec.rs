@@ -34,7 +34,7 @@ impl PubrecPacket {
 }
 
 impl DecodablePacket for PubrecPacket {
-    type Payload = ();
+    type DecodePacketError = std::convert::Infallible;
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;

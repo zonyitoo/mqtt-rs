@@ -66,16 +66,7 @@ impl ConnectPacket {
     pub fn set_will(&mut self, topic_message: Option<(TopicName, Vec<u8>)>) {
         self.flags.will_flag = topic_message.is_some();
 
-        match topic_message {
-            Some((topic, msg)) => {
-                self.payload.will_topic = Some(topic);
-                self.payload.will_message = Some(VarBytes(msg));
-            }
-            None => {
-                self.payload.will_topic = None;
-                self.payload.will_message = None;
-            }
-        }
+        self.payload.will = topic_message.map(|(t, m)| (t, VarBytes(m)));
 
         self.fix_header_remaining_len();
     }
@@ -112,12 +103,8 @@ impl ConnectPacket {
         self.payload.password.as_ref().map(|x| &x[..])
     }
 
-    pub fn will(&self) -> Option<(&str, &Vec<u8>)> {
-        self.payload
-            .will_topic
-            .as_ref()
-            .map(|x| &x[..])
-            .and_then(|topic| self.payload.will_message.as_ref().map(|msg| (topic, &msg.0)))
+    pub fn will(&self) -> Option<(&str, &[u8])> {
+        self.payload.will.as_ref().map(|(topic, msg)| (&topic[..], &*msg.0))
     }
 
     pub fn will_retain(&self) -> bool {
@@ -152,7 +139,7 @@ impl ConnectPacket {
 }
 
 impl DecodablePacket for ConnectPacket {
-    type Payload = ConnectPacketPayload;
+    type DecodePacketError = ConnectPacketError;
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let protoname: ProtocolName = Decodable::decode(reader)?;
@@ -175,10 +162,9 @@ impl DecodablePacket for ConnectPacket {
 
 /// Payloads for connect packet
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct ConnectPacketPayload {
+struct ConnectPacketPayload {
     client_identifier: String,
-    will_topic: Option<TopicName>,
-    will_message: Option<VarBytes>,
+    will: Option<(TopicName, VarBytes)>,
     user_name: Option<String>,
     password: Option<String>,
 }
@@ -187,8 +173,7 @@ impl ConnectPacketPayload {
     pub fn new(client_identifier: String) -> ConnectPacketPayload {
         ConnectPacketPayload {
             client_identifier,
-            will_topic: None,
-            will_message: None,
+            will: None,
             user_name: None,
             password: None,
         }
@@ -199,11 +184,8 @@ impl Encodable for ConnectPacketPayload {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
         self.client_identifier.encode(writer)?;
 
-        if let Some(ref will_topic) = self.will_topic {
+        if let Some((will_topic, will_message)) = &self.will {
             will_topic.encode(writer)?;
-        }
-
-        if let Some(ref will_message) = self.will_message {
             will_message.encode(writer)?;
         }
 
@@ -220,45 +202,42 @@ impl Encodable for ConnectPacketPayload {
 
     fn encoded_length(&self) -> u32 {
         self.client_identifier.encoded_length()
-            + self.will_topic.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
-            + self.will_message.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
+            + self
+                .will
+                .as_ref()
+                .map(|(a, b)| a.encoded_length() + b.encoded_length())
+                .unwrap_or(0)
             + self.user_name.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
             + self.password.as_ref().map(|t| t.encoded_length()).unwrap_or(0)
     }
 }
 
 impl Decodable for ConnectPacketPayload {
-    type Error = ConnectPacketPayloadError;
+    type Error = ConnectPacketError;
     type Cond = Option<ConnectFlags>;
 
     fn decode_with<R: Read>(
         reader: &mut R,
         rest: Option<ConnectFlags>,
-    ) -> Result<ConnectPacketPayload, ConnectPacketPayloadError> {
-        let mut need_will_topic = false;
-        let mut need_will_message = false;
+    ) -> Result<ConnectPacketPayload, ConnectPacketError> {
+        let mut need_will = false;
         let mut need_user_name = false;
         let mut need_password = false;
 
         if let Some(r) = rest {
-            need_will_topic = r.will_flag;
-            need_will_message = r.will_flag;
+            need_will = r.will_flag;
             need_user_name = r.user_name;
             need_password = r.password;
         }
 
         let ident = String::decode(reader)?;
-        let topic = if need_will_topic {
+        let will = if need_will {
             let topic = TopicName::decode(reader).map_err(|e| match e {
-                TopicNameDecodeError::IoError(e) => ConnectPacketPayloadError::from(e),
+                TopicNameDecodeError::IoError(e) => ConnectPacketError::from(e),
                 TopicNameDecodeError::InvalidTopicName(e) => e.into(),
             })?;
-            Some(topic)
-        } else {
-            None
-        };
-        let msg = if need_will_message {
-            Some(VarBytes::decode(reader)?)
+            let msg = VarBytes::decode(reader)?;
+            Some((topic, msg))
         } else {
             None
         };
@@ -275,8 +254,7 @@ impl Decodable for ConnectPacketPayload {
 
         Ok(ConnectPacketPayload {
             client_identifier: ident,
-            will_topic: topic,
-            will_message: msg,
+            will,
             user_name: uname,
             password: pwd,
         })
@@ -285,7 +263,7 @@ impl Decodable for ConnectPacketPayload {
 
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
-pub enum ConnectPacketPayloadError {
+pub enum ConnectPacketError {
     IoError(#[from] io::Error),
     TopicNameError(#[from] TopicNameError),
 }

@@ -37,10 +37,14 @@ impl UnsubscribePacket {
     pub fn set_packet_identifier(&mut self, pkid: u16) {
         self.packet_identifier.0 = pkid;
     }
+
+    pub fn subscribes(&self) -> &[TopicFilter] {
+        &self.payload.subscribes[..]
+    }
 }
 
 impl DecodablePacket for UnsubscribePacket {
-    type Payload = UnsubscribePacketPayload;
+    type DecodePacketError = UnsubscribePacketError;
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
@@ -58,17 +62,13 @@ impl DecodablePacket for UnsubscribePacket {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct UnsubscribePacketPayload {
+struct UnsubscribePacketPayload {
     subscribes: Vec<TopicFilter>,
 }
 
 impl UnsubscribePacketPayload {
     pub fn new(subs: Vec<TopicFilter>) -> UnsubscribePacketPayload {
         UnsubscribePacketPayload { subscribes: subs }
-    }
-
-    pub fn subscribes(&self) -> &[TopicFilter] {
-        &self.subscribes[..]
     }
 }
 
@@ -87,13 +87,13 @@ impl Encodable for UnsubscribePacketPayload {
 }
 
 impl Decodable for UnsubscribePacketPayload {
-    type Error = UnsubscribePacketPayloadError;
+    type Error = UnsubscribePacketError;
     type Cond = u32;
 
     fn decode_with<R: Read>(
         reader: &mut R,
         mut payload_len: u32,
-    ) -> Result<UnsubscribePacketPayload, UnsubscribePacketPayloadError> {
+    ) -> Result<UnsubscribePacketPayload, UnsubscribePacketError> {
         let mut subs = Vec::new();
 
         while payload_len > 0 {
@@ -108,13 +108,13 @@ impl Decodable for UnsubscribePacketPayload {
 
 #[derive(Debug, thiserror::Error)]
 #[error(transparent)]
-pub enum UnsubscribePacketPayloadError {
+pub enum UnsubscribePacketError {
     IoError(#[from] io::Error),
     FromUtf8Error(#[from] FromUtf8Error),
     TopicFilterError(#[from] TopicFilterError),
 }
 
-impl From<TopicFilterDecodeError> for UnsubscribePacketPayloadError {
+impl From<TopicFilterDecodeError> for UnsubscribePacketError {
     fn from(e: TopicFilterDecodeError) -> Self {
         match e {
             TopicFilterDecodeError::IoError(e) => e.into(),

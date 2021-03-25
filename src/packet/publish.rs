@@ -119,7 +119,7 @@ impl PublishPacket {
 }
 
 impl DecodablePacket for PublishPacket {
-    type Payload = Vec<u8>;
+    type DecodePacketError = std::convert::Infallible;
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let topic_name = TopicName::decode(reader)?;

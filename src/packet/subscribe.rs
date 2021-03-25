@@ -39,10 +39,14 @@ impl SubscribePacket {
     pub fn set_packet_identifier(&mut self, pkid: u16) {
         self.packet_identifier.0 = pkid;
     }
+
+    pub fn subscribes(&self) -> &[(TopicFilter, QualityOfService)] {
+        &self.payload.subscribes[..]
+    }
 }
 
 impl DecodablePacket for SubscribePacket {
-    type Payload = SubscribePacketPayload;
+    type DecodePacketError = SubscribePacketError;
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let packet_identifier: PacketIdentifier = PacketIdentifier::decode(reader)?;
@@ -61,17 +65,13 @@ impl DecodablePacket for SubscribePacket {
 
 /// Payload of subscribe packet
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct SubscribePacketPayload {
+struct SubscribePacketPayload {
     subscribes: Vec<(TopicFilter, QualityOfService)>,
 }
 
 impl SubscribePacketPayload {
     pub fn new(subs: Vec<(TopicFilter, QualityOfService)>) -> SubscribePacketPayload {
         SubscribePacketPayload { subscribes: subs }
-    }
-
-    pub fn subscribes(&self) -> &[(TopicFilter, QualityOfService)] {
-        &self.subscribes[..]
     }
 }
 
@@ -91,13 +91,13 @@ impl Encodable for SubscribePacketPayload {
 }
 
 impl Decodable for SubscribePacketPayload {
-    type Error = SubscribePacketPayloadError;
+    type Error = SubscribePacketError;
     type Cond = u32;
 
     fn decode_with<R: Read>(
         reader: &mut R,
         mut payload_len: u32,
-    ) -> Result<SubscribePacketPayload, SubscribePacketPayloadError> {
+    ) -> Result<SubscribePacketPayload, SubscribePacketError> {
         let mut subs = Vec::new();
 
         while payload_len > 0 {
@@ -106,7 +106,7 @@ impl Decodable for SubscribePacketPayload {
                 0 => QualityOfService::Level0,
                 1 => QualityOfService::Level1,
                 2 => QualityOfService::Level2,
-                _ => return Err(SubscribePacketPayloadError::InvalidQualityOfService),
+                _ => return Err(SubscribePacketError::InvalidQualityOfService),
             };
 
             payload_len -= filter.encoded_length() + 1;
@@ -118,7 +118,7 @@ impl Decodable for SubscribePacketPayload {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum SubscribePacketPayloadError {
+pub enum SubscribePacketError {
     #[error(transparent)]
     IoError(#[from] io::Error),
     #[error(transparent)]
@@ -129,7 +129,7 @@ pub enum SubscribePacketPayloadError {
     TopicFilterError(#[from] TopicFilterError),
 }
 
-impl From<TopicFilterDecodeError> for SubscribePacketPayloadError {
+impl From<TopicFilterDecodeError> for SubscribePacketError {
     fn from(e: TopicFilterDecodeError) -> Self {
         match e {
             TopicFilterDecodeError::IoError(e) => e.into(),

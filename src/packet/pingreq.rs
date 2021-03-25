@@ -28,7 +28,7 @@ impl Default for PingreqPacket {
 }
 
 impl DecodablePacket for PingreqPacket {
-    type Payload = ();
+    type DecodePacketError = std::convert::Infallible;
 
     fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         Ok(PingreqPacket { fixed_header })

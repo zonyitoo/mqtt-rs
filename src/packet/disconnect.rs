@@ -28,7 +28,7 @@ impl Default for DisconnectPacket {
 }
 
 impl DecodablePacket for DisconnectPacket {
-    type Payload = ();
+    type DecodePacketError = std::convert::Infallible;
 
     fn decode_packet<R: Read>(_reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         Ok(DisconnectPacket { fixed_header })

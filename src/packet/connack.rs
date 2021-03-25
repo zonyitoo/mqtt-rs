@@ -36,7 +36,7 @@ impl ConnackPacket {
 }
 
 impl DecodablePacket for ConnackPacket {
-    type Payload = ();
+    type DecodePacketError = std::convert::Infallible;
 
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let flags: ConnackFlags = Decodable::decode(reader)?;

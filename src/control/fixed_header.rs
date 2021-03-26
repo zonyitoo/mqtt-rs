@@ -71,7 +71,6 @@ impl FixedHeader {
 
         match PacketType::from_u8(type_val) {
             Ok(packet_type) => Ok(FixedHeader::new(packet_type, remaining_len)),
-            Err(PacketTypeError::UndefinedType(ty, _)) => Err(FixedHeaderError::Unrecognized(ty, remaining_len)),
             Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
             Err(err) => Err(From::from(err)),
         }
@@ -141,7 +140,6 @@ impl Decodable for FixedHeader {
 
         match PacketType::from_u8(type_val) {
             Ok(packet_type) => Ok(FixedHeader::new(packet_type, remaining_len)),
-            Err(PacketTypeError::UndefinedType(ty, _)) => Err(FixedHeaderError::Unrecognized(ty, remaining_len)),
             Err(PacketTypeError::ReservedType(ty, _)) => Err(FixedHeaderError::ReservedType(ty, remaining_len)),
             Err(err) => Err(From::from(err)),
         }
@@ -152,8 +150,6 @@ impl Decodable for FixedHeader {
 pub enum FixedHeaderError {
     #[error("malformed remaining length")]
     MalformedRemainingLength,
-    #[error("unrecognized header ({0}, {1})")]
-    Unrecognized(u8, u32),
     #[error("reserved header ({0}, {1})")]
     ReservedType(u8, u32),
     #[error(transparent)]

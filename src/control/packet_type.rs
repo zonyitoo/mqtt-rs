@@ -1,11 +1,11 @@
 //! Packet types
 
+use crate::qos::QualityOfService;
+
 /// Packet type
+// INVARIANT: the high 4 bits of the byte must be a valid control type
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub struct PacketType {
-    pub control_type: ControlType,
-    pub flags: u8,
-}
+pub struct PacketType(u8);
 
 /// Defined control types
 #[rustfmt::skip]
@@ -55,11 +55,61 @@ pub enum ControlType {
     Disconnect                      = value::DISCONNECT,
 }
 
-impl PacketType {
-    /// Creates a packet type
+impl ControlType {
     #[inline]
-    pub fn new(t: ControlType, flags: u8) -> PacketType {
-        PacketType { control_type: t, flags }
+    fn default_flags(self) -> u8 {
+        match self {
+            ControlType::Connect => 0,
+            ControlType::ConnectAcknowledgement => 0,
+
+            ControlType::Publish => 0,
+            ControlType::PublishAcknowledgement => 0,
+            ControlType::PublishReceived => 0,
+            ControlType::PublishRelease => 0b0010,
+            ControlType::PublishComplete => 0,
+
+            ControlType::Subscribe => 0b0010,
+            ControlType::SubscribeAcknowledgement => 0,
+
+            ControlType::Unsubscribe => 0b0010,
+            ControlType::UnsubscribeAcknowledgement => 0,
+
+            ControlType::PingRequest => 0,
+            ControlType::PingResponse => 0,
+
+            ControlType::Disconnect => 0,
+        }
+    }
+}
+
+impl PacketType {
+    /// Creates a packet type. Returns None if `flags` is an invalid value for the given
+    /// ControlType as defined by the [MQTT spec].
+    ///
+    /// [MQTT spec]: http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Table_2.2_-
+    pub fn new(t: ControlType, flags: u8) -> Option<PacketType> {
+        let flags_ok = match t {
+            ControlType::Publish => {
+                let qos = (flags & 0b0110) >> 1;
+                matches!(qos, 0 | 1 | 2)
+            }
+            _ => t.default_flags() == flags,
+        };
+        if flags_ok {
+            Some(PacketType::new_unchecked(t, flags))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn new_unchecked(t: ControlType, flags: u8) -> PacketType {
+        let byte = (t as u8) << 4 | (flags & 0x0F);
+        #[allow(unused_unsafe)]
+        unsafe {
+            // SAFETY: just constructed from a valid ControlType
+            PacketType(byte)
+        }
     }
 
     /// Creates a packet type with default flags
@@ -67,77 +117,76 @@ impl PacketType {
     /// http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Table_2.2_-
     #[inline]
     pub fn with_default(t: ControlType) -> PacketType {
-        match t {
-            ControlType::Connect => PacketType::new(t, 0),
-            ControlType::ConnectAcknowledgement => PacketType::new(t, 0),
+        let flags = t.default_flags();
+        PacketType::new_unchecked(t, flags)
+    }
 
-            ControlType::Publish => PacketType::new(t, 0),
-            ControlType::PublishAcknowledgement => PacketType::new(t, 0),
-            ControlType::PublishReceived => PacketType::new(t, 0),
-            ControlType::PublishRelease => PacketType::new(t, 0x02),
-            ControlType::PublishComplete => PacketType::new(t, 0),
+    pub(crate) fn publish(qos: QualityOfService) -> PacketType {
+        // SAFETY: just constructed publish flags from a valid qos value
+        PacketType::new_unchecked(ControlType::Publish, (qos as u8) << 1)
+    }
 
-            ControlType::Subscribe => PacketType::new(t, 0x02),
-            ControlType::SubscribeAcknowledgement => PacketType::new(t, 0),
-
-            ControlType::Unsubscribe => PacketType::new(t, 0x02),
-            ControlType::UnsubscribeAcknowledgement => PacketType::new(t, 0),
-
-            ControlType::PingRequest => PacketType::new(t, 0),
-            ControlType::PingResponse => PacketType::new(t, 0),
-
-            ControlType::Disconnect => PacketType::new(t, 0),
-        }
+    #[inline]
+    pub(crate) fn update_flags(&mut self, upd: impl FnOnce(u8) -> u8) {
+        let flags = upd(self.flags());
+        self.0 = (self.0 & !0x0F) | (flags & 0x0F)
     }
 
     /// To code
+    #[inline]
     pub fn to_u8(self) -> u8 {
-        (self.control_type as u8) << 4 | (self.flags & 0x0F)
+        self.0
     }
 
     /// From code
-    #[rustfmt::skip]
     pub fn from_u8(val: u8) -> Result<PacketType, PacketTypeError> {
-
         let type_val = val >> 4;
-        let flag = val & 0x0F;
+        let flags = val & 0x0F;
 
-        macro_rules! vconst {
-            ($flag:expr, $ret:path) => (
-                if flag != $flag {
-                    Err(PacketTypeError::InvalidFlag($ret, flag))
-                } else {
-                    Ok(PacketType::new($ret, flag))
-                }
-            )
-        }
-
-        match type_val {
-            value::CONNECT      => vconst!(0x00, ControlType::Connect),
-            value::CONNACK      => vconst!(0x00, ControlType::ConnectAcknowledgement),
-
-            value::PUBLISH      =>
-                Ok(PacketType::new(ControlType::Publish, flag)),
-            value::PUBACK       => vconst!(0x00, ControlType::PublishAcknowledgement),
-            value::PUBREC       => vconst!(0x00, ControlType::PublishReceived),
-            value::PUBREL       => vconst!(0x02, ControlType::PublishRelease),
-            value::PUBCOMP      => vconst!(0x00, ControlType::PublishComplete),
-
-            value::SUBSCRIBE    => vconst!(0x02, ControlType::Subscribe),
-            value::SUBACK       => vconst!(0x00, ControlType::SubscribeAcknowledgement),
-
-            value::UNSUBSCRIBE  => vconst!(0x02, ControlType::Unsubscribe),
-            value::UNSUBACK     => vconst!(0x00, ControlType::UnsubscribeAcknowledgement),
-
-            value::PINGREQ      => vconst!(0x00, ControlType::PingRequest),
-            value::PINGRESP     => vconst!(0x00, ControlType::PingResponse),
-
-            value::DISCONNECT   => vconst!(0x00, ControlType::Disconnect),
-
-            0 | 15              => Err(PacketTypeError::ReservedType(type_val, flag)),
-            _                   => Err(PacketTypeError::UndefinedType(type_val, flag)),
-        }
+        let control_type = get_control_type(type_val).ok_or_else(|| PacketTypeError::ReservedType(type_val, flags))?;
+        PacketType::new(control_type, flags).ok_or_else(|| PacketTypeError::InvalidFlag(control_type, flags))
     }
+
+    #[inline]
+    pub fn control_type(self) -> ControlType {
+        get_control_type(self.0 >> 4).unwrap_or_else(|| {
+            // SAFETY: this is maintained by the invariant for PacketType
+            unsafe { std::hint::unreachable_unchecked() }
+        })
+    }
+
+    #[inline]
+    pub fn flags(self) -> u8 {
+        self.0 & 0x0F
+    }
+}
+
+#[inline]
+fn get_control_type(val: u8) -> Option<ControlType> {
+    let typ = match val {
+        value::CONNECT => ControlType::Connect,
+        value::CONNACK => ControlType::ConnectAcknowledgement,
+
+        value::PUBLISH => ControlType::Publish,
+        value::PUBACK => ControlType::PublishAcknowledgement,
+        value::PUBREC => ControlType::PublishReceived,
+        value::PUBREL => ControlType::PublishRelease,
+        value::PUBCOMP => ControlType::PublishComplete,
+
+        value::SUBSCRIBE => ControlType::Subscribe,
+        value::SUBACK => ControlType::SubscribeAcknowledgement,
+
+        value::UNSUBSCRIBE => ControlType::Unsubscribe,
+        value::UNSUBACK => ControlType::UnsubscribeAcknowledgement,
+
+        value::PINGREQ => ControlType::PingRequest,
+        value::PINGRESP => ControlType::PingResponse,
+
+        value::DISCONNECT => ControlType::Disconnect,
+
+        _ => return None,
+    };
+    Some(typ)
 }
 
 /// Parsing packet type errors
@@ -145,8 +194,6 @@ impl PacketType {
 pub enum PacketTypeError {
     #[error("reserved type {0:?} ({1:#X})")]
     ReservedType(u8, u8),
-    #[error("undefined type {0:?} ({1:#X})")]
-    UndefinedType(u8, u8),
     #[error("invalid flag for {0:?} ({1:#X})")]
     InvalidFlag(ControlType, u8),
 }

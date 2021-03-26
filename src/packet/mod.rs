@@ -193,7 +193,7 @@ macro_rules! impl_variable_packet {
 
         #[inline]
         fn decode_with_header<R: io::Read>(rdr: &mut R, fixed_header: FixedHeader) -> Result<VariablePacket, VariablePacketError> {
-            match fixed_header.packet_type.control_type {
+            match fixed_header.packet_type.control_type() {
                 $(
                     ControlType::$hdr => {
                         let pk = <$name as DecodablePacket>::decode_packet(rdr, fixed_header)?;
@@ -266,12 +266,6 @@ macro_rules! impl_variable_packet {
                     None => {
                         match FixedHeader::decode(reader) {
                             Ok(header) => header,
-                            Err(FixedHeaderError::Unrecognized(code, length)) => {
-                                let reader = &mut reader.take(length as u64);
-                                let mut buf = Vec::with_capacity(length as usize);
-                                reader.read_to_end(&mut buf)?;
-                                return Err(VariablePacketError::UnrecognizedPacket(code, buf));
-                            },
                             Err(FixedHeaderError::ReservedType(code, length)) => {
                                 let reader = &mut reader.take(length as u64);
                                 let mut buf = Vec::with_capacity(length as usize);
@@ -293,8 +287,6 @@ macro_rules! impl_variable_packet {
         pub enum VariablePacketError {
             #[error(transparent)]
             FixedHeaderError(#[from] FixedHeaderError),
-            #[error("unrecognized packet type ({0}), [u8, ..{}]", .1.len())]
-            UnrecognizedPacket(u8, Vec<u8>),
             #[error("reserved packet type ({0}), [u8, ..{}]", .1.len())]
             ReservedPacket(u8, Vec<u8>),
             #[error(transparent)]
@@ -357,7 +349,6 @@ mod tokio_codec {
     #[derive(Copy, Clone)]
     enum DecodePacketType {
         Standard(PacketType),
-        Unrecognized(u8),
         Reserved(u8),
     }
 
@@ -404,7 +395,6 @@ mod tokio_codec {
 
         let packet_type = match PacketType::from_u8(type_val) {
             Ok(ty) => DecodePacketType::Standard(ty),
-            Err(PacketTypeError::UndefinedType(ty, _)) => DecodePacketType::Unrecognized(ty),
             Err(PacketTypeError::ReservedType(ty, _)) => DecodePacketType::Reserved(ty),
             Err(err) => return Some(Err(err.into())),
         };
@@ -442,11 +432,6 @@ mod tokio_codec {
                                     remaining_length: length,
                                 };
                                 return decode_with_header(&mut src.reader(), header).map(Some);
-                            }
-                            DecodePacketType::Unrecognized(code) => {
-                                let data = src[..length as usize].to_vec();
-                                src.advance(length as usize);
-                                return Err(VariablePacketError::UnrecognizedPacket(code, data));
                             }
                             DecodePacketType::Reserved(code) => {
                                 let data = src[..length as usize].to_vec();
@@ -581,7 +566,7 @@ mod test {
             }
         });
 
-        let mut stream = FramedRead::new(reader, MqttCodec::new());
+        let mut stream = FramedRead::new(reader, MqttDecoder::new());
         let decoded_conn = stream.next().await.unwrap().unwrap();
         let decoded_sub = stream.next().await.unwrap().unwrap();
 

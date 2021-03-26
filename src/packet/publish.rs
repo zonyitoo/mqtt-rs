@@ -2,7 +2,7 @@
 
 use std::io::{self, Read, Write};
 
-use crate::control::{ControlType, FixedHeader, PacketType};
+use crate::control::{FixedHeader, PacketType};
 use crate::packet::{DecodablePacket, PacketError};
 use crate::qos::QualityOfService;
 use crate::topic_name::TopicName;
@@ -27,6 +27,14 @@ impl QoSWithPacketIdentifier {
             (QualityOfService::Level2, id) => QoSWithPacketIdentifier::Level2(id),
         }
     }
+
+    pub fn split(self) -> (QualityOfService, Option<u16>) {
+        match self {
+            QoSWithPacketIdentifier::Level0 => (QualityOfService::Level0, None),
+            QoSWithPacketIdentifier::Level1(pkid) => (QualityOfService::Level1, Some(pkid)),
+            QoSWithPacketIdentifier::Level2(pkid) => (QualityOfService::Level2, Some(pkid)),
+        }
+    }
 }
 
 /// `PUBLISH` packet
@@ -42,46 +50,40 @@ encodable_packet!(PublishPacket(topic_name, packet_identifier, payload));
 
 impl PublishPacket {
     pub fn new<P: Into<Vec<u8>>>(topic_name: TopicName, qos: QoSWithPacketIdentifier, payload: P) -> PublishPacket {
-        let (qos, pkid) = match qos {
-            QoSWithPacketIdentifier::Level0 => (0, None),
-            QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
-            QoSWithPacketIdentifier::Level2(pkid) => (2, Some(PacketIdentifier(pkid))),
-        };
-
+        let (qos, pkid) = qos.split();
         let mut pk = PublishPacket {
-            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Publish), 0),
+            fixed_header: FixedHeader::new(PacketType::publish(qos), 0),
             topic_name,
-            packet_identifier: pkid,
+            packet_identifier: pkid.map(PacketIdentifier),
             payload: payload.into(),
         };
-        pk.fixed_header.packet_type.flags |= qos << 1;
         pk.fix_header_remaining_len();
         pk
     }
 
     pub fn set_dup(&mut self, dup: bool) {
-        self.fixed_header.packet_type.flags |= (dup as u8) << 3;
+        self.fixed_header
+            .packet_type
+            .update_flags(|flags| (flags & !(1 << 3)) | (dup as u8) << 3)
     }
 
     pub fn dup(&self) -> bool {
-        self.fixed_header.packet_type.flags & 0x80 != 0
+        self.fixed_header.packet_type.flags() & 0x80 != 0
     }
 
     pub fn set_qos(&mut self, qos: QoSWithPacketIdentifier) {
-        let (qos, pkid) = match qos {
-            QoSWithPacketIdentifier::Level0 => (0, None),
-            QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
-            QoSWithPacketIdentifier::Level2(pkid) => (2, Some(PacketIdentifier(pkid))),
-        };
-        self.fixed_header.packet_type.flags |= qos << 1;
-        self.packet_identifier = pkid;
+        let (qos, pkid) = qos.split();
+        self.fixed_header
+            .packet_type
+            .update_flags(|flags| (flags & !0b0110) | (qos as u8) << 1);
+        self.packet_identifier = pkid.map(PacketIdentifier);
     }
 
     pub fn qos(&self) -> QoSWithPacketIdentifier {
         match self.packet_identifier {
             None => QoSWithPacketIdentifier::Level0,
             Some(pkid) => {
-                let qos_val = (self.fixed_header.packet_type.flags & 0x06) >> 1;
+                let qos_val = (self.fixed_header.packet_type.flags() & 0b0110) >> 1;
                 match qos_val {
                     1 => QoSWithPacketIdentifier::Level1(pkid.0),
                     2 => QoSWithPacketIdentifier::Level2(pkid.0),
@@ -92,11 +94,13 @@ impl PublishPacket {
     }
 
     pub fn set_retain(&mut self, ret: bool) {
-        self.fixed_header.packet_type.flags |= ret as u8;
+        self.fixed_header
+            .packet_type
+            .update_flags(|flags| (flags & !0b0001) | (ret as u8))
     }
 
     pub fn retain(&self) -> bool {
-        self.fixed_header.packet_type.flags & 0x01 != 0
+        self.fixed_header.packet_type.flags() & 0b0001 != 0
     }
 
     pub fn set_topic_name(&mut self, topic_name: TopicName) {
@@ -124,7 +128,8 @@ impl DecodablePacket for PublishPacket {
     fn decode_packet<R: Read>(reader: &mut R, fixed_header: FixedHeader) -> Result<Self, PacketError<Self>> {
         let topic_name = TopicName::decode(reader)?;
 
-        let packet_identifier = if fixed_header.packet_type.flags & 0x06 != 0 {
+        let qos = (fixed_header.packet_type.flags() & 0b0110) >> 1;
+        let packet_identifier = if qos > 0 {
             Some(PacketIdentifier::decode(reader)?)
         } else {
             None
@@ -155,19 +160,14 @@ pub struct PublishPacketRef<'a> {
 
 impl<'a> PublishPacketRef<'a> {
     pub fn new(topic_name: &'a TopicNameRef, qos: QoSWithPacketIdentifier, payload: &'a [u8]) -> PublishPacketRef<'a> {
-        let (qos, pkid) = match qos {
-            QoSWithPacketIdentifier::Level0 => (0, None),
-            QoSWithPacketIdentifier::Level1(pkid) => (1, Some(PacketIdentifier(pkid))),
-            QoSWithPacketIdentifier::Level2(pkid) => (2, Some(PacketIdentifier(pkid))),
-        };
+        let (qos, pkid) = qos.split();
 
         let mut pk = PublishPacketRef {
-            fixed_header: FixedHeader::new(PacketType::with_default(ControlType::Publish), 0),
+            fixed_header: FixedHeader::new(PacketType::publish(qos), 0),
             topic_name,
-            packet_identifier: pkid,
+            packet_identifier: pkid.map(PacketIdentifier),
             payload,
         };
-        pk.fixed_header.packet_type.flags |= qos << 1;
         pk.fix_header_remaining_len();
         pk
     }

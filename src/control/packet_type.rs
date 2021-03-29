@@ -87,7 +87,7 @@ impl PacketType {
     /// ControlType as defined by the [MQTT spec].
     ///
     /// [MQTT spec]: http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Table_2.2_-
-    pub fn new(t: ControlType, flags: u8) -> Option<PacketType> {
+    pub fn new(t: ControlType, flags: u8) -> Result<PacketType, InvalidFlag> {
         let flags_ok = match t {
             ControlType::Publish => {
                 let qos = (flags & 0b0110) >> 1;
@@ -96,9 +96,9 @@ impl PacketType {
             _ => t.default_flags() == flags,
         };
         if flags_ok {
-            Some(PacketType::new_unchecked(t, flags))
+            Ok(PacketType::new_unchecked(t, flags))
         } else {
-            None
+            Err(InvalidFlag(t, flags))
         }
     }
 
@@ -122,7 +122,6 @@ impl PacketType {
     }
 
     pub(crate) fn publish(qos: QualityOfService) -> PacketType {
-        // SAFETY: just constructed publish flags from a valid qos value
         PacketType::new_unchecked(ControlType::Publish, (qos as u8) << 1)
     }
 
@@ -144,7 +143,7 @@ impl PacketType {
         let flags = val & 0x0F;
 
         let control_type = get_control_type(type_val).ok_or_else(|| PacketTypeError::ReservedType(type_val, flags))?;
-        PacketType::new(control_type, flags).ok_or_else(|| PacketTypeError::InvalidFlag(control_type, flags))
+        Ok(PacketType::new(control_type, flags)?)
     }
 
     #[inline]
@@ -192,11 +191,15 @@ fn get_control_type(val: u8) -> Option<ControlType> {
 /// Parsing packet type errors
 #[derive(Debug, thiserror::Error)]
 pub enum PacketTypeError {
-    #[error("reserved type {0:?} ({1:#X})")]
+    #[error("reserved type {0:?} (flags {1:#X})")]
     ReservedType(u8, u8),
-    #[error("invalid flag for {0:?} ({1:#X})")]
-    InvalidFlag(ControlType, u8),
+    #[error(transparent)]
+    InvalidFlag(#[from] InvalidFlag),
 }
+
+#[derive(Debug, thiserror::Error)]
+#[error("invalid flag for {0:?} ({1:#X})")]
+pub struct InvalidFlag(pub ControlType, pub u8);
 
 #[rustfmt::skip]
 mod value {

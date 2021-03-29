@@ -3,13 +3,14 @@ extern crate mqtt;
 extern crate log;
 extern crate clap;
 extern crate env_logger;
-extern crate time;
 extern crate uuid;
 
 use std::env;
 use std::io::Write;
 use std::net::TcpStream;
 use std::str;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use clap::{App, Arg};
 
@@ -19,9 +20,6 @@ use mqtt::control::variable_header::ConnectReturnCode;
 use mqtt::packet::*;
 use mqtt::TopicFilter;
 use mqtt::{Decodable, Encodable, QualityOfService};
-
-use std::thread;
-use std::time::Duration;
 
 fn generate_client_id() -> String {
     format!("/MQTT/rust/{}", Uuid::new_v4())
@@ -138,10 +136,10 @@ fn main() {
 
     let mut stream_clone = stream.try_clone().unwrap();
     thread::spawn(move || {
-        let mut last_ping_time = 0;
-        let mut next_ping_time = last_ping_time + (keep_alive as f32 * 0.9) as i64;
+        let mut last_ping_time = Instant::now();
+        let mut next_ping_time = last_ping_time + Duration::from_secs((keep_alive as f32 * 0.9) as u64);
         loop {
-            let current_timestamp = time::get_time().sec;
+            let current_timestamp = Instant::now();
             if keep_alive > 0 && current_timestamp >= next_ping_time {
                 info!("Sending PINGREQ to broker");
 
@@ -152,7 +150,7 @@ fn main() {
                 stream_clone.write_all(&buf[..]).unwrap();
 
                 last_ping_time = current_timestamp;
-                next_ping_time = last_ping_time + (keep_alive as f32 * 0.9) as i64;
+                next_ping_time = last_ping_time + Duration::from_secs((keep_alive as f32 * 0.9) as u64);
                 thread::sleep(Duration::new((keep_alive / 2) as u64, 0));
             }
         }

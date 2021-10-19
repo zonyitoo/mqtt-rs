@@ -77,6 +77,7 @@ impl PublishPacket {
             .packet_type
             .update_flags(|flags| (flags & !0b0110) | (qos as u8) << 1);
         self.packet_identifier = pkid.map(PacketIdentifier);
+        self.fix_header_remaining_len();
     }
 
     pub fn qos(&self) -> QoSWithPacketIdentifier {
@@ -218,5 +219,18 @@ mod test {
         let decoded = PublishPacket::decode(&mut decode_buf).unwrap();
 
         assert_eq!(packet, decoded);
+    }
+
+    #[test]
+    fn issue56() {
+        let mut packet = PublishPacket::new(
+            TopicName::new("topic").unwrap(),
+            QoSWithPacketIdentifier::Level0,
+            Vec::new(),
+        );
+        assert_eq!(packet.fixed_header().remaining_length, 7);
+
+        packet.set_qos(QoSWithPacketIdentifier::Level1(1));
+        assert_eq!(packet.fixed_header().remaining_length, 9);
     }
 }

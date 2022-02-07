@@ -131,6 +131,10 @@ impl ConnectPacket {
         self.flags.clean_session
     }
 
+    pub fn keep_alive(&self) -> u16 {
+        self.keep_alive.0
+    }
+
     /// Read back the "reserved" Connect flag bit 0. For compliant implementations this should
     /// always be false.
     pub fn reserved_flag(&self) -> bool {

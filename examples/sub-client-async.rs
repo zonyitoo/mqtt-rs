@@ -9,7 +9,6 @@ use log::{error, info, trace};
 
 use uuid::Uuid;
 
-use futures::join;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
@@ -133,16 +132,12 @@ async fn main() {
     }
 
     // connection made, start the async work
+    stream.set_nonblocking(true).unwrap();
     let mut stream = TcpStream::from_std(stream).unwrap();
     let (mut mqtt_read, mut mqtt_write) = stream.split();
 
-    let ping_time = Duration::new((keep_alive / 2) as u64, 0);
-    let mut ping_stream = tokio::time::interval(ping_time);
-
     let ping_sender = async move {
         loop {
-            ping_stream.tick().await;
-
             info!("Sending PINGREQ to broker");
 
             let pingreq_packet = PingreqPacket::new();
@@ -150,6 +145,8 @@ async fn main() {
             let mut buf = Vec::new();
             pingreq_packet.encode(&mut buf).unwrap();
             mqtt_write.write_all(&buf).await.unwrap();
+
+            tokio::time::sleep(Duration::from_secs(keep_alive as u64 / 2)).await;
         }
     };
 
@@ -159,7 +156,7 @@ async fn main() {
 
             match packet {
                 VariablePacket::PingrespPacket(..) => {
-                    info!("Receiving PINGRESP from broker ..");
+                    info!("Received PINGRESP from broker ..");
                 }
                 VariablePacket::PublishPacket(ref publ) => {
                     let msg = match str::from_utf8(publ.payload()) {
@@ -176,5 +173,8 @@ async fn main() {
         }
     };
 
-    join!(ping_sender, receiver);
+    tokio::pin!(ping_sender);
+    tokio::pin!(receiver);
+
+    tokio::join!(ping_sender, receiver);
 }

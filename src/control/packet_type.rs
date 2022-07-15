@@ -114,7 +114,7 @@ impl PacketType {
 
     /// Creates a packet type with default flags
     ///
-    /// http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Table_2.2_-
+    /// <http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Table_2.2_->
     #[inline]
     pub fn with_default(t: ControlType) -> PacketType {
         let flags = t.default_flags();

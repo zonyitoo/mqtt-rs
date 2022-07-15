@@ -34,7 +34,7 @@ fn is_invalid_topic_filter(topic: &str) -> bool {
 
 /// Topic filter
 ///
-/// http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106
+/// <http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106>
 ///
 /// ```rust
 /// use mqtt::{TopicFilter, TopicNameRef};

@@ -6,20 +6,11 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use lazy_static::lazy_static;
-use regex::Regex;
-
 use crate::{Decodable, Encodable};
-
-const TOPIC_NAME_VALIDATE_REGEX: &str = r"^[^#+]+$";
-
-lazy_static! {
-    static ref TOPIC_NAME_VALIDATOR: Regex = Regex::new(TOPIC_NAME_VALIDATE_REGEX).unwrap();
-}
 
 #[inline]
 fn is_invalid_topic_name(topic_name: &str) -> bool {
-    topic_name.is_empty() || topic_name.as_bytes().len() > 65535 || !TOPIC_NAME_VALIDATOR.is_match(&topic_name)
+    topic_name.is_empty() || topic_name.as_bytes().len() > 65535 || topic_name.chars().any(|ch| ch == '#' || ch == '+')
 }
 
 /// Topic name

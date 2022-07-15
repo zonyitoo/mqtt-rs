@@ -142,7 +142,7 @@ impl PacketType {
         let type_val = val >> 4;
         let flags = val & 0x0F;
 
-        let control_type = get_control_type(type_val).ok_or_else(|| PacketTypeError::ReservedType(type_val, flags))?;
+        let control_type = get_control_type(type_val).ok_or(PacketTypeError::ReservedType(type_val, flags))?;
         Ok(PacketType::new(control_type, flags)?)
     }
 

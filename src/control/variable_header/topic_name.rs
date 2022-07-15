@@ -17,9 +17,9 @@ impl TopicNameHeader {
     }
 }
 
-impl Into<TopicName> for TopicNameHeader {
-    fn into(self) -> TopicName {
-        self.0
+impl From<TopicNameHeader> for TopicName {
+    fn from(hdr: TopicNameHeader) -> Self {
+        hdr.0
     }
 }
 

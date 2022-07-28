@@ -3,26 +3,38 @@
 use std::io::{self, Read, Write};
 use std::ops::Deref;
 
-use lazy_static::lazy_static;
-use regex::Regex;
-
 use crate::topic_name::TopicNameRef;
 use crate::{Decodable, Encodable};
 
-const VALIDATE_TOPIC_FILTER_REGEX: &str = r"^(([^+#]*|\+)(/([^+#]*|\+))*(/#)?|#)$";
-
-lazy_static! {
-    static ref TOPIC_FILTER_VALIDATOR: Regex = Regex::new(VALIDATE_TOPIC_FILTER_REGEX).unwrap();
-}
-
 #[inline]
 fn is_invalid_topic_filter(topic: &str) -> bool {
-    topic.is_empty() || topic.as_bytes().len() > 65535 || !TOPIC_FILTER_VALIDATOR.is_match(&topic)
+    if topic.is_empty() || topic.as_bytes().len() > 65535 {
+        return true;
+    }
+
+    let mut found_hash = false;
+    for member in topic.split('/') {
+        if found_hash {
+            return true;
+        }
+
+        match member {
+            "#" => found_hash = true,
+            "+" => {}
+            _ => {
+                if member.contains(['#', '+']) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
 }
 
 /// Topic filter
 ///
-/// http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106
+/// <http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718106>
 ///
 /// ```rust
 /// use mqtt::{TopicFilter, TopicNameRef};

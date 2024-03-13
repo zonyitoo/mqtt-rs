@@ -10,7 +10,7 @@ MQTT protocol library for Rust
 
 ```toml
 [dependencies]
-mqtt-protocol = "0.11"
+mqtt-protocol = "0.12"
 ```
 
 ## Usage
